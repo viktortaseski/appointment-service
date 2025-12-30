@@ -90,6 +90,14 @@ function buildTimeSlots(startHour, endHour, intervalMinutes) {
   return slots;
 }
 
+function getClinicDomain() {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || '';
+  }
+
+  return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || window.location.hostname;
+}
+
 export default function AdminPage() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -225,8 +233,9 @@ export default function AdminPage() {
       setLoadError('');
 
       try {
+        const clinicDomain = getClinicDomain();
         const headers = {
-          'x-clinic-domain': window.location.hostname,
+          'x-clinic-domain': clinicDomain,
         };
 
         const [appointmentsResponse, doctorsResponse] = await Promise.all([
@@ -297,6 +306,7 @@ export default function AdminPage() {
     }
 
     try {
+      const clinicDomain = getClinicDomain();
       const payload = {
         doctor_id: formState.doctorId,
         patient_name: formState.patient,
@@ -309,7 +319,7 @@ export default function AdminPage() {
 
       const headers = {
         'Content-Type': 'application/json',
-        'x-clinic-domain': window.location.hostname,
+        'x-clinic-domain': clinicDomain,
       };
 
       const response = await fetch(
@@ -353,7 +363,7 @@ export default function AdminPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-clinic-domain': window.location.hostname,
+          'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify({ completed: !appointment.completed }),
       });
@@ -409,7 +419,7 @@ export default function AdminPage() {
       const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
         method: 'DELETE',
         headers: {
-          'x-clinic-domain': window.location.hostname,
+          'x-clinic-domain': getClinicDomain(),
         },
       });
 

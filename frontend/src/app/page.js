@@ -82,6 +82,14 @@ function normalizeTime(value) {
   return value.slice(0, 5);
 }
 
+function getClinicDomain() {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || '';
+  }
+
+  return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || window.location.hostname;
+}
+
 export default function Home() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -127,7 +135,7 @@ export default function Home() {
     monthCursor.getMonth() === today.getMonth();
 
   useEffect(() => {
-    setHostname(window.location.hostname);
+    setHostname(getClinicDomain());
   }, []);
 
   useEffect(() => {
@@ -159,9 +167,10 @@ export default function Home() {
       setStatus({ loading: true, error: null });
 
       try {
+        const clinicDomain = getClinicDomain();
         const response = await fetch(`${API_BASE}/doctors`, {
           headers: {
-            'x-clinic-domain': window.location.hostname,
+            'x-clinic-domain': clinicDomain,
           },
         });
 
@@ -211,11 +220,12 @@ export default function Home() {
       setAvailability({ loading: true, error: null, takenTimes: [] });
 
       try {
+        const clinicDomain = getClinicDomain();
         const response = await fetch(
           `${API_BASE}/appointments?date=${selectedDate}&doctorId=${selectedDoctor}`,
           {
             headers: {
-              'x-clinic-domain': window.location.hostname,
+              'x-clinic-domain': clinicDomain,
             },
           }
         );
