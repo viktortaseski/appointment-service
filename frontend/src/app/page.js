@@ -560,6 +560,14 @@ export default function Home() {
             setSelectedDoctor(doctorId);
             setSelectedTime('');
             setFormErrors((prev) => ({ ...prev, doctor: '', time: '' }));
+            if (typeof window !== 'undefined') {
+              window.requestAnimationFrame(() => {
+                const target = document.getElementById('booking-date');
+                if (target) {
+                  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              });
+            }
           }}
           timeSlots={timeSlots}
           selectedTime={selectedTime}

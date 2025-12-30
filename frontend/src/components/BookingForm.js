@@ -55,7 +55,7 @@ export default function BookingForm({
         <h2>{t('reserve_title')}</h2>
         <p>{t('reserve_subtitle')}</p>
       </div>
-      <div className="field">
+      <div className="field" id="booking-date">
         <div className="field-heading">
           <label>{t('choose_doctor_label')}</label>
         </div>
