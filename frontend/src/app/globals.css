@@ -546,8 +546,8 @@ select.error {
 }
 
 .doctor-card-avatar {
-  width: 64px;
-  height: 64px;
+  width: 84px;
+  height: 84px;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(32, 27, 22, 0.08);
@@ -572,6 +572,11 @@ select.error {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 14px;
+  min-height: 36px;
+}
+
+.doctor-description.placeholder {
+  visibility: hidden;
 }
 
 .doctor-clinic {

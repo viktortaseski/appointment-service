@@ -48,9 +48,11 @@ export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }
                 <div>
                   <p className="doctor-name">{doctor.name}</p>
                   <p className="doctor-specialty">{doctor.specialty}</p>
-                  {doctor.description && (
-                    <p className="doctor-description">{doctor.description}</p>
-                  )}
+                  <p
+                    className={`doctor-description${doctor.description ? '' : ' placeholder'}`}
+                  >
+                    {doctor.description || ' '}
+                  </p>
                 </div>
               </div>
               <div>
