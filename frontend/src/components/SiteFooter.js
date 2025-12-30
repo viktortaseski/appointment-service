@@ -1,21 +1,26 @@
+import { useI18n } from './I18nProvider';
+
 export default function SiteFooter({ clinic }) {
+  const { t } = useI18n();
   const contactItems = [
-    clinic?.phone ? { label: 'Phone', value: clinic.phone, href: `tel:${clinic.phone}` } : null,
-    clinic?.email ? { label: 'Email', value: clinic.email, href: `mailto:${clinic.email}` } : null,
-    clinic?.address ? { label: 'Address', value: clinic.address } : null,
+    clinic?.phone
+      ? { label: t('footer_phone'), value: clinic.phone, href: `tel:${clinic.phone}` }
+      : null,
+    clinic?.email
+      ? { label: t('footer_email'), value: clinic.email, href: `mailto:${clinic.email}` }
+      : null,
+    clinic?.address ? { label: t('footer_address'), value: clinic.address } : null,
   ].filter(Boolean);
 
   return (
     <footer className="footer">
       <div>
-        <p className="footer-title">Dental Clinic Appointments</p>
-        <p className="footer-text">
-          Gentle care, bright smiles, and easy scheduling.
-        </p>
+        <p className="footer-title">{t('footer_title')}</p>
+        <p className="footer-text">{t('footer_subtitle')}</p>
       </div>
       {contactItems.length > 0 && (
         <div className="footer-contact">
-          <p className="footer-contact-title">Contact</p>
+          <p className="footer-contact-title">{t('footer_contact')}</p>
           <div className="footer-contact-list">
             {contactItems.map((item) => (
               <div key={item.label} className="footer-contact-item">
@@ -33,8 +38,8 @@ export default function SiteFooter({ clinic }) {
         </div>
       )}
       <div className="footer-links">
-        <a href="#book">Book</a>
-        <a href="#doctors">Doctors</a>
+        <a href="#book">{t('book_link')}</a>
+        <a href="#doctors">{t('nav_doctors')}</a>
       </div>
     </footer>
   );

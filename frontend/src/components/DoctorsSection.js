@@ -1,3 +1,5 @@
+import { useI18n } from './I18nProvider';
+
 function getInitials(name) {
   if (!name) {
     return '';
@@ -12,21 +14,24 @@ function getInitials(name) {
 }
 
 export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }) {
+  const { t } = useI18n();
+  const clinicName = clinic?.name || t('brand_title_fallback');
+
   return (
     <section className="section" id="doctors">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Meet your care team</p>
-          <h2>{clinic?.name || 'Clinic'} care team.</h2>
+          <p className="eyebrow">{t('meet_care_team')}</p>
+          <h2>{t('care_team_title', { clinic: clinicName })}</h2>
           <p className="section-subtitle">
-            Healthy smiles start with people you can trust.
+            {t('care_team_subtitle')}
           </p>
         </div>
       </div>
-      {status.loading && <p className="status">Loading doctors...</p>}
+      {status.loading && <p className="status">{t('loading_doctors')}</p>}
       {!status.loading && status.error && (
         <p className="status error">
-          {status.error}. Make sure a clinic exists for this domain.
+          {status.error}. {t('doctors_load_error')}
         </p>
       )}
       {!status.loading && !status.error && (
@@ -56,15 +61,15 @@ export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }
                 </div>
               </div>
               <div>
-                <p className="doctor-clinic">{clinic?.name}</p>
-                <p className="doctor-availability">Available 9:00 AM - 4:00 PM</p>
+                <p className="doctor-clinic">{clinicName}</p>
+                <p className="doctor-availability">{t('availability_label')}</p>
               </div>
               <button
                 type="button"
                 className="ghost"
                 onClick={() => onBookDoctor?.(doctor.id)}
               >
-                Book with this doctor
+                {t('book_with_doctor')}
               </button>
             </article>
           ))}

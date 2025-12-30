@@ -1,4 +1,4 @@
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { useI18n } from './I18nProvider';
 
 function getInitials(name) {
   if (!name) {
@@ -36,21 +36,32 @@ export default function BookingForm({
   isSubmitting,
   submitError,
 }) {
+  const { t } = useI18n();
+  const dayLabels = [
+    t('weekday_sun'),
+    t('weekday_mon'),
+    t('weekday_tue'),
+    t('weekday_wed'),
+    t('weekday_thu'),
+    t('weekday_fri'),
+    t('weekday_sat'),
+  ];
+
   return (
     <form className="card form" id="book" onSubmit={onSubmit}>
       <div className="form-header">
-        <h2>Reserve your visit</h2>
-        <p>Healthy smiles start here. We will confirm by email within minutes.</p>
+        <h2>{t('reserve_title')}</h2>
+        <p>{t('reserve_subtitle')}</p>
       </div>
       <div className="field">
         <div className="field-heading">
-          <label>Choose your doctor</label>
+          <label>{t('choose_doctor_label')}</label>
         </div>
         {doctorsStatus?.loading && (
-          <p className="inline-hint">Loading doctors...</p>
+          <p className="inline-hint">{t('loading_doctors')}</p>
         )}
         {!doctorsStatus?.loading && doctors.length === 0 && (
-          <p className="inline-hint">No doctors available for this clinic.</p>
+          <p className="inline-hint">{t('no_doctors')}</p>
         )}
         <div className="doctor-list">
           {doctors.map((doctor) => (
@@ -78,8 +89,8 @@ export default function BookingForm({
       </div>
       <div className="field">
         <div className="field-heading">
-          <label>Choose a date</label>
-          <span className="field-hint">Next available dates only</span>
+          <label>{t('choose_date_label')}</label>
+          <span className="field-hint">{t('date_hint')}</span>
         </div>
         <div className="calendar">
           <div className="calendar-header">
@@ -88,7 +99,7 @@ export default function BookingForm({
               className="icon-button"
               onClick={onPrevMonth}
               disabled={isPrevDisabled}
-              aria-label="Previous month"
+              aria-label={t('prev_month')}
             >
               {'<'}
             </button>
@@ -97,13 +108,13 @@ export default function BookingForm({
               type="button"
               className="icon-button"
               onClick={onNextMonth}
-              aria-label="Next month"
+              aria-label={t('next_month')}
             >
               {'>'}
             </button>
           </div>
           <div className="calendar-grid calendar-weekdays">
-            {DAY_LABELS.map((label) => (
+            {dayLabels.map((label) => (
               <span key={label} className="weekday">
                 {label}
               </span>
@@ -135,14 +146,14 @@ export default function BookingForm({
       </div>
       <div className="field">
         <div className="field-heading">
-          <label>Choose a time</label>
-          <span className="field-hint">9:00 AM - 4:00 PM, 30 min slots</span>
+          <label>{t('choose_time_label')}</label>
+          <span className="field-hint">{t('time_hint')}</span>
         </div>
         {!selectedDoctor && (
-          <p className="inline-hint">Select a doctor to see availability.</p>
+          <p className="inline-hint">{t('select_doctor_hint')}</p>
         )}
         {availability.loading && selectedDoctor && (
-          <p className="inline-hint">Loading available times...</p>
+          <p className="inline-hint">{t('loading_times')}</p>
         )}
         {availability.error && (
           <p className="inline-hint error">{availability.error}</p>
@@ -172,12 +183,12 @@ export default function BookingForm({
         {formErrors.time && <span className="field-error">{formErrors.time}</span>}
       </div>
       <div className="field">
-        <label htmlFor="patientName">Full name</label>
+        <label htmlFor="patientName">{t('full_name_label')}</label>
         <input
           id="patientName"
           value={formState.patientName}
           onChange={(event) => onFieldChange('patientName', event.target.value)}
-          placeholder="Jordan Smith"
+          placeholder={t('name_placeholder')}
           className={formErrors.patientName ? 'error' : ''}
         />
         {formErrors.patientName && (
@@ -185,13 +196,13 @@ export default function BookingForm({
         )}
       </div>
       <div className="field">
-        <label htmlFor="patientEmail">Email</label>
+        <label htmlFor="patientEmail">{t('email_label')}</label>
         <input
           id="patientEmail"
           type="email"
           value={formState.patientEmail}
           onChange={(event) => onFieldChange('patientEmail', event.target.value)}
-          placeholder="you@email.com"
+          placeholder={t('email_placeholder')}
           className={formErrors.patientEmail ? 'error' : ''}
         />
         {formErrors.patientEmail && (
@@ -199,13 +210,13 @@ export default function BookingForm({
         )}
       </div>
       <div className="field">
-        <label htmlFor="patientPhone">Phone</label>
+        <label htmlFor="patientPhone">{t('phone_label')}</label>
         <input
           id="patientPhone"
           type="tel"
           value={formState.patientPhone}
           onChange={(event) => onFieldChange('patientPhone', event.target.value)}
-          placeholder="+1 (555) 000-0000"
+          placeholder={t('phone_placeholder')}
           className={formErrors.patientPhone ? 'error' : ''}
         />
         {formErrors.patientPhone && (
@@ -213,21 +224,21 @@ export default function BookingForm({
         )}
       </div>
       <div className="field">
-        <label htmlFor="patientNotes">Notes</label>
+        <label htmlFor="patientNotes">{t('notes_label')}</label>
         <textarea
           id="patientNotes"
           value={formState.patientNotes}
           onChange={(event) => onFieldChange('patientNotes', event.target.value)}
-          placeholder="Anything we should know before your visit?"
+          placeholder={t('notes_placeholder')}
           rows={3}
         />
       </div>
       {submitError && <p className="status error">{submitError}</p>}
       <button type="submit" className="cta full" disabled={isSubmitting}>
-        {isSubmitting ? 'Confirming...' : 'Confirm appointment'}
+        {isSubmitting ? t('confirming') : t('confirm_appointment')}
       </button>
       <p className="form-footnote">
-        Secure scheduling. No credit card required.
+        {t('secure_scheduling')}
       </p>
     </form>
   );

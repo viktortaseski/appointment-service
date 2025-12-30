@@ -1,4 +1,9 @@
+import LanguageSwitcher from './LanguageSwitcher';
+import { useI18n } from './I18nProvider';
+
 export default function Topbar({ clinic }) {
+  const { t } = useI18n();
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -10,16 +15,17 @@ export default function Topbar({ clinic }) {
           )}
         </span>
         <div>
-          <p className="brand-title">{clinic?.name || 'Dental Clinic'}</p>
+          <p className="brand-title">{clinic?.name || t('brand_title_fallback')}</p>
           <p className="brand-subtitle">
-            {clinic?.domain || 'Appointment Service'}
+            {clinic?.domain || t('brand_subtitle_fallback')}
           </p>
         </div>
       </div>
       <nav className="nav">
-        <a href="#doctors">Doctors</a>
-        <a href="#book">Book</a>
+        <a href="#doctors">{t('nav_doctors')}</a>
+        <a href="#book">{t('nav_book')}</a>
       </nav>
+      <LanguageSwitcher />
     </header>
   );
 }

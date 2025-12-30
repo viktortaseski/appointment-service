@@ -6,6 +6,7 @@ import BookingForm from '../components/BookingForm';
 import DoctorsSection from '../components/DoctorsSection';
 import SiteFooter from '../components/SiteFooter';
 import Topbar from '../components/Topbar';
+import { useI18n } from '../components/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -65,13 +66,13 @@ function normalizeTime(value) {
   return value.slice(0, 5);
 }
 
-function formatDisplayDate(dateKey) {
+function formatDisplayDate(dateKey, localeTag) {
   if (!dateKey) {
     return '';
   }
 
   const date = new Date(`${dateKey}T00:00:00`);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(localeTag || 'en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -92,6 +93,7 @@ function formatPhoneInput(value) {
 }
 
 export default function Home() {
+  const { t, localeTag } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const [clinic, setClinic] = useState(null);
@@ -129,11 +131,11 @@ export default function Home() {
   );
   const monthLabel = useMemo(
     () =>
-      monthCursor.toLocaleDateString('en-US', {
+      monthCursor.toLocaleDateString(localeTag, {
         month: 'long',
         year: 'numeric',
       }),
-    [monthCursor]
+    [monthCursor, localeTag]
   );
   const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
   const normalizedTakenTimes = useMemo(
@@ -182,7 +184,7 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}`);
+          throw new Error(t('request_failed', { status: response.status }));
         }
 
         const data = await response.json();
@@ -201,7 +203,7 @@ export default function Home() {
 
         setStatus({
           loading: false,
-          error: error?.message || 'Unable to load clinic data.',
+          error: error?.message || t('load_clinic_error'),
         });
       }
     }
@@ -211,7 +213,7 @@ export default function Home() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {
     const clinicDomain = getClinicDomain();
@@ -225,14 +227,14 @@ export default function Home() {
     );
 
     if (!response.ok) {
-      throw new Error(`Request failed with ${response.status}`);
+      throw new Error(t('request_failed', { status: response.status }));
     }
 
     const data = await response.json();
     return (data.appointments || [])
       .map((appointment) => appointment.time)
       .filter(Boolean);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isActive = true;
@@ -266,7 +268,7 @@ export default function Home() {
 
         setAvailability({
           loading: false,
-          error: error?.message || 'Unable to load availability.',
+          error: error?.message || t('availability_error'),
           takenTimes: [],
         });
       }
@@ -296,29 +298,29 @@ export default function Home() {
     const name = formState.patientName.trim();
 
     if (!name) {
-      errors.patientName = 'Full name is required.';
+      errors.patientName = t('validation_name_required');
     }
 
     if (!email) {
-      errors.patientEmail = 'Email is required.';
+      errors.patientEmail = t('validation_email_required');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.patientEmail = 'Enter a valid email address.';
+      errors.patientEmail = t('validation_email_invalid');
     }
 
     if (!phone) {
-      errors.patientPhone = 'Phone number is required.';
+      errors.patientPhone = t('validation_phone_required');
     }
 
     if (!selectedDate) {
-      errors.date = 'Select a date.';
+      errors.date = t('validation_date_required');
     }
 
     if (!selectedDoctor) {
-      errors.doctor = 'Select a doctor.';
+      errors.doctor = t('validation_doctor_required');
     }
 
     if (!selectedTime) {
-      errors.time = 'Select a time.';
+      errors.time = t('validation_time_required');
     }
 
     return errors;
@@ -338,13 +340,13 @@ export default function Home() {
     }
 
     const doctorName =
-      doctors.find((doctor) => doctor.id === selectedDoctor)?.name || 'Doctor';
+      doctors.find((doctor) => doctor.id === selectedDoctor)?.name || t('doctor_label');
     const timeLabel =
       timeSlots.find((slot) => slot.value === selectedTime)?.label || selectedTime;
 
     setConfirmNotice({
-      clinicName: clinic?.name || 'the clinic',
-      date: formatDisplayDate(selectedDate),
+      clinicName: clinic?.name || t('clinic_fallback'),
+      date: formatDisplayDate(selectedDate, localeTag),
       time: timeLabel,
       doctor: doctorName,
     });
@@ -386,7 +388,7 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Unable to confirm appointment.');
+        throw new Error(data.error || t('confirm_error'));
       }
 
       const appointment = data.appointment || {};
@@ -395,8 +397,8 @@ export default function Home() {
         : selectedDate;
 
       setSuccessNotice({
-        clinicName: clinic?.name || 'the clinic',
-        date: formatDisplayDate(appointmentDate),
+        clinicName: clinic?.name || t('clinic_fallback'),
+        date: formatDisplayDate(appointmentDate, localeTag),
         time: normalizeTime(appointment.time) || selectedTime,
         doctor: appointment.doctor_name || '',
       });
@@ -420,7 +422,7 @@ export default function Home() {
         });
       }
     } catch (error) {
-      setSubmitError(error?.message || 'Unable to confirm appointment.');
+      setSubmitError(error?.message || t('confirm_error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -434,16 +436,21 @@ export default function Home() {
         <div className="notice-overlay">
           <div className="card success-banner notice-card">
             <div>
-              <p className="success-title">Appointment confirmed</p>
+              <p className="success-title">{t('appointment_confirmed')}</p>
               <p className="success-detail">
-                You have an appointment at {successNotice.clinicName} on{' '}
-                {successNotice.date} at {successNotice.time}.
+                {t('appointment_detail', {
+                  clinic: successNotice.clinicName,
+                  date: successNotice.date,
+                  time: successNotice.time,
+                })}
               </p>
               {successNotice.doctor && (
-                <p className="success-detail">Doctor: {successNotice.doctor}</p>
+                <p className="success-detail">
+                  {t('doctor_label')}: {successNotice.doctor}
+                </p>
               )}
               <p className="success-detail muted">
-                A confirmation email will be sent shortly.
+                {t('email_sent_later')}
               </p>
             </div>
             <button
@@ -451,7 +458,7 @@ export default function Home() {
               className="ghost"
               onClick={() => setSuccessNotice(null)}
             >
-              Dismiss
+              {t('dismiss')}
             </button>
           </div>
         </div>
@@ -461,11 +468,17 @@ export default function Home() {
         <div className="notice-overlay">
           <div className="card confirm-banner notice-card">
             <div>
-              <p className="confirm-title">Confirm your appointment</p>
+              <p className="confirm-title">{t('confirm_title')}</p>
               <p className="confirm-detail">
-                {confirmNotice.clinicName} · {confirmNotice.date} · {confirmNotice.time}
+                {t('confirm_detail', {
+                  clinic: confirmNotice.clinicName,
+                  date: confirmNotice.date,
+                  time: confirmNotice.time,
+                })}
               </p>
-              <p className="confirm-detail muted">Doctor: {confirmNotice.doctor}</p>
+              <p className="confirm-detail muted">
+                {t('doctor_label')}: {confirmNotice.doctor}
+              </p>
               {submitError && <p className="status error">{submitError}</p>}
             </div>
             <div className="confirm-actions">
@@ -475,7 +488,7 @@ export default function Home() {
                 onClick={() => setConfirmNotice(null)}
                 disabled={isSubmitting}
               >
-                Back
+                {t('back')}
               </button>
               <button
                 type="button"
@@ -483,7 +496,7 @@ export default function Home() {
                 onClick={handleReserveAppointment}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Reserving...' : 'Yes, reserve'}
+                {isSubmitting ? t('reserving') : t('yes_reserve')}
               </button>
             </div>
           </div>

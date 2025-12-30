@@ -113,6 +113,38 @@ select {
   font-size: 15px;
 }
 
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lang-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-switcher button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-weight: 600;
+}
+
+.lang-switcher button.active {
+  color: var(--text);
+}
+
+.lang-divider {
+  color: var(--muted);
+}
+
 .cta {
   border: none;
   background: var(--accent);
@@ -776,6 +808,18 @@ select.error {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow);
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-language-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
 }
 
 .admin-nav {

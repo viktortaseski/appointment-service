@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import LanguageSwitcher from './LanguageSwitcher';
+import { useI18n } from './I18nProvider';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 function formatDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -12,9 +13,9 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-function formatDisplayDate(dateKey) {
+function formatDisplayDate(dateKey, localeTag) {
   const date = new Date(`${dateKey}T00:00:00`);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(localeTag || 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -42,7 +43,7 @@ function normalizeAppointment(raw) {
     patient: raw.patient_name,
     email: raw.patient_email,
     phone: raw.patient_phone,
-    reason: raw.notes || 'Appointment',
+    reason: raw.notes || '',
     dateKey,
     time: normalizeTime(raw.time),
     completed: Boolean(raw.completed),
@@ -99,6 +100,7 @@ function getClinicDomain() {
 }
 
 export default function AdminPage() {
+  const { t, localeTag } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const [authToken, setAuthToken] = useState('');
@@ -150,6 +152,18 @@ export default function AdminPage() {
   );
 
   const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
+  const weekdayLabels = useMemo(
+    () => [
+      t('weekday_sun'),
+      t('weekday_mon'),
+      t('weekday_tue'),
+      t('weekday_wed'),
+      t('weekday_thu'),
+      t('weekday_fri'),
+      t('weekday_sat'),
+    ],
+    [t]
+  );
 
   const weekEnd = useMemo(() => {
     const date = new Date();
@@ -224,11 +238,11 @@ export default function AdminPage() {
 
   const monthLabel = useMemo(
     () =>
-      monthCursor.toLocaleDateString('en-US', {
+      monthCursor.toLocaleDateString(localeTag, {
         month: 'long',
         year: 'numeric',
       }),
-    [monthCursor]
+    [monthCursor, localeTag]
   );
 
   const isPrevDisabled =
@@ -273,11 +287,13 @@ export default function AdminPage() {
         ]);
 
         if (!appointmentsResponse.ok) {
-          throw new Error(`Appointments request failed (${appointmentsResponse.status}).`);
+          throw new Error(
+            t('request_failed', { status: appointmentsResponse.status })
+          );
         }
 
         if (!doctorsResponse.ok) {
-          throw new Error(`Doctors request failed (${doctorsResponse.status}).`);
+          throw new Error(t('request_failed', { status: doctorsResponse.status }));
         }
 
         const appointmentsData = await appointmentsResponse.json();
@@ -290,7 +306,7 @@ export default function AdminPage() {
         setDoctors(doctorsData.doctors || []);
         setLoading(false);
       } catch (error) {
-        setLoadError(error?.message || 'Unable to load appointments.');
+        setLoadError(error?.message || t('admin_load_error'));
         setLoading(false);
       }
     }
@@ -298,7 +314,7 @@ export default function AdminPage() {
     if (authToken) {
       loadData();
     }
-  }, [authToken]);
+  }, [authToken, t]);
 
   useEffect(() => {
     if (formState.time && bookedTimes.includes(formState.time)) {
@@ -329,12 +345,12 @@ export default function AdminPage() {
     setFormError('');
 
     if (!formState.patient || !formState.doctorId || !formState.date || !formState.time) {
-      setFormError('Patient, doctor, date, and time are required.');
+      setFormError(t('admin_form_required_error'));
       return;
     }
 
     if (bookedTimes.includes(formState.time)) {
-      setFormError('That time is already booked for this doctor.');
+      setFormError(t('admin_time_taken'));
       return;
     }
 
@@ -366,7 +382,7 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Unable to save appointment.');
+        throw new Error(errorData.error || t('admin_save_error'));
       }
 
       const data = await response.json();
@@ -386,7 +402,7 @@ export default function AdminPage() {
       setEditingId(null);
       resetForm(formState.doctorId);
     } catch (error) {
-      setFormError(error?.message || 'Unable to save appointment.');
+      setFormError(error?.message || t('admin_save_error'));
     }
   }
 
@@ -403,7 +419,7 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Unable to update appointment.');
+        throw new Error(errorData.error || t('admin_update_error'));
       }
 
       const data = await response.json();
@@ -413,13 +429,13 @@ export default function AdminPage() {
         prev.map((item) => (item.id === appointment.id ? updated : item))
       );
     } catch (error) {
-      window.alert(error?.message || 'Unable to update appointment.');
+      window.alert(error?.message || t('admin_update_error'));
     }
   }
 
   function handleEmail(appointment) {
     if (!appointment.email) {
-      window.alert('No email on file for this patient.');
+      window.alert(t('admin_email_missing'));
       return;
     }
 
@@ -444,7 +460,7 @@ export default function AdminPage() {
   }
 
   async function handleDelete(appointment) {
-    if (!window.confirm('Delete this appointment?')) {
+    if (!window.confirm(t('admin_delete_confirm'))) {
       return;
     }
 
@@ -458,14 +474,14 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Unable to delete appointment.');
+        throw new Error(errorData.error || t('admin_delete_error'));
       }
 
       setAppointments((prev) =>
         prev.filter((item) => item.id !== appointment.id)
       );
     } catch (error) {
-      window.alert(error?.message || 'Unable to delete appointment.');
+      window.alert(error?.message || t('admin_delete_error'));
     }
   }
 
@@ -474,7 +490,7 @@ export default function AdminPage() {
     setLoginError('');
 
     if (!loginForm.clinicName || !loginForm.username || !loginForm.password) {
-      setLoginError('Clinic name, username, and password are required.');
+      setLoginError(t('admin_login_required_error'));
       return;
     }
 
@@ -495,14 +511,14 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Unable to sign in.');
+        throw new Error(data.error || t('admin_sign_in_error'));
       }
 
       window.localStorage.setItem('adminToken', data.token);
       setAuthToken(data.token);
       setLoginForm({ clinicName: '', username: '', password: '' });
     } catch (error) {
-      setLoginError(error?.message || 'Unable to sign in.');
+      setLoginError(error?.message || t('admin_sign_in_error'));
     }
   }
 
@@ -521,7 +537,7 @@ export default function AdminPage() {
     if (!uploadState.doctorId || !uploadState.file) {
       setUploadState((prev) => ({
         ...prev,
-        error: 'Select a doctor and an image file.',
+        error: t('admin_avatar_missing'),
       }));
       return;
     }
@@ -543,7 +559,7 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Unable to upload image.');
+        throw new Error(data.error || t('admin_avatar_error'));
       }
 
       setDoctors((prev) =>
@@ -555,14 +571,14 @@ export default function AdminPage() {
       );
       setUploadState((prev) => ({
         ...prev,
-        status: 'Avatar updated successfully.',
+        status: t('admin_avatar_success'),
         error: '',
         preview: data.url,
       }));
     } catch (error) {
       setUploadState((prev) => ({
         ...prev,
-        error: error?.message || 'Unable to upload image.',
+        error: error?.message || t('admin_avatar_error'),
       }));
     }
   }
@@ -574,7 +590,7 @@ export default function AdminPage() {
     if (!logoUploadState.file) {
       setLogoUploadState((prev) => ({
         ...prev,
-        error: 'Select an image file.',
+        error: t('admin_logo_missing'),
       }));
       return;
     }
@@ -595,20 +611,20 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Unable to upload logo.');
+        throw new Error(data.error || t('admin_logo_error'));
       }
 
       setClinicLogo(data.clinic?.logo || data.url || '');
       setLogoUploadState((prev) => ({
         ...prev,
-        status: 'Clinic logo updated successfully.',
+        status: t('admin_logo_success'),
         error: '',
         preview: data.url,
       }));
     } catch (error) {
       setLogoUploadState((prev) => ({
         ...prev,
-        error: error?.message || 'Unable to upload logo.',
+        error: error?.message || t('admin_logo_error'),
       }));
     }
   }
@@ -616,7 +632,7 @@ export default function AdminPage() {
   if (!authReady) {
     return (
       <main className="page admin-page">
-        <p className="status">Checking session...</p>
+        <p className="status">{t('admin_checking')}</p>
       </main>
     );
   }
@@ -624,14 +640,17 @@ export default function AdminPage() {
   if (!authToken) {
     return (
       <main className="page admin-page">
+        <div className="admin-language-bar">
+          <LanguageSwitcher />
+        </div>
         <div className="card login-card">
           <div className="form-header">
-            <h2>Admin Sign In</h2>
-            <p>Use your clinic name, doctor username, and password.</p>
+            <h2>{t('admin_sign_in')}</h2>
+            <p>{t('admin_sign_in_subtitle')}</p>
           </div>
           <form className="login-form" onSubmit={handleLoginSubmit}>
             <div className="field">
-              <label htmlFor="clinicName">Clinic name</label>
+              <label htmlFor="clinicName">{t('admin_clinic_name_label')}</label>
               <input
                 id="clinicName"
                 value={loginForm.clinicName}
@@ -642,7 +661,7 @@ export default function AdminPage() {
               />
             </div>
             <div className="field">
-              <label htmlFor="username">Doctor username</label>
+              <label htmlFor="username">{t('admin_username_label')}</label>
               <input
                 id="username"
                 value={loginForm.username}
@@ -653,7 +672,7 @@ export default function AdminPage() {
               />
             </div>
             <div className="field">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t('admin_password_label')}</label>
               <input
                 id="password"
                 type="password"
@@ -665,7 +684,7 @@ export default function AdminPage() {
             </div>
             {loginError && <p className="status error">{loginError}</p>}
             <button className="cta full" type="submit">
-              Sign in
+              {t('admin_sign_in_button')}
             </button>
           </form>
         </div>
@@ -677,12 +696,15 @@ export default function AdminPage() {
     <main className="page admin-page">
       <header className="admin-topbar">
         <div>
-          <p className="admin-title">{clinicName || 'Dental Clinic'}</p>
-          <p className="admin-subtitle">Receptionist Dashboard</p>
+          <p className="admin-title">{clinicName || t('brand_title_fallback')}</p>
+          <p className="admin-subtitle">{t('admin_dashboard_title')}</p>
         </div>
-        <button type="button" className="ghost" onClick={handleLogout}>
-          Log out
-        </button>
+        <div className="admin-actions">
+          <LanguageSwitcher />
+          <button type="button" className="ghost" onClick={handleLogout}>
+            {t('admin_logout')}
+          </button>
+        </div>
       </header>
 
       <nav className="admin-nav">
@@ -691,14 +713,14 @@ export default function AdminPage() {
           className={activePanel === 'appointments' ? 'active' : ''}
           onClick={() => setActivePanel('appointments')}
         >
-          Appointments
+          {t('admin_tab_appointments')}
         </button>
         <button
           type="button"
           className={activePanel === 'settings' ? 'active' : ''}
           onClick={() => setActivePanel('settings')}
         >
-          Settings
+          {t('admin_tab_settings')}
         </button>
       </nav>
 
@@ -710,7 +732,7 @@ export default function AdminPage() {
               className={`stat-card stat-button${scopeFilter === 'all' ? ' active' : ''}`}
               onClick={() => setScopeFilter('all')}
             >
-              <p className="stat-label">Total Appointments</p>
+              <p className="stat-label">{t('admin_total_appointments')}</p>
               <p className="stat-value">{totalCount}</p>
             </button>
             <button
@@ -718,7 +740,7 @@ export default function AdminPage() {
               className={`stat-card stat-button${scopeFilter === 'today' ? ' active' : ''}`}
               onClick={() => setScopeFilter('today')}
             >
-              <p className="stat-label">Today&apos;s Appointments</p>
+              <p className="stat-label">{t('admin_today_appointments')}</p>
               <p className="stat-value">{todayCount}</p>
             </button>
             <button
@@ -726,11 +748,11 @@ export default function AdminPage() {
               className={`stat-card stat-button${scopeFilter === 'week' ? ' active' : ''}`}
               onClick={() => setScopeFilter('week')}
             >
-              <p className="stat-label">This Week</p>
+              <p className="stat-label">{t('admin_week_appointments')}</p>
               <p className="stat-value">{weekCount}</p>
             </button>
             <div className="stat-card">
-              <p className="stat-label">Active Doctors</p>
+              <p className="stat-label">{t('admin_active_doctors')}</p>
               <p className="stat-value">{activeDoctorCount}</p>
             </div>
           </section>
@@ -738,8 +760,8 @@ export default function AdminPage() {
           <section className="admin-section">
             <div className="admin-section-header">
               <div>
-                <p className="eyebrow">Appointment Management</p>
-                <h2>Manage incoming visits.</h2>
+                <p className="eyebrow">{t('admin_appointment_management')}</p>
+                <h2>{t('admin_manage_visits')}</h2>
               </div>
               <button
                 className="cta"
@@ -752,35 +774,39 @@ export default function AdminPage() {
                   setEditingId(null);
                 }}
               >
-                + New Appointment
+                + {t('admin_new_appointment')}
               </button>
             </div>
 
             {showForm && (
               <form className="card admin-form" onSubmit={handleFormSubmit}>
                 <div className="form-header">
-                  <h2>{editingId ? 'Edit Appointment' : 'New Appointment'}</h2>
-                  <p>Capture a booking on behalf of a patient.</p>
+                  <h2>
+                    {editingId
+                      ? t('admin_edit_appointment_title')
+                      : t('admin_new_appointment_title')}
+                  </h2>
+                  <p>{t('admin_booking_help')}</p>
                 </div>
                 <div className="filter-grid">
                   <div className="field">
-                    <label htmlFor="patient">Patient name</label>
+                    <label htmlFor="patient">{t('admin_patient_name_label')}</label>
                     <input
                       id="patient"
                       value={formState.patient}
                       onChange={(event) => handleFormChange('patient', event.target.value)}
-                      placeholder="Jordan Smith"
+                      placeholder={t('admin_patient_placeholder')}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="doctor">Doctor</label>
+                    <label htmlFor="doctor">{t('admin_doctor_label')}</label>
                     <select
                       id="doctor"
                       value={formState.doctorId}
                       onChange={(event) => handleFormChange('doctorId', event.target.value)}
                     >
                       <option value="" disabled>
-                        Select a doctor
+                        {t('admin_select_doctor')}
                       </option>
                       {doctorOptions.map((doctor) => (
                         <option key={doctor.id} value={doctor.id}>
@@ -792,8 +818,8 @@ export default function AdminPage() {
                 </div>
                 <div className="field">
                   <div className="field-heading">
-                    <label>Choose a date</label>
-                    <span className="field-hint">Next available dates only</span>
+                    <label>{t('admin_choose_date')}</label>
+                    <span className="field-hint">{t('admin_date_hint')}</span>
                   </div>
                   <div className="calendar">
                     <div className="calendar-header">
@@ -806,7 +832,7 @@ export default function AdminPage() {
                           )
                         }
                         disabled={isPrevDisabled}
-                        aria-label="Previous month"
+                        aria-label={t('prev_month')}
                       >
                         {'<'}
                       </button>
@@ -819,7 +845,7 @@ export default function AdminPage() {
                             (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
                           )
                         }
-                        aria-label="Next month"
+                        aria-label={t('next_month')}
                       >
                         {'>'}
                       </button>
@@ -856,11 +882,11 @@ export default function AdminPage() {
                 </div>
                 <div className="field">
                   <div className="field-heading">
-                    <label>Choose a time</label>
-                    <span className="field-hint">9:00 AM - 4:00 PM, 30 min slots</span>
+                    <label>{t('admin_choose_time')}</label>
+                    <span className="field-hint">{t('admin_time_hint')}</span>
                   </div>
                   {!formState.doctorId && (
-                    <p className="inline-hint">Select a doctor to see availability.</p>
+                    <p className="inline-hint">{t('admin_select_doctor_hint')}</p>
                   )}
                   {formError && <p className="inline-hint error">{formError}</p>}
                   <div className="time-grid">
@@ -886,31 +912,31 @@ export default function AdminPage() {
                 </div>
                 <div className="filter-grid">
                   <div className="field">
-                    <label htmlFor="email">Email (optional)</label>
+                    <label htmlFor="email">{t('admin_email_optional')}</label>
                     <input
                       id="email"
                       type="email"
                       value={formState.email}
                       onChange={(event) => handleFormChange('email', event.target.value)}
-                      placeholder="patient@email.com"
+                      placeholder={t('admin_email_placeholder')}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="phone">Phone (optional)</label>
+                    <label htmlFor="phone">{t('admin_phone_optional')}</label>
                     <input
                       id="phone"
                       value={formState.phone}
                       onChange={(event) => handleFormChange('phone', event.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder={t('admin_phone_placeholder')}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="notes">Notes (optional)</label>
+                    <label htmlFor="notes">{t('admin_notes_optional')}</label>
                     <input
                       id="notes"
                       value={formState.notes}
                       onChange={(event) => handleFormChange('notes', event.target.value)}
-                      placeholder="Any important context"
+                      placeholder={t('admin_notes_placeholder')}
                     />
                   </div>
                 </div>
@@ -924,10 +950,12 @@ export default function AdminPage() {
                       setFormError('');
                     }}
                   >
-                    Cancel
+                    {t('admin_cancel')}
                   </button>
                   <button type="submit" className="cta">
-                    {editingId ? 'Update appointment' : 'Create appointment'}
+                    {editingId
+                      ? t('admin_update_appointment')
+                      : t('admin_create_appointment')}
                   </button>
                 </div>
               </form>
@@ -935,26 +963,26 @@ export default function AdminPage() {
 
             <div className="card filter-card">
               <div className="filter-header">
-                <span className="filter-title">Filter Appointments</span>
+                <span className="filter-title">{t('admin_filter_title')}</span>
               </div>
               <div className="filter-grid">
                 <div className="field">
-                  <label htmlFor="search">Search patient</label>
+                  <label htmlFor="search">{t('admin_search_patient')}</label>
                   <input
                     id="search"
-                    placeholder="Name, email, or phone"
+                    placeholder={t('admin_search_placeholder')}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="doctorFilter">Filter by doctor</label>
+                  <label htmlFor="doctorFilter">{t('admin_filter_doctor')}</label>
                   <select
                     id="doctorFilter"
                     value={doctorFilter}
                     onChange={(event) => setDoctorFilter(event.target.value)}
                   >
-                    <option value="">All doctors</option>
+                    <option value="">{t('admin_all_doctors')}</option>
                     {doctorOptions.map((doctor) => (
                       <option key={doctor.id} value={doctor.id}>
                         {doctor.name}
@@ -963,7 +991,7 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="dateFilter">Filter by date</label>
+                  <label htmlFor="dateFilter">{t('admin_filter_date')}</label>
                   <input
                     id="dateFilter"
                     type="date"
@@ -976,15 +1004,15 @@ export default function AdminPage() {
 
             <div className="card appointment-table">
               <div className="table-head">
-                <span>Patient</span>
-                <span>Doctor</span>
-                <span>Date & Time</span>
-                <span>Contact</span>
-                <span>Actions</span>
+                <span>{t('admin_table_patient')}</span>
+                <span>{t('admin_table_doctor')}</span>
+                <span>{t('admin_table_date')}</span>
+                <span>{t('admin_table_contact')}</span>
+                <span>{t('admin_table_actions')}</span>
               </div>
               {loading && (
                 <div className="table-row empty">
-                  <p className="row-title">Loading appointments...</p>
+                  <p className="row-title">{t('admin_loading_appointments')}</p>
                 </div>
               )}
               {!loading && loadError && (
@@ -994,7 +1022,7 @@ export default function AdminPage() {
               )}
               {!loading && !loadError && filteredAppointments.length === 0 && (
                 <div className="table-row empty">
-                  <p className="row-title">No appointments match the filters.</p>
+                  <p className="row-title">{t('admin_no_matches')}</p>
                 </div>
               )}
               {!loading && !loadError &&
@@ -1007,10 +1035,12 @@ export default function AdminPage() {
                       <p className="row-title">
                         {appointment.patient}
                         {appointment.completed && (
-                          <span className="badge">Completed</span>
+                          <span className="badge">{t('admin_badge_completed')}</span>
                         )}
                       </p>
-                      <p className="row-subtitle">{appointment.reason}</p>
+                      <p className="row-subtitle">
+                        {appointment.reason || t('appointment_default_reason')}
+                      </p>
                     </div>
                     <div>
                       <p className="row-title">{appointment.doctor}</p>
@@ -1018,7 +1048,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="row-title">
-                        {formatDisplayDate(appointment.dateKey)}
+                        {formatDisplayDate(appointment.dateKey, localeTag)}
                       </p>
                       <p className="row-subtitle">{appointment.time}</p>
                     </div>
@@ -1030,38 +1060,38 @@ export default function AdminPage() {
                       <button
                         type="button"
                         className="icon-pill"
-                        aria-label="Toggle completed"
+                        aria-label={t('admin_action_toggle')}
                         onClick={() => handleToggleCompleted(appointment)}
                       >
                         <img src="/icons/check.svg" alt="" />
-                        {appointment.completed ? 'Undo' : 'Done'}
+                        {appointment.completed ? t('admin_undo') : t('admin_done')}
                       </button>
                       <button
                         type="button"
                         className="icon-pill"
-                        aria-label="Send email"
+                        aria-label={t('admin_action_email')}
                         onClick={() => handleEmail(appointment)}
                       >
                         <img src="/icons/mail.svg" alt="" />
-                        Email
+                        {t('admin_action_email_label')}
                       </button>
                       <button
                         type="button"
                         className="icon-pill"
-                        aria-label="Edit appointment"
+                        aria-label={t('admin_action_edit')}
                         onClick={() => handleEdit(appointment)}
                       >
                         <img src="/icons/edit.svg" alt="" />
-                        Edit
+                        {t('admin_action_edit_label')}
                       </button>
                       <button
                         type="button"
                         className="icon-pill danger"
-                        aria-label="Delete appointment"
+                        aria-label={t('admin_action_delete')}
                         onClick={() => handleDelete(appointment)}
                       >
                         <img src="/icons/trash.svg" alt="" />
-                        Del
+                        {t('admin_action_delete_label')}
                       </button>
                     </div>
                   </div>
@@ -1075,30 +1105,28 @@ export default function AdminPage() {
         <section className="admin-section">
           <div className="admin-section-header">
             <div>
-              <p className="eyebrow">Settings</p>
-              <h2>Clinic assets and branding.</h2>
+              <p className="eyebrow">{t('admin_settings_title')}</p>
+              <h2>{t('admin_settings_subtitle')}</h2>
             </div>
           </div>
 
           <div className="card upload-card">
             <div className="upload-header">
               <div>
-                <p className="row-title">Upload clinic logo</p>
-                <p className="row-subtitle">
-                  Update the logo shown on the patient booking page.
-                </p>
+                <p className="row-title">{t('admin_logo_title')}</p>
+                <p className="row-subtitle">{t('admin_logo_subtitle')}</p>
               </div>
               {(logoUploadState.preview || clinicLogo) && (
                 <img
                   src={logoUploadState.preview || clinicLogo}
-                  alt="Clinic logo preview"
+                  alt={t('admin_logo_title')}
                   className="upload-preview"
                 />
               )}
             </div>
             <form className="upload-form" onSubmit={handleLogoUpload}>
               <div className="field">
-                <label htmlFor="clinicLogo">Logo image</label>
+                <label htmlFor="clinicLogo">{t('admin_logo_label')}</label>
                 <input
                   id="clinicLogo"
                   type="file"
@@ -1117,7 +1145,7 @@ export default function AdminPage() {
                 />
               </div>
               <button className="cta" type="submit">
-                Upload logo
+                {t('admin_logo_button')}
               </button>
               {logoUploadState.status && (
                 <p className="status success">{logoUploadState.status}</p>
@@ -1131,22 +1159,20 @@ export default function AdminPage() {
           <div className="card upload-card">
             <div className="upload-header">
               <div>
-                <p className="row-title">Upload doctor avatar</p>
-                <p className="row-subtitle">
-                  Upload a new profile image for a selected doctor.
-                </p>
+                <p className="row-title">{t('admin_avatar_title')}</p>
+                <p className="row-subtitle">{t('admin_avatar_subtitle')}</p>
               </div>
               {uploadState.preview && (
                 <img
                   src={uploadState.preview}
-                  alt="Uploaded avatar preview"
+                  alt={t('admin_avatar_title')}
                   className="upload-preview"
                 />
               )}
             </div>
             <form className="upload-form" onSubmit={handleAvatarUpload}>
               <div className="field">
-                <label htmlFor="avatarDoctor">Doctor</label>
+                <label htmlFor="avatarDoctor">{t('admin_avatar_doctor_label')}</label>
                 <select
                   id="avatarDoctor"
                   value={uploadState.doctorId}
@@ -1159,7 +1185,7 @@ export default function AdminPage() {
                     }))
                   }
                 >
-                  <option value="">Select a doctor</option>
+                  <option value="">{t('admin_select_doctor')}</option>
                   {doctorOptions.map((doctor) => (
                     <option key={doctor.id} value={doctor.id}>
                       {doctor.name}
@@ -1168,7 +1194,7 @@ export default function AdminPage() {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="avatarFile">Image</label>
+                <label htmlFor="avatarFile">{t('admin_avatar_image_label')}</label>
                 <input
                   id="avatarFile"
                   type="file"
@@ -1187,7 +1213,7 @@ export default function AdminPage() {
                 />
               </div>
               <button type="submit" className="cta">
-                Upload image
+                {t('admin_avatar_button')}
               </button>
             </form>
             {uploadState.error && <p className="status error">{uploadState.error}</p>}
