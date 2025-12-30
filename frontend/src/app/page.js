@@ -1,23 +1,15 @@
-const doctors = [
-  {
-    name: 'Dr. Sarah Johnson',
-    specialty: 'General Dentistry',
-    clinic: 'Smile Dental Clinic',
-    availability: 'Next: Today at 3:00 PM',
-  },
-  {
-    name: 'Dr. Michael Chen',
-    specialty: 'Orthodontics',
-    clinic: 'Smile Dental Clinic',
-    availability: 'Next: Tomorrow at 10:30 AM',
-  },
-  {
-    name: 'Dr. Emily Rodriguez',
-    specialty: 'Cosmetic Dentistry',
-    clinic: 'Bright Teeth Dental',
-    availability: 'Next: Thu at 1:00 PM',
-  },
-];
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+import BookingForm from '../components/BookingForm';
+import DoctorsSection from '../components/DoctorsSection';
+import HeroCopy from '../components/HeroCopy';
+import SiteFooter from '../components/SiteFooter';
+import StepsSection from '../components/StepsSection';
+import Topbar from '../components/Topbar';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 const steps = [
   {
@@ -34,153 +26,286 @@ const steps = [
   },
 ];
 
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function buildMonthGrid(cursor) {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startWeekday = firstDay.getDay();
+  const slots = [];
+
+  for (let i = 0; i < startWeekday; i += 1) {
+    slots.push(null);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month, day);
+    slots.push({
+      key: formatDateKey(date),
+      day,
+    });
+  }
+
+  return slots;
+}
+
+function buildTimeSlots(startHour, endHour, intervalMinutes) {
+  const slots = [];
+  const startMinutes = startHour * 60;
+  const endMinutes = endHour * 60;
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    const hour12 = ((hour + 11) % 12) + 1;
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const label = `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+    slots.push({ value, label });
+  }
+
+  return slots;
+}
+
+function normalizeTime(value) {
+  if (!value) {
+    return null;
+  }
+
+  return value.slice(0, 5);
+}
+
 export default function Home() {
+  const today = useMemo(() => new Date(), []);
+  const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const [clinic, setClinic] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+  const [status, setStatus] = useState({ loading: true, error: null });
+  const [hostname, setHostname] = useState('');
+  const [monthCursor, setMonthCursor] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [availability, setAvailability] = useState({
+    loading: false,
+    error: null,
+    takenTimes: [],
+  });
+
+  const monthGrid = useMemo(
+    () =>
+      buildMonthGrid(monthCursor).map((slot) =>
+        slot ? { ...slot, isPast: slot.key < todayKey } : slot
+      ),
+    [monthCursor, todayKey]
+  );
+  const monthLabel = useMemo(
+    () =>
+      monthCursor.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      }),
+    [monthCursor]
+  );
+  const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
+  const normalizedTakenTimes = useMemo(
+    () => availability.takenTimes.map(normalizeTime).filter(Boolean),
+    [availability.takenTimes]
+  );
+
+  const isPrevDisabled =
+    monthCursor.getFullYear() === today.getFullYear() &&
+    monthCursor.getMonth() === today.getMonth();
+
+  useEffect(() => {
+    setHostname(window.location.hostname);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(todayKey);
+      return;
+    }
+
+    const selected = new Date(`${selectedDate}T00:00:00`);
+    const sameMonth =
+      selected.getFullYear() === monthCursor.getFullYear() &&
+      selected.getMonth() === monthCursor.getMonth();
+
+    if (!sameMonth) {
+      const year = monthCursor.getFullYear();
+      const month = monthCursor.getMonth();
+      const firstDay =
+        year === today.getFullYear() && month === today.getMonth()
+          ? today.getDate()
+          : 1;
+      setSelectedDate(formatDateKey(new Date(year, month, firstDay)));
+    }
+  }, [monthCursor, selectedDate, todayKey, today]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadClinic() {
+      setStatus({ loading: true, error: null });
+
+      try {
+        const response = await fetch(`${API_BASE}/doctors`, {
+          headers: {
+            'x-clinic-domain': window.location.hostname,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!isActive) {
+          return;
+        }
+
+        setClinic(data.clinic || null);
+        setDoctors(data.doctors || []);
+        setStatus({ loading: false, error: null });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setStatus({
+          loading: false,
+          error: error?.message || 'Unable to load clinic data.',
+        });
+      }
+    }
+
+    loadClinic();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!selectedDate || !selectedDoctor) {
+      setAvailability({ loading: false, error: null, takenTimes: [] });
+      return () => {
+        isActive = false;
+      };
+    }
+
+    async function loadAvailability() {
+      setAvailability({ loading: true, error: null, takenTimes: [] });
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/appointments?date=${selectedDate}&doctorId=${selectedDoctor}`,
+          {
+            headers: {
+              'x-clinic-domain': window.location.hostname,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Request failed with ${response.status}`);
+        }
+
+        const data = await response.json();
+        const taken = (data.appointments || [])
+          .map((appointment) => appointment.time)
+          .filter(Boolean);
+
+        if (!isActive) {
+          return;
+        }
+
+        setAvailability({
+          loading: false,
+          error: null,
+          takenTimes: taken,
+        });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setAvailability({
+          loading: false,
+          error: error?.message || 'Unable to load availability.',
+          takenTimes: [],
+        });
+      }
+    }
+
+    loadAvailability();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedDate, selectedDoctor]);
+
+  useEffect(() => {
+    setSelectedTime('');
+  }, [selectedDate]);
+
   return (
     <main className="page">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">DC</span>
-          <div>
-            <p className="brand-title">Dental Clinic Network</p>
-            <p className="brand-subtitle">Appointment Service</p>
-          </div>
-        </div>
-        <nav className="nav">
-          <a href="#clinics">Clinics</a>
-          <a href="#doctors">Doctors</a>
-          <a href="#book">Book</a>
-        </nav>
-        <button className="cta">Call Concierge</button>
-      </header>
+      <Topbar clinic={clinic} />
 
       <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Multi-clinic booking</p>
-          <h1>Dental appointments designed for calm, confident visits.</h1>
-          <p className="lead">
-            Book trusted dental care across locations, with real-time availability,
-            physician profiles, and a frictionless intake flow.
-          </p>
-          <div className="hero-actions">
-            <button className="cta">Find a time</button>
-            <button className="ghost">Explore clinics</button>
-          </div>
-          <div className="highlight-grid" id="clinics">
-            <div className="highlight">
-              <p className="highlight-title">2 locations</p>
-              <p className="highlight-text">Smile Dental + Bright Teeth</p>
-            </div>
-            <div className="highlight">
-              <p className="highlight-title">12-minute intake</p>
-              <p className="highlight-text">Paperless, mobile friendly</p>
-            </div>
-          </div>
-        </div>
-
-        <form className="card form" id="book">
-          <div className="form-header">
-            <h2>Reserve your visit</h2>
-            <p>We will confirm by email within minutes.</p>
-          </div>
-          <div className="field">
-            <label htmlFor="patientName">Full name</label>
-            <input id="patientName" placeholder="Jordan Smith" />
-          </div>
-          <div className="field">
-            <label htmlFor="patientEmail">Email</label>
-            <input id="patientEmail" type="email" placeholder="you@email.com" />
-          </div>
-          <div className="field">
-            <label htmlFor="patientPhone">Phone</label>
-            <input id="patientPhone" type="tel" placeholder="+1 (555) 000-0000" />
-          </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="visitDate">Date</label>
-              <input id="visitDate" type="date" />
-            </div>
-            <div className="field">
-              <label htmlFor="visitTime">Time</label>
-              <input id="visitTime" type="time" />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="doctor">Doctor</label>
-            <select id="doctor">
-              <option>Dr. Sarah Johnson (General)</option>
-              <option>Dr. Michael Chen (Orthodontics)</option>
-              <option>Dr. Emily Rodriguez (Cosmetic)</option>
-            </select>
-          </div>
-          <button type="button" className="cta full">Confirm appointment</button>
-          <p className="form-footnote">
-            Secure scheduling. No credit card required.
-          </p>
-        </form>
+        <HeroCopy clinic={clinic} hostname={hostname} />
+        <BookingForm
+          monthLabel={monthLabel}
+          monthGrid={monthGrid}
+          isPrevDisabled={isPrevDisabled}
+          onPrevMonth={() =>
+            setMonthCursor(
+              (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+            )
+          }
+          onNextMonth={() =>
+            setMonthCursor(
+              (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+            )
+          }
+          selectedDate={selectedDate}
+          onSelectDate={(dateKey) => {
+            setSelectedDate(dateKey);
+            setSelectedTime('');
+          }}
+          doctors={doctors}
+          selectedDoctor={selectedDoctor}
+          onSelectDoctor={(doctorId) => {
+            setSelectedDoctor(doctorId);
+            setSelectedTime('');
+          }}
+          timeSlots={timeSlots}
+          selectedTime={selectedTime}
+          onSelectTime={setSelectedTime}
+          availability={{
+            ...availability,
+            takenTimes: normalizedTakenTimes,
+          }}
+        />
       </section>
 
-      <section className="section" id="doctors">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Doctors you can trust</p>
-            <h2>Meet the care team across clinics.</h2>
-          </div>
-          <button className="ghost">View all doctors</button>
-        </div>
-        <div className="card-grid">
-          {doctors.map((doctor, index) => (
-            <article
-              className="card doctor"
-              key={doctor.name}
-              style={{ animationDelay: `${index * 120}ms` }}
-            >
-              <div>
-                <p className="doctor-name">{doctor.name}</p>
-                <p className="doctor-specialty">{doctor.specialty}</p>
-              </div>
-              <p className="doctor-clinic">{doctor.clinic}</p>
-              <p className="doctor-availability">{doctor.availability}</p>
-              <button className="ghost">Book with this doctor</button>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section steps">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">How it works</p>
-            <h2>Three steps to a brighter smile.</h2>
-          </div>
-        </div>
-        <div className="card-grid">
-          {steps.map((step, index) => (
-            <article
-              className="card step"
-              key={step.title}
-              style={{ animationDelay: `${index * 140}ms` }}
-            >
-              <p className="step-index">0{index + 1}</p>
-              <p className="step-title">{step.title}</p>
-              <p className="step-detail">{step.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <footer className="footer">
-        <div>
-          <p className="footer-title">Dental Clinic Appointment Service</p>
-          <p className="footer-text">
-            Built for multi-clinic scheduling and high-touch patient care.
-          </p>
-        </div>
-        <div className="footer-links">
-          <a href="#book">Book</a>
-          <a href="#doctors">Doctors</a>
-          <a href="#clinics">Clinics</a>
-        </div>
-      </footer>
+      <DoctorsSection clinic={clinic} doctors={doctors} status={status} />
+      <StepsSection steps={steps} />
+      <SiteFooter />
     </main>
   );
 }
