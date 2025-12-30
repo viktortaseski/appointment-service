@@ -47,6 +47,7 @@ CREATE TABLE doctors (
   name VARCHAR(255) NOT NULL,
   username VARCHAR(255),
   specialty VARCHAR(255) NOT NULL,
+  description TEXT,
   avatar TEXT,
   password TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -55,6 +56,7 @@ CREATE TABLE doctors (
 
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
+COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
 
 -- =========================================================
 -- APPOINTMENTS TABLE

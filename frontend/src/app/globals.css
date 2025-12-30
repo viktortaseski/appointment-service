@@ -568,6 +568,12 @@ select.error {
   color: var(--muted);
 }
 
+.doctor-description {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .doctor-clinic {
   margin: 16px 0 0;
   font-size: 14px;
