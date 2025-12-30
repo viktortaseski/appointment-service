@@ -1,8 +1,61 @@
 const express = require('express');
+const nodemailer = require('nodemailer');
 
 const pool = require('../db');
 
 const router = express.Router();
+
+let cachedTransporter;
+
+function getEmailTransporter() {
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = process.env.SMTP_SECURE === 'true';
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host) {
+    return null;
+  }
+
+  cachedTransporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: user ? { user, pass } : undefined,
+  });
+
+  return cachedTransporter;
+}
+
+async function sendAppointmentEmail({ to, clinicName, date, time }) {
+  const smtpUser = process.env.SMTP_USER;
+  const displayName = clinicName || 'Dental Clinic';
+  const from =
+    process.env.SMTP_FROM || (smtpUser ? `${displayName} <${smtpUser}>` : null);
+  const transporter = getEmailTransporter();
+
+  if (!to || !from || !transporter) {
+    return { sent: false, error: 'Email service not configured.' };
+  }
+
+  const safeClinicName = clinicName || 'the clinic';
+  const subject = `Appointment confirmed at ${safeClinicName}`;
+  const text = `You have an appointment at ${safeClinicName} on ${date} at ${time}.`;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+  });
+
+  return { sent: true };
+}
 
 router.get('/', async (req, res, next) => {
   const { doctorId, date, completed } = req.query;
@@ -108,7 +161,29 @@ router.post('/', async (req, res, next) => {
       [insertResult.rows[0].id]
     );
 
-    return res.status(201).json({ appointment: appointmentResult.rows[0] });
+    let emailSent = false;
+    let emailError = null;
+
+    if (patientEmail) {
+      try {
+        const emailResult = await sendAppointmentEmail({
+          to: patientEmail,
+          clinicName: req.clinic.name,
+          date,
+          time,
+        });
+        emailSent = emailResult.sent;
+        emailError = emailResult.error || null;
+      } catch (error) {
+        emailError = 'Unable to send confirmation email.';
+      }
+    }
+
+    return res.status(201).json({
+      appointment: appointmentResult.rows[0],
+      email_sent: emailSent,
+      email_error: emailError,
+    });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(409).json({

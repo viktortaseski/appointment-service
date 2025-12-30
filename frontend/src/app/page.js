@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import BookingForm from '../components/BookingForm';
 import DoctorsSection from '../components/DoctorsSection';
@@ -82,6 +82,19 @@ function normalizeTime(value) {
   return value.slice(0, 5);
 }
 
+function formatDisplayDate(dateKey) {
+  if (!dateKey) {
+    return '';
+  }
+
+  const date = new Date(`${dateKey}T00:00:00`);
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function getClinicDomain() {
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || '';
@@ -103,6 +116,15 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [formState, setFormState] = useState({
+    patientName: '',
+    patientEmail: '',
+    patientPhone: '',
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successNotice, setSuccessNotice] = useState(null);
   const [availability, setAvailability] = useState({
     loading: false,
     error: null,
@@ -206,6 +228,27 @@ export default function Home() {
     };
   }, []);
 
+  const fetchAvailability = useCallback(async (dateKey, doctorId) => {
+    const clinicDomain = getClinicDomain();
+    const response = await fetch(
+      `${API_BASE}/appointments?date=${dateKey}&doctorId=${doctorId}`,
+      {
+        headers: {
+          'x-clinic-domain': clinicDomain,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Request failed with ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.appointments || [])
+      .map((appointment) => appointment.time)
+      .filter(Boolean);
+  }, []);
+
   useEffect(() => {
     let isActive = true;
 
@@ -220,24 +263,7 @@ export default function Home() {
       setAvailability({ loading: true, error: null, takenTimes: [] });
 
       try {
-        const clinicDomain = getClinicDomain();
-        const response = await fetch(
-          `${API_BASE}/appointments?date=${selectedDate}&doctorId=${selectedDoctor}`,
-          {
-            headers: {
-              'x-clinic-domain': clinicDomain,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}`);
-        }
-
-        const data = await response.json();
-        const taken = (data.appointments || [])
-          .map((appointment) => appointment.time)
-          .filter(Boolean);
+        const taken = await fetchAvailability(selectedDate, selectedDoctor);
 
         if (!isActive) {
           return;
@@ -266,15 +292,158 @@ export default function Home() {
     return () => {
       isActive = false;
     };
-  }, [selectedDate, selectedDoctor]);
+  }, [selectedDate, selectedDoctor, fetchAvailability]);
 
   useEffect(() => {
     setSelectedTime('');
   }, [selectedDate]);
 
+  function handleFieldChange(field, value) {
+    setFormState((prev) => ({ ...prev, [field]: value }));
+    setFormErrors((prev) => ({ ...prev, [field]: '' }));
+  }
+
+  function validateForm() {
+    const errors = {};
+
+    if (!formState.patientName.trim()) {
+      errors.patientName = 'Full name is required.';
+    }
+
+    if (!formState.patientEmail.trim()) {
+      errors.patientEmail = 'Email is required.';
+    } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formState.patientEmail)) {
+      errors.patientEmail = 'Enter a valid email address.';
+    }
+
+    if (!formState.patientPhone.trim()) {
+      errors.patientPhone = 'Phone number is required.';
+    }
+
+    if (!selectedDate) {
+      errors.date = 'Select a date.';
+    }
+
+    if (!selectedDoctor) {
+      errors.doctor = 'Select a doctor.';
+    }
+
+    if (!selectedTime) {
+      errors.time = 'Select a time.';
+    }
+
+    return errors;
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSubmitError('');
+    setSuccessNotice(null);
+
+    const errors = validateForm();
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const clinicDomain = getClinicDomain();
+      const response = await fetch(`${API_BASE}/appointments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-clinic-domain': clinicDomain,
+        },
+        body: JSON.stringify({
+          doctor_id: selectedDoctor,
+          patient_name: formState.patientName,
+          patient_email: formState.patientEmail,
+          patient_phone: formState.patientPhone,
+          date: selectedDate,
+          time: selectedTime,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to confirm appointment.');
+      }
+
+      const appointment = data.appointment || {};
+      const appointmentDate = appointment.date
+        ? appointment.date.slice(0, 10)
+        : selectedDate;
+
+      setSuccessNotice({
+        clinicName: clinic?.name || 'the clinic',
+        date: formatDisplayDate(appointmentDate),
+        time: normalizeTime(appointment.time) || selectedTime,
+        doctor: appointment.doctor_name || '',
+        emailSent: data.email_sent,
+        emailError: data.email_error,
+      });
+
+      setFormState({
+        patientName: '',
+        patientEmail: '',
+        patientPhone: '',
+      });
+      setSelectedTime('');
+      setFormErrors({});
+
+      if (selectedDate && selectedDoctor) {
+        const taken = await fetchAvailability(selectedDate, selectedDoctor);
+        setAvailability({
+          loading: false,
+          error: null,
+          takenTimes: taken,
+        });
+      }
+    } catch (error) {
+      setSubmitError(error?.message || 'Unable to confirm appointment.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <main className="page">
       <Topbar clinic={clinic} />
+
+      {successNotice && (
+        <div className="card success-banner">
+          <div>
+            <p className="success-title">Appointment confirmed</p>
+            <p className="success-detail">
+              You have an appointment at {successNotice.clinicName} on{' '}
+              {successNotice.date} at {successNotice.time}.
+            </p>
+            {successNotice.doctor && (
+              <p className="success-detail">Doctor: {successNotice.doctor}</p>
+            )}
+            {successNotice.emailSent ? (
+              <p className="success-detail muted">
+                A confirmation email has been sent.
+              </p>
+            ) : (
+              <p className="success-detail muted">
+                Email not sent: {successNotice.emailError || 'No email provided.'}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setSuccessNotice(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <section className="hero">
         <HeroCopy clinic={clinic} hostname={hostname} />
@@ -296,20 +465,31 @@ export default function Home() {
           onSelectDate={(dateKey) => {
             setSelectedDate(dateKey);
             setSelectedTime('');
+            setFormErrors((prev) => ({ ...prev, date: '', time: '' }));
           }}
+          formState={formState}
+          formErrors={formErrors}
+          onFieldChange={handleFieldChange}
           doctors={doctors}
           selectedDoctor={selectedDoctor}
           onSelectDoctor={(doctorId) => {
             setSelectedDoctor(doctorId);
             setSelectedTime('');
+            setFormErrors((prev) => ({ ...prev, doctor: '', time: '' }));
           }}
           timeSlots={timeSlots}
           selectedTime={selectedTime}
-          onSelectTime={setSelectedTime}
+          onSelectTime={(time) => {
+            setSelectedTime(time);
+            setFormErrors((prev) => ({ ...prev, time: '' }));
+          }}
           availability={{
             ...availability,
             takenTimes: normalizedTakenTimes,
           }}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          submitError={submitError}
         />
       </section>
 

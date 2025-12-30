@@ -264,6 +264,17 @@ select {
   background: #fff;
 }
 
+input.error,
+select.error {
+  border-color: rgba(156, 43, 43, 0.5);
+  background: rgba(255, 239, 239, 0.6);
+}
+
+.field-error {
+  font-size: 12px;
+  color: #9c2b2b;
+}
+
 .calendar {
   display: flex;
   flex-direction: column;
@@ -523,6 +534,31 @@ select {
   font-size: 14px;
 }
 
+.success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(226, 250, 236, 0.9);
+  border: 1px solid rgba(90, 200, 120, 0.4);
+  box-shadow: 0 20px 40px rgba(90, 200, 120, 0.2);
+}
+
+.success-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.success-detail {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
+.success-detail.muted {
+  color: var(--muted);
+}
+
 .admin-page {
   gap: 56px;
 }
@@ -777,6 +813,11 @@ select {
   }
 
   .footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .success-banner {
     flex-direction: column;
     align-items: flex-start;
   }

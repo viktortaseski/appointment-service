@@ -8,6 +8,9 @@ export default function BookingForm({
   onNextMonth,
   selectedDate,
   onSelectDate,
+  formState,
+  formErrors,
+  onFieldChange,
   doctors,
   selectedDoctor,
   onSelectDoctor,
@@ -15,24 +18,56 @@ export default function BookingForm({
   selectedTime,
   onSelectTime,
   availability,
+  onSubmit,
+  isSubmitting,
+  submitError,
 }) {
   return (
-    <form className="card form" id="book">
+    <form className="card form" id="book" onSubmit={onSubmit}>
       <div className="form-header">
         <h2>Reserve your visit</h2>
         <p>We will confirm by email within minutes.</p>
       </div>
       <div className="field">
         <label htmlFor="patientName">Full name</label>
-        <input id="patientName" placeholder="Jordan Smith" />
+        <input
+          id="patientName"
+          value={formState.patientName}
+          onChange={(event) => onFieldChange('patientName', event.target.value)}
+          placeholder="Jordan Smith"
+          className={formErrors.patientName ? 'error' : ''}
+        />
+        {formErrors.patientName && (
+          <span className="field-error">{formErrors.patientName}</span>
+        )}
       </div>
       <div className="field">
         <label htmlFor="patientEmail">Email</label>
-        <input id="patientEmail" type="email" placeholder="you@email.com" />
+        <input
+          id="patientEmail"
+          type="email"
+          value={formState.patientEmail}
+          onChange={(event) => onFieldChange('patientEmail', event.target.value)}
+          placeholder="you@email.com"
+          className={formErrors.patientEmail ? 'error' : ''}
+        />
+        {formErrors.patientEmail && (
+          <span className="field-error">{formErrors.patientEmail}</span>
+        )}
       </div>
       <div className="field">
         <label htmlFor="patientPhone">Phone</label>
-        <input id="patientPhone" type="tel" placeholder="+1 (555) 000-0000" />
+        <input
+          id="patientPhone"
+          type="tel"
+          value={formState.patientPhone}
+          onChange={(event) => onFieldChange('patientPhone', event.target.value)}
+          placeholder="+1 (555) 000-0000"
+          className={formErrors.patientPhone ? 'error' : ''}
+        />
+        {formErrors.patientPhone && (
+          <span className="field-error">{formErrors.patientPhone}</span>
+        )}
       </div>
       <div className="field">
         <div className="field-heading">
@@ -89,6 +124,7 @@ export default function BookingForm({
             })}
           </div>
         </div>
+        {formErrors.date && <span className="field-error">{formErrors.date}</span>}
       </div>
       <div className="field">
         <label htmlFor="doctor">Doctor</label>
@@ -96,6 +132,7 @@ export default function BookingForm({
           id="doctor"
           value={selectedDoctor}
           onChange={(event) => onSelectDoctor(event.target.value)}
+          className={formErrors.doctor ? 'error' : ''}
         >
           <option value="" disabled>
             Select a doctor
@@ -106,6 +143,9 @@ export default function BookingForm({
             </option>
           ))}
         </select>
+        {formErrors.doctor && (
+          <span className="field-error">{formErrors.doctor}</span>
+        )}
       </div>
       <div className="field">
         <div className="field-heading">
@@ -138,8 +178,12 @@ export default function BookingForm({
             );
           })}
         </div>
+        {formErrors.time && <span className="field-error">{formErrors.time}</span>}
       </div>
-      <button type="button" className="cta full">Confirm appointment</button>
+      {submitError && <p className="status error">{submitError}</p>}
+      <button type="submit" className="cta full" disabled={isSubmitting}>
+        {isSubmitting ? 'Confirming...' : 'Confirm appointment'}
+      </button>
       <p className="form-footnote">
         Secure scheduling. No credit card required.
       </p>
