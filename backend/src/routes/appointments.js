@@ -47,14 +47,23 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
   const subject = `Appointment confirmed at ${safeClinicName}`;
   const text = `You have an appointment at ${safeClinicName} on ${date} at ${time}.`;
 
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-  });
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+    });
 
-  return { sent: true };
+    return { sent: true };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Email send failed:', error?.message || error);
+    return {
+      sent: false,
+      error: error?.message || 'Unable to send confirmation email.',
+    };
+  }
 }
 
 router.get('/', async (req, res, next) => {
