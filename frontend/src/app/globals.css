@@ -542,12 +542,15 @@ select.error {
 .doctor-card-profile {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 .doctor-card-avatar {
-  width: 84px;
-  height: 84px;
+  width: clamp(80px, 12vw, 104px);
+  height: clamp(80px, 12vw, 104px);
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(32, 27, 22, 0.08);
@@ -561,6 +564,7 @@ select.error {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .doctor-specialty {
@@ -631,6 +635,42 @@ select.error {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.footer-contact-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.footer-contact-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.footer-contact-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.footer-contact-value {
+  color: var(--text);
 }
 
 .footer-links {
@@ -1085,5 +1125,12 @@ select.error {
   .doctor-avatar {
     width: 84px;
     height: 84px;
+  }
+}
+
+@media (max-width: 720px) {
+  .doctor-card-profile {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

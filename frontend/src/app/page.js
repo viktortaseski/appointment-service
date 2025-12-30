@@ -544,7 +544,7 @@ export default function Home() {
         status={status}
         onBookDoctor={handleBookDoctor}
       />
-      <SiteFooter />
+      <SiteFooter clinic={clinic} />
     </main>
   );
 }
