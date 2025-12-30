@@ -257,11 +257,13 @@ select {
 }
 
 input,
-select {
+select,
+textarea {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--stroke);
   background: #fff;
+  resize: vertical;
 }
 
 input.error,
@@ -375,7 +377,7 @@ select.error {
 }
 
 .doctor-card {
-  border: 2px solid rgba(32, 27, 22, 0.12);
+  border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.92);
   border-radius: 22px;
   padding: 18px;
@@ -598,6 +600,37 @@ select.error {
   background: rgba(226, 250, 236, 0.9);
   border: 1px solid rgba(90, 200, 120, 0.4);
   box-shadow: 0 20px 40px rgba(90, 200, 120, 0.2);
+}
+
+.confirm-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(255, 245, 230, 0.9);
+  border: 1px solid rgba(255, 183, 125, 0.6);
+  box-shadow: 0 20px 40px rgba(255, 183, 125, 0.25);
+}
+
+.confirm-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.confirm-detail {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
+.confirm-detail.muted {
+  color: var(--muted);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .notice-overlay {
@@ -890,6 +923,11 @@ select.error {
   }
 
   .success-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .confirm-banner {
     flex-direction: column;
     align-items: flex-start;
   }

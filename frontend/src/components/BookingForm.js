@@ -212,6 +212,16 @@ export default function BookingForm({
           <span className="field-error">{formErrors.patientPhone}</span>
         )}
       </div>
+      <div className="field">
+        <label htmlFor="patientNotes">Notes</label>
+        <textarea
+          id="patientNotes"
+          value={formState.patientNotes}
+          onChange={(event) => onFieldChange('patientNotes', event.target.value)}
+          placeholder="Anything we should know before your visit?"
+          rows={3}
+        />
+      </div>
       {submitError && <p className="status error">{submitError}</p>}
       <button type="submit" className="cta full" disabled={isSubmitting}>
         {isSubmitting ? 'Confirming...' : 'Confirm appointment'}

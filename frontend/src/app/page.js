@@ -103,6 +103,11 @@ function getClinicDomain() {
   return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || window.location.hostname;
 }
 
+function formatPhoneInput(value) {
+  const digits = value.replace(/\D/g, '');
+  return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+}
+
 export default function Home() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -120,10 +125,12 @@ export default function Home() {
     patientName: '',
     patientEmail: '',
     patientPhone: '',
+    patientNotes: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmNotice, setConfirmNotice] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
   const [availability, setAvailability] = useState({
     loading: false,
@@ -299,7 +306,8 @@ export default function Home() {
   }, [selectedDate]);
 
   function handleFieldChange(field, value) {
-    setFormState((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'patientPhone' ? formatPhoneInput(value) : value;
+    setFormState((prev) => ({ ...prev, [field]: nextValue }));
     setFormErrors((prev) => ({ ...prev, [field]: '' }));
   }
 
@@ -338,10 +346,11 @@ export default function Home() {
     return errors;
   }
 
-  async function handleSubmit(event) {
+  function handlePreviewSubmit(event) {
     event.preventDefault();
     setSubmitError('');
     setSuccessNotice(null);
+    setConfirmNotice(null);
 
     const errors = validateForm();
     setFormErrors(errors);
@@ -350,6 +359,20 @@ export default function Home() {
       return;
     }
 
+    const doctorName =
+      doctors.find((doctor) => doctor.id === selectedDoctor)?.name || 'Doctor';
+    const timeLabel =
+      timeSlots.find((slot) => slot.value === selectedTime)?.label || selectedTime;
+
+    setConfirmNotice({
+      clinicName: clinic?.name || 'the clinic',
+      date: formatDisplayDate(selectedDate),
+      time: timeLabel,
+      doctor: doctorName,
+    });
+  }
+
+  async function handleReserveAppointment() {
     setIsSubmitting(true);
 
     try {
@@ -367,6 +390,7 @@ export default function Home() {
           patient_phone: formState.patientPhone.trim(),
           date: selectedDate,
           time: selectedTime,
+          notes: formState.patientNotes.trim() || null,
         }),
       });
 
@@ -387,11 +411,13 @@ export default function Home() {
         time: normalizeTime(appointment.time) || selectedTime,
         doctor: appointment.doctor_name || '',
       });
+      setConfirmNotice(null);
 
       setFormState({
         patientName: '',
         patientEmail: '',
         patientPhone: '',
+        patientNotes: '',
       });
       setSelectedTime('');
       setFormErrors({});
@@ -442,6 +468,39 @@ export default function Home() {
         </div>
       )}
 
+      {confirmNotice && (
+        <div className="notice-overlay">
+          <div className="card confirm-banner notice-card">
+            <div>
+              <p className="confirm-title">Confirm your appointment</p>
+              <p className="confirm-detail">
+                {confirmNotice.clinicName} · {confirmNotice.date} · {confirmNotice.time}
+              </p>
+              <p className="confirm-detail muted">Doctor: {confirmNotice.doctor}</p>
+              {submitError && <p className="status error">{submitError}</p>}
+            </div>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setConfirmNotice(null)}
+                disabled={isSubmitting}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="cta"
+                onClick={handleReserveAppointment}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Reserving...' : 'Yes, reserve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="hero">
         <HeroCopy clinic={clinic} hostname={hostname} />
         <BookingForm
@@ -484,7 +543,7 @@ export default function Home() {
             ...availability,
             takenTimes: normalizedTakenTimes,
           }}
-          onSubmit={handleSubmit}
+          onSubmit={handlePreviewSubmit}
           isSubmitting={isSubmitting}
           submitError={submitError}
           doctorsStatus={status}
