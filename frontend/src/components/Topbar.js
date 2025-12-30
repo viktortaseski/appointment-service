@@ -20,7 +20,6 @@ export default function Topbar({ clinic }) {
         <a href="#doctors">Doctors</a>
         <a href="#book">Book</a>
       </nav>
-      <button className="cta">Call Front Desk</button>
     </header>
   );
 }

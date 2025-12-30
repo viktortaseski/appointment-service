@@ -25,12 +25,18 @@ CREATE TABLE clinics (
   name VARCHAR(255) NOT NULL,
   domain VARCHAR(255) UNIQUE NOT NULL,
   logo TEXT,
+  phone VARCHAR(50),
+  email VARCHAR(255),
+  address TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE clinics IS 'Dental clinics (multi-tenant root table)';
 COMMENT ON COLUMN clinics.domain IS 'Used to resolve clinic from request hostname';
 COMMENT ON COLUMN clinics.logo IS 'Public logo image URL';
+COMMENT ON COLUMN clinics.phone IS 'Primary clinic phone number';
+COMMENT ON COLUMN clinics.email IS 'Primary clinic email';
+COMMENT ON COLUMN clinics.address IS 'Clinic address';
 
 -- =========================================================
 -- DOCTORS TABLE

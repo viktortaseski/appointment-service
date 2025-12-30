@@ -350,6 +350,17 @@ export default function Home() {
     });
   }
 
+  function handleBookDoctor(doctorId) {
+    setSelectedDoctor(doctorId);
+    setSelectedTime('');
+    setFormErrors((prev) => ({ ...prev, doctor: '', time: '' }));
+
+    const form = document.getElementById('book');
+    if (form) {
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   async function handleReserveAppointment() {
     setIsSubmitting(true);
 
@@ -527,7 +538,12 @@ export default function Home() {
         />
       </section>
 
-      <DoctorsSection clinic={clinic} doctors={doctors} status={status} />
+      <DoctorsSection
+        clinic={clinic}
+        doctors={doctors}
+        status={status}
+        onBookDoctor={handleBookDoctor}
+      />
       <SiteFooter />
     </main>
   );

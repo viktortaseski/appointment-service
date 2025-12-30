@@ -1,4 +1,17 @@
-export default function DoctorsSection({ clinic, doctors, status }) {
+function getInitials(name) {
+  if (!name) {
+    return '';
+  }
+
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('');
+}
+
+export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }) {
   return (
     <section className="section" id="doctors">
       <div className="section-header">
@@ -24,13 +37,30 @@ export default function DoctorsSection({ clinic, doctors, status }) {
               key={doctor.id}
               style={{ animationDelay: `${index * 120}ms` }}
             >
-              <div>
-                <p className="doctor-name">{doctor.name}</p>
-                <p className="doctor-specialty">{doctor.specialty}</p>
+              <div className="doctor-card-profile">
+                <div className="doctor-card-avatar">
+                  {doctor.avatar ? (
+                    <img src={doctor.avatar} alt={doctor.name} />
+                  ) : (
+                    <span>{getInitials(doctor.name)}</span>
+                  )}
+                </div>
+                <div>
+                  <p className="doctor-name">{doctor.name}</p>
+                  <p className="doctor-specialty">{doctor.specialty}</p>
+                </div>
               </div>
-              <p className="doctor-clinic">{clinic?.name}</p>
-              <p className="doctor-availability">Available 9:00 AM - 4:00 PM</p>
-              <button className="ghost">Book with this doctor</button>
+              <div>
+                <p className="doctor-clinic">{clinic?.name}</p>
+                <p className="doctor-availability">Available 9:00 AM - 4:00 PM</p>
+              </div>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => onBookDoctor?.(doctor.id)}
+              >
+                Book with this doctor
+              </button>
             </article>
           ))}
         </div>
