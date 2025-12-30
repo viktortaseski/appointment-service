@@ -105,6 +105,7 @@ export default function AdminPage() {
   const [authReady, setAuthReady] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  const [activePanel, setActivePanel] = useState('appointments');
   const [appointments, setAppointments] = useState([]);
   const [clinicName, setClinicName] = useState('');
   const [doctors, setDoctors] = useState([]);
@@ -612,436 +613,468 @@ export default function AdminPage() {
         </button>
       </header>
 
-      <section className="stats-grid">
+      <nav className="admin-nav">
         <button
           type="button"
-          className={`stat-card stat-button${scopeFilter === 'all' ? ' active' : ''}`}
-          onClick={() => setScopeFilter('all')}
+          className={activePanel === 'appointments' ? 'active' : ''}
+          onClick={() => setActivePanel('appointments')}
         >
-          <p className="stat-label">Total Appointments</p>
-          <p className="stat-value">{totalCount}</p>
+          Appointments
         </button>
         <button
           type="button"
-          className={`stat-card stat-button${scopeFilter === 'today' ? ' active' : ''}`}
-          onClick={() => setScopeFilter('today')}
+          className={activePanel === 'settings' ? 'active' : ''}
+          onClick={() => setActivePanel('settings')}
         >
-          <p className="stat-label">Today&apos;s Appointments</p>
-          <p className="stat-value">{todayCount}</p>
+          Settings
         </button>
-        <button
-          type="button"
-          className={`stat-card stat-button${scopeFilter === 'week' ? ' active' : ''}`}
-          onClick={() => setScopeFilter('week')}
-        >
-          <p className="stat-label">This Week</p>
-          <p className="stat-value">{weekCount}</p>
-        </button>
-        <div className="stat-card">
-          <p className="stat-label">Active Doctors</p>
-          <p className="stat-value">{activeDoctorCount}</p>
-        </div>
-      </section>
+      </nav>
 
-      <section className="admin-section">
-        <div className="admin-section-header">
-          <div>
-            <p className="eyebrow">Appointment Management</p>
-            <h2>Manage incoming visits.</h2>
-          </div>
-          <button
-            className="cta"
-            type="button"
-            onClick={() => {
-              if (!showForm) {
-                resetForm(formState.doctorId);
-              }
-              setShowForm((prev) => !prev);
-              setEditingId(null);
-            }}
-          >
-            + New Appointment
-          </button>
-        </div>
-
-        <div className="card upload-card">
-          <div className="upload-header">
-            <div>
-              <p className="row-title">Upload doctor avatar</p>
-              <p className="row-subtitle">
-                Upload a new profile image for a selected doctor.
-              </p>
-            </div>
-            {uploadState.preview && (
-              <img
-                src={uploadState.preview}
-                alt="Uploaded avatar preview"
-                className="upload-preview"
-              />
-            )}
-          </div>
-          <form className="upload-form" onSubmit={handleAvatarUpload}>
-            <div className="field">
-              <label htmlFor="avatarDoctor">Doctor</label>
-              <select
-                id="avatarDoctor"
-                value={uploadState.doctorId}
-                onChange={(event) =>
-                  setUploadState((prev) => ({
-                    ...prev,
-                    doctorId: event.target.value,
-                    error: '',
-                    status: '',
-                  }))
-                }
-              >
-                <option value="">Select a doctor</option>
-                {doctorOptions.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="avatarFile">Image</label>
-              <input
-                id="avatarFile"
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] || null;
-                  const preview = file ? URL.createObjectURL(file) : '';
-                  setUploadState((prev) => ({
-                    ...prev,
-                    file,
-                    preview,
-                    error: '',
-                    status: '',
-                  }));
-                }}
-              />
-            </div>
-            <button type="submit" className="cta">
-              Upload image
+      {activePanel === 'appointments' && (
+        <>
+          <section className="stats-grid">
+            <button
+              type="button"
+              className={`stat-card stat-button${scopeFilter === 'all' ? ' active' : ''}`}
+              onClick={() => setScopeFilter('all')}
+            >
+              <p className="stat-label">Total Appointments</p>
+              <p className="stat-value">{totalCount}</p>
             </button>
-          </form>
-          {uploadState.error && <p className="status error">{uploadState.error}</p>}
-          {uploadState.status && <p className="status">{uploadState.status}</p>}
-        </div>
-
-        {showForm && (
-          <form className="card admin-form" onSubmit={handleFormSubmit}>
-            <div className="form-header">
-              <h2>{editingId ? 'Edit Appointment' : 'New Appointment'}</h2>
-              <p>Capture a booking on behalf of a patient.</p>
+            <button
+              type="button"
+              className={`stat-card stat-button${scopeFilter === 'today' ? ' active' : ''}`}
+              onClick={() => setScopeFilter('today')}
+            >
+              <p className="stat-label">Today&apos;s Appointments</p>
+              <p className="stat-value">{todayCount}</p>
+            </button>
+            <button
+              type="button"
+              className={`stat-card stat-button${scopeFilter === 'week' ? ' active' : ''}`}
+              onClick={() => setScopeFilter('week')}
+            >
+              <p className="stat-label">This Week</p>
+              <p className="stat-value">{weekCount}</p>
+            </button>
+            <div className="stat-card">
+              <p className="stat-label">Active Doctors</p>
+              <p className="stat-value">{activeDoctorCount}</p>
             </div>
-            <div className="filter-grid">
-              <div className="field">
-                <label htmlFor="patient">Patient name</label>
-                <input
-                  id="patient"
-                  value={formState.patient}
-                  onChange={(event) => handleFormChange('patient', event.target.value)}
-                  placeholder="Jordan Smith"
-                />
+          </section>
+
+          <section className="admin-section">
+            <div className="admin-section-header">
+              <div>
+                <p className="eyebrow">Appointment Management</p>
+                <h2>Manage incoming visits.</h2>
               </div>
+              <button
+                className="cta"
+                type="button"
+                onClick={() => {
+                  if (!showForm) {
+                    resetForm(formState.doctorId);
+                  }
+                  setShowForm((prev) => !prev);
+                  setEditingId(null);
+                }}
+              >
+                + New Appointment
+              </button>
+            </div>
+
+            {showForm && (
+              <form className="card admin-form" onSubmit={handleFormSubmit}>
+                <div className="form-header">
+                  <h2>{editingId ? 'Edit Appointment' : 'New Appointment'}</h2>
+                  <p>Capture a booking on behalf of a patient.</p>
+                </div>
+                <div className="filter-grid">
+                  <div className="field">
+                    <label htmlFor="patient">Patient name</label>
+                    <input
+                      id="patient"
+                      value={formState.patient}
+                      onChange={(event) => handleFormChange('patient', event.target.value)}
+                      placeholder="Jordan Smith"
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="doctor">Doctor</label>
+                    <select
+                      id="doctor"
+                      value={formState.doctorId}
+                      onChange={(event) => handleFormChange('doctorId', event.target.value)}
+                    >
+                      <option value="" disabled>
+                        Select a doctor
+                      </option>
+                      {doctorOptions.map((doctor) => (
+                        <option key={doctor.id} value={doctor.id}>
+                          {doctor.name} ({doctor.specialty})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="field">
+                  <div className="field-heading">
+                    <label>Choose a date</label>
+                    <span className="field-hint">Next available dates only</span>
+                  </div>
+                  <div className="calendar">
+                    <div className="calendar-header">
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() =>
+                          setMonthCursor(
+                            (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+                          )
+                        }
+                        disabled={isPrevDisabled}
+                        aria-label="Previous month"
+                      >
+                        {'<'}
+                      </button>
+                      <span className="calendar-title">{monthLabel}</span>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() =>
+                          setMonthCursor(
+                            (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+                          )
+                        }
+                        aria-label="Next month"
+                      >
+                        {'>'}
+                      </button>
+                    </div>
+                    <div className="calendar-grid calendar-weekdays">
+                      {weekdayLabels.map((label) => (
+                        <span key={label} className="weekday">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="calendar-grid">
+                      {monthGrid.map((slot, index) => {
+                        if (!slot) {
+                          return <div key={`blank-${index}`} className="calendar-blank" />;
+                        }
+
+                        const isSelected = formState.date === slot.key;
+
+                        return (
+                          <button
+                            type="button"
+                            key={slot.key}
+                            className={`calendar-day${isSelected ? ' selected' : ''}`}
+                            onClick={() => handleFormChange('date', slot.key)}
+                            disabled={slot.isPast}
+                          >
+                            {slot.day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="field">
+                  <div className="field-heading">
+                    <label>Choose a time</label>
+                    <span className="field-hint">9:00 AM - 4:00 PM, 30 min slots</span>
+                  </div>
+                  {!formState.doctorId && (
+                    <p className="inline-hint">Select a doctor to see availability.</p>
+                  )}
+                  {formError && <p className="inline-hint error">{formError}</p>}
+                  <div className="time-grid">
+                    {timeSlots.map((slot) => {
+                      const isTaken = bookedTimes.includes(slot.value);
+                      const isDisabled = !formState.doctorId || isTaken;
+
+                      return (
+                        <button
+                          type="button"
+                          key={slot.value}
+                          className={`slot-button time-slot${
+                            formState.time === slot.value ? ' selected' : ''
+                          }${isTaken ? ' taken' : ''}`}
+                          onClick={() => handleFormChange('time', slot.value)}
+                          disabled={isDisabled}
+                        >
+                          {slot.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="filter-grid">
+                  <div className="field">
+                    <label htmlFor="email">Email (optional)</label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={formState.email}
+                      onChange={(event) => handleFormChange('email', event.target.value)}
+                      placeholder="patient@email.com"
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="phone">Phone (optional)</label>
+                    <input
+                      id="phone"
+                      value={formState.phone}
+                      onChange={(event) => handleFormChange('phone', event.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="notes">Notes (optional)</label>
+                    <input
+                      id="notes"
+                      value={formState.notes}
+                      onChange={(event) => handleFormChange('notes', event.target.value)}
+                      placeholder="Any important context"
+                    />
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingId(null);
+                      setFormError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="cta">
+                    {editingId ? 'Update appointment' : 'Create appointment'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="card filter-card">
+              <div className="filter-header">
+                <span className="filter-title">Filter Appointments</span>
+              </div>
+              <div className="filter-grid">
+                <div className="field">
+                  <label htmlFor="search">Search patient</label>
+                  <input
+                    id="search"
+                    placeholder="Name, email, or phone"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="doctorFilter">Filter by doctor</label>
+                  <select
+                    id="doctorFilter"
+                    value={doctorFilter}
+                    onChange={(event) => setDoctorFilter(event.target.value)}
+                  >
+                    <option value="">All doctors</option>
+                    {doctorOptions.map((doctor) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {doctor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="dateFilter">Filter by date</label>
+                  <input
+                    id="dateFilter"
+                    type="date"
+                    value={dateFilter}
+                    onChange={(event) => setDateFilter(event.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="card appointment-table">
+              <div className="table-head">
+                <span>Patient</span>
+                <span>Doctor</span>
+                <span>Date & Time</span>
+                <span>Contact</span>
+                <span>Actions</span>
+              </div>
+              {loading && (
+                <div className="table-row empty">
+                  <p className="row-title">Loading appointments...</p>
+                </div>
+              )}
+              {!loading && loadError && (
+                <div className="table-row empty">
+                  <p className="row-title">{loadError}</p>
+                </div>
+              )}
+              {!loading && !loadError && filteredAppointments.length === 0 && (
+                <div className="table-row empty">
+                  <p className="row-title">No appointments match the filters.</p>
+                </div>
+              )}
+              {!loading && !loadError &&
+                filteredAppointments.map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className={`table-row${appointment.completed ? ' completed' : ''}`}
+                  >
+                    <div>
+                      <p className="row-title">
+                        {appointment.patient}
+                        {appointment.completed && (
+                          <span className="badge">Completed</span>
+                        )}
+                      </p>
+                      <p className="row-subtitle">{appointment.reason}</p>
+                    </div>
+                    <div>
+                      <p className="row-title">{appointment.doctor}</p>
+                      <p className="row-subtitle">{appointment.specialty}</p>
+                    </div>
+                    <div>
+                      <p className="row-title">
+                        {formatDisplayDate(appointment.dateKey)}
+                      </p>
+                      <p className="row-subtitle">{appointment.time}</p>
+                    </div>
+                    <div>
+                      <p className="row-title">{appointment.email || '—'}</p>
+                      <p className="row-subtitle">{appointment.phone || '—'}</p>
+                    </div>
+                    <div className="actions-grid">
+                      <button
+                        type="button"
+                        className="icon-pill"
+                        aria-label="Toggle completed"
+                        onClick={() => handleToggleCompleted(appointment)}
+                      >
+                        <img src="/icons/check.svg" alt="" />
+                        {appointment.completed ? 'Undo' : 'Done'}
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-pill"
+                        aria-label="Send email"
+                        onClick={() => handleEmail(appointment)}
+                      >
+                        <img src="/icons/mail.svg" alt="" />
+                        Email
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-pill"
+                        aria-label="Edit appointment"
+                        onClick={() => handleEdit(appointment)}
+                      >
+                        <img src="/icons/edit.svg" alt="" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-pill danger"
+                        aria-label="Delete appointment"
+                        onClick={() => handleDelete(appointment)}
+                      >
+                        <img src="/icons/trash.svg" alt="" />
+                        Del
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {activePanel === 'settings' && (
+        <section className="admin-section">
+          <div className="admin-section-header">
+            <div>
+              <p className="eyebrow">Settings</p>
+              <h2>Clinic assets and branding.</h2>
+            </div>
+          </div>
+
+          <div className="card upload-card">
+            <div className="upload-header">
+              <div>
+                <p className="row-title">Upload doctor avatar</p>
+                <p className="row-subtitle">
+                  Upload a new profile image for a selected doctor.
+                </p>
+              </div>
+              {uploadState.preview && (
+                <img
+                  src={uploadState.preview}
+                  alt="Uploaded avatar preview"
+                  className="upload-preview"
+                />
+              )}
+            </div>
+            <form className="upload-form" onSubmit={handleAvatarUpload}>
               <div className="field">
-                <label htmlFor="doctor">Doctor</label>
+                <label htmlFor="avatarDoctor">Doctor</label>
                 <select
-                  id="doctor"
-                  value={formState.doctorId}
-                  onChange={(event) => handleFormChange('doctorId', event.target.value)}
+                  id="avatarDoctor"
+                  value={uploadState.doctorId}
+                  onChange={(event) =>
+                    setUploadState((prev) => ({
+                      ...prev,
+                      doctorId: event.target.value,
+                      error: '',
+                      status: '',
+                    }))
+                  }
                 >
-                  <option value="" disabled>
-                    Select a doctor
-                  </option>
+                  <option value="">Select a doctor</option>
                   {doctorOptions.map((doctor) => (
                     <option key={doctor.id} value={doctor.id}>
-                      {doctor.name} ({doctor.specialty})
+                      {doctor.name}
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
-            <div className="field">
-              <div className="field-heading">
-                <label>Choose a date</label>
-                <span className="field-hint">Next available dates only</span>
-              </div>
-              <div className="calendar">
-                <div className="calendar-header">
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={() =>
-                      setMonthCursor(
-                        (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
-                      )
-                    }
-                    disabled={isPrevDisabled}
-                    aria-label="Previous month"
-                  >
-                    {'<'}
-                  </button>
-                  <span className="calendar-title">{monthLabel}</span>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={() =>
-                      setMonthCursor(
-                        (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
-                      )
-                    }
-                    aria-label="Next month"
-                  >
-                    {'>'}
-                  </button>
-                </div>
-                <div className="calendar-grid calendar-weekdays">
-                  {weekdayLabels.map((label) => (
-                    <span key={label} className="weekday">
-                      {label}
-                    </span>
-                  ))}
-                </div>
-                <div className="calendar-grid">
-                  {monthGrid.map((slot, index) => {
-                    if (!slot) {
-                      return <div key={`blank-${index}`} className="calendar-blank" />;
-                    }
-
-                    const isSelected = formState.date === slot.key;
-
-                    return (
-                      <button
-                        type="button"
-                        key={slot.key}
-                        className={`calendar-day${isSelected ? ' selected' : ''}`}
-                        onClick={() => handleFormChange('date', slot.key)}
-                        disabled={slot.isPast}
-                      >
-                        {slot.day}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className="field">
-              <div className="field-heading">
-                <label>Choose a time</label>
-                <span className="field-hint">9:00 AM - 4:00 PM, 30 min slots</span>
-              </div>
-              {!formState.doctorId && (
-                <p className="inline-hint">Select a doctor to see availability.</p>
-              )}
-              {formError && <p className="inline-hint error">{formError}</p>}
-              <div className="time-grid">
-                {timeSlots.map((slot) => {
-                  const isTaken = bookedTimes.includes(slot.value);
-                  const isDisabled = !formState.doctorId || isTaken;
-
-                  return (
-                    <button
-                      type="button"
-                      key={slot.value}
-                      className={`slot-button time-slot${
-                        formState.time === slot.value ? ' selected' : ''
-                      }${isTaken ? ' taken' : ''}`}
-                      onClick={() => handleFormChange('time', slot.value)}
-                      disabled={isDisabled}
-                    >
-                      {slot.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="filter-grid">
               <div className="field">
-                <label htmlFor="email">Email (optional)</label>
+                <label htmlFor="avatarFile">Image</label>
                 <input
-                  id="email"
-                  type="email"
-                  value={formState.email}
-                  onChange={(event) => handleFormChange('email', event.target.value)}
-                  placeholder="patient@email.com"
+                  id="avatarFile"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    const preview = file ? URL.createObjectURL(file) : '';
+                    setUploadState((prev) => ({
+                      ...prev,
+                      file,
+                      preview,
+                      error: '',
+                      status: '',
+                    }));
+                  }}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="phone">Phone (optional)</label>
-                <input
-                  id="phone"
-                  value={formState.phone}
-                  onChange={(event) => handleFormChange('phone', event.target.value)}
-                  placeholder="+1 (555) 000-0000"
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="notes">Notes (optional)</label>
-                <input
-                  id="notes"
-                  value={formState.notes}
-                  onChange={(event) => handleFormChange('notes', event.target.value)}
-                  placeholder="Any important context"
-                />
-              </div>
-            </div>
-            <div className="form-actions">
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  setFormError('');
-                }}
-              >
-                Cancel
-              </button>
               <button type="submit" className="cta">
-                {editingId ? 'Update appointment' : 'Create appointment'}
+                Upload image
               </button>
-            </div>
-          </form>
-        )}
-
-        <div className="card filter-card">
-          <div className="filter-header">
-            <span className="filter-title">Filter Appointments</span>
+            </form>
+            {uploadState.error && <p className="status error">{uploadState.error}</p>}
+            {uploadState.status && <p className="status">{uploadState.status}</p>}
           </div>
-          <div className="filter-grid">
-            <div className="field">
-              <label htmlFor="search">Search patient</label>
-              <input
-                id="search"
-                placeholder="Name, email, or phone"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="doctorFilter">Filter by doctor</label>
-              <select
-                id="doctorFilter"
-                value={doctorFilter}
-                onChange={(event) => setDoctorFilter(event.target.value)}
-              >
-                <option value="">All doctors</option>
-                {doctorOptions.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="dateFilter">Filter by date</label>
-              <input
-                id="dateFilter"
-                type="date"
-                value={dateFilter}
-                onChange={(event) => setDateFilter(event.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="card appointment-table">
-          <div className="table-head">
-            <span>Patient</span>
-            <span>Doctor</span>
-            <span>Date & Time</span>
-            <span>Contact</span>
-            <span>Actions</span>
-          </div>
-          {loading && (
-            <div className="table-row empty">
-              <p className="row-title">Loading appointments...</p>
-            </div>
-          )}
-          {!loading && loadError && (
-            <div className="table-row empty">
-              <p className="row-title">{loadError}</p>
-            </div>
-          )}
-          {!loading && !loadError && filteredAppointments.length === 0 && (
-            <div className="table-row empty">
-              <p className="row-title">No appointments match the filters.</p>
-            </div>
-          )}
-          {!loading && !loadError &&
-            filteredAppointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                className={`table-row${appointment.completed ? ' completed' : ''}`}
-              >
-                <div>
-                  <p className="row-title">
-                    {appointment.patient}
-                    {appointment.completed && (
-                      <span className="badge">Completed</span>
-                    )}
-                  </p>
-                  <p className="row-subtitle">{appointment.reason}</p>
-                </div>
-                <div>
-                  <p className="row-title">{appointment.doctor}</p>
-                  <p className="row-subtitle">{appointment.specialty}</p>
-                </div>
-                <div>
-                  <p className="row-title">
-                    {formatDisplayDate(appointment.dateKey)}
-                  </p>
-                  <p className="row-subtitle">{appointment.time}</p>
-                </div>
-                <div>
-                  <p className="row-title">{appointment.email || '—'}</p>
-                  <p className="row-subtitle">{appointment.phone || '—'}</p>
-                </div>
-                <div className="actions-grid">
-                  <button
-                    type="button"
-                    className="icon-pill"
-                    aria-label="Toggle completed"
-                    onClick={() => handleToggleCompleted(appointment)}
-                  >
-                    <img src="/icons/check.svg" alt="" />
-                    {appointment.completed ? 'Undo' : 'Done'}
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-pill"
-                    aria-label="Send email"
-                    onClick={() => handleEmail(appointment)}
-                  >
-                    <img src="/icons/mail.svg" alt="" />
-                    Email
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-pill"
-                    aria-label="Edit appointment"
-                    onClick={() => handleEdit(appointment)}
-                  >
-                    <img src="/icons/edit.svg" alt="" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-pill danger"
-                    aria-label="Delete appointment"
-                    onClick={() => handleDelete(appointment)}
-                  >
-                    <img src="/icons/trash.svg" alt="" />
-                    Del
-                  </button>
-                </div>
-              </div>
-            ))}
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }
