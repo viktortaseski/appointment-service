@@ -682,7 +682,7 @@ select {
   grid-template-columns: 1fr;
 }
 
-.table-row.highlight {
+.table-row.completed {
   background: rgba(226, 250, 236, 0.85);
 }
 

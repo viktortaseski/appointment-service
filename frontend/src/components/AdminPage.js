@@ -2,94 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-const initialAppointments = [
-  {
-    patient: 'John Smith',
-    reason: 'Regular checkup',
-    status: 'Completed',
-    doctor: 'Dr. Sarah Johnson',
-    specialty: 'General Dentistry',
-    date: 'Dec 30, 2025',
-    time: '09:30',
-    email: 'john.smith@email.com',
-    phone: '+1 (555) 123-4567',
-    highlight: true,
-  },
-  {
-    patient: 'Emma Johnson',
-    reason: 'Braces adjustment',
-    status: 'Pending',
-    doctor: 'Dr. Michael Chen',
-    specialty: 'Orthodontics',
-    date: 'Dec 30, 2025',
-    time: '14:00',
-    email: 'emma.j@email.com',
-    phone: '+1 (555) 234-5678',
-  },
-  {
-    patient: 'Michael Brown',
-    reason: 'Teeth whitening consultation',
-    status: 'Pending',
-    doctor: 'Dr. Emily Rodriguez',
-    specialty: 'Cosmetic Dentistry',
-    date: 'Dec 31, 2025',
-    time: '10:00',
-    email: 'mbrown@email.com',
-    phone: '+1 (555) 345-6789',
-  },
-  {
-    patient: 'Sarah Davis',
-    reason: 'Wisdom tooth extraction',
-    status: 'Pending',
-    doctor: 'Dr. James Wilson',
-    specialty: 'Oral Surgery',
-    date: 'Jan 2, 2026',
-    time: '11:30',
-    email: 'sarah.davis@email.com',
-    phone: '+1 (555) 456-7890',
-  },
-  {
-    patient: 'David Wilson',
-    reason: 'Dental cleaning',
-    status: 'Pending',
-    doctor: 'Dr. Sarah Johnson',
-    specialty: 'General Dentistry',
-    date: 'Jan 4, 2026',
-    time: '15:00',
-    email: 'dwilson@email.com',
-    phone: '+1 (555) 567-8901',
-  },
-  {
-    patient: 'Lisa Martinez',
-    reason: 'Orthodontic consultation',
-    status: 'Pending',
-    doctor: 'Dr. Michael Chen',
-    specialty: 'Orthodontics',
-    date: 'Jan 7, 2026',
-    time: '13:30',
-    email: 'lisa.m@email.com',
-    phone: '+1 (555) 678-9012',
-  },
-];
-
-function buildTimeSlots(startHour, endHour, intervalMinutes) {
-  const slots = [];
-  const startMinutes = startHour * 60;
-  const endMinutes = endHour * 60;
-
-  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
-    const hour = Math.floor(minutes / 60);
-    const minute = minutes % 60;
-    const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-    const hour12 = ((hour + 11) % 12) + 1;
-    const suffix = hour >= 12 ? 'PM' : 'AM';
-    const label = `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
-    slots.push({ value, label });
-  }
-
-  return slots;
-}
-
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function formatDateKey(date) {
@@ -108,16 +21,31 @@ function formatDisplayDate(dateKey) {
   });
 }
 
-function normalizeAppointment(appointment) {
-  const isIso = /^\d{4}-\d{2}-\d{2}$/.test(appointment.date);
-  const dateKey = isIso
-    ? appointment.date
-    : formatDateKey(new Date(appointment.date));
+function normalizeTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  return value.slice(0, 5);
+}
+
+function normalizeAppointment(raw) {
+  const dateKey = typeof raw.date === 'string'
+    ? raw.date.slice(0, 10)
+    : formatDateKey(new Date(raw.date));
 
   return {
-    id: `${appointment.patient}-${appointment.time}-${dateKey}`,
-    ...appointment,
+    id: raw.id,
+    doctorId: raw.doctor_id,
+    doctor: raw.doctor_name,
+    specialty: raw.doctor_specialty,
+    patient: raw.patient_name,
+    email: raw.patient_email,
+    phone: raw.patient_phone,
+    reason: raw.notes || 'Appointment',
     dateKey,
+    time: normalizeTime(raw.time),
+    completed: Boolean(raw.completed),
   };
 }
 
@@ -144,12 +72,32 @@ function buildMonthGrid(cursor) {
   return slots;
 }
 
+function buildTimeSlots(startHour, endHour, intervalMinutes) {
+  const slots = [];
+  const startMinutes = startHour * 60;
+  const endMinutes = endHour * 60;
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    const hour12 = ((hour + 11) % 12) + 1;
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const label = `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+    slots.push({ value, label });
+  }
+
+  return slots;
+}
+
 export default function AdminPage() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const [appointments, setAppointments] = useState(() =>
-    initialAppointments.map(normalizeAppointment)
-  );
+  const [appointments, setAppointments] = useState([]);
+  const [clinicName, setClinicName] = useState('');
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [scopeFilter, setScopeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [doctorFilter, setDoctorFilter] = useState('');
@@ -158,7 +106,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState(null);
   const [formState, setFormState] = useState({
     patient: '',
-    doctor: '',
+    doctorId: '',
     date: '',
     time: '',
     email: '',
@@ -169,6 +117,7 @@ export default function AdminPage() {
   const [monthCursor, setMonthCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
+
   const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
 
   const weekEnd = useMemo(() => {
@@ -177,15 +126,7 @@ export default function AdminPage() {
     return formatDateKey(date);
   }, []);
 
-  const doctorOptions = useMemo(() => {
-    const map = new Map();
-    appointments.forEach((item) => {
-      if (!map.has(item.doctor)) {
-        map.set(item.doctor, item.specialty || 'General Dentistry');
-      }
-    });
-    return Array.from(map, ([name, specialty]) => ({ name, specialty }));
-  }, [appointments]);
+  const doctorOptions = useMemo(() => doctors, [doctors]);
 
   const activeDoctorCount = doctorOptions.length;
 
@@ -226,7 +167,7 @@ export default function AdminPage() {
         if (!doctorFilter) {
           return true;
         }
-        return appointment.doctor === doctorFilter;
+        return appointment.doctorId === doctorFilter;
       })
       .filter((appointment) => {
         if (!dateFilter) {
@@ -264,19 +205,58 @@ export default function AdminPage() {
     monthCursor.getMonth() === today.getMonth();
 
   const bookedTimes = useMemo(() => {
-    if (!formState.date || !formState.doctor) {
+    if (!formState.date || !formState.doctorId) {
       return [];
     }
 
     return appointments
       .filter(
         (appointment) =>
-          appointment.doctor === formState.doctor &&
+          appointment.doctorId === formState.doctorId &&
           appointment.dateKey === formState.date &&
           appointment.id !== editingId
       )
       .map((appointment) => appointment.time);
-  }, [appointments, formState.date, formState.doctor, editingId]);
+  }, [appointments, formState.date, formState.doctorId, editingId]);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      setLoadError('');
+
+      try {
+        const headers = {
+          'x-clinic-domain': window.location.hostname,
+        };
+
+        const [appointmentsResponse, doctorsResponse] = await Promise.all([
+          fetch(`${API_BASE}/appointments`, { headers }),
+          fetch(`${API_BASE}/doctors`, { headers }),
+        ]);
+
+        if (!appointmentsResponse.ok) {
+          throw new Error(`Appointments request failed (${appointmentsResponse.status}).`);
+        }
+
+        if (!doctorsResponse.ok) {
+          throw new Error(`Doctors request failed (${doctorsResponse.status}).`);
+        }
+
+        const appointmentsData = await appointmentsResponse.json();
+        const doctorsData = await doctorsResponse.json();
+
+        setClinicName(appointmentsData.clinic?.name || doctorsData.clinic?.name || '');
+        setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
+        setDoctors(doctorsData.doctors || []);
+        setLoading(false);
+      } catch (error) {
+        setLoadError(error?.message || 'Unable to load appointments.');
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (formState.time && bookedTimes.includes(formState.time)) {
@@ -284,28 +264,29 @@ export default function AdminPage() {
     }
   }, [bookedTimes, formState.time]);
 
-  function resetForm(nextDoctor) {
+  function resetForm(doctorId) {
     setMonthCursor(new Date(today.getFullYear(), today.getMonth(), 1));
     setFormState({
       patient: '',
-      doctor: nextDoctor || '',
+      doctorId: doctorId || '',
       date: todayKey,
       time: '',
       email: '',
       phone: '',
       notes: '',
     });
+    setFormError('');
   }
 
   function handleFormChange(field, value) {
     setFormState((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleFormSubmit(event) {
+  async function handleFormSubmit(event) {
     event.preventDefault();
     setFormError('');
 
-    if (!formState.patient || !formState.doctor || !formState.date || !formState.time) {
+    if (!formState.patient || !formState.doctorId || !formState.date || !formState.time) {
       setFormError('Patient, doctor, date, and time are required.');
       return;
     }
@@ -315,63 +296,82 @@ export default function AdminPage() {
       return;
     }
 
-    const specialty =
-      doctorOptions.find((doctor) => doctor.name === formState.doctor)
-        ?.specialty || 'General Dentistry';
-    const reason = formState.notes || 'Appointment created by receptionist';
-
-    if (editingId) {
-      setAppointments((prev) =>
-        prev.map((appointment) =>
-          appointment.id === editingId
-            ? {
-                ...appointment,
-                patient: formState.patient,
-                doctor: formState.doctor,
-                specialty,
-                date: formState.date,
-                dateKey: formState.date,
-                time: formState.time,
-                email: formState.email,
-                phone: formState.phone,
-                reason,
-              }
-            : appointment
-        )
-      );
-    } else {
-      const newAppointment = normalizeAppointment({
-        patient: formState.patient,
-        reason,
-        status: 'Pending',
-        doctor: formState.doctor,
-        specialty,
+    try {
+      const payload = {
+        doctor_id: formState.doctorId,
+        patient_name: formState.patient,
+        patient_email: formState.email || '',
+        patient_phone: formState.phone || '',
         date: formState.date,
         time: formState.time,
-        email: formState.email,
-        phone: formState.phone,
-        highlight: false,
+        notes: formState.notes || null,
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-clinic-domain': window.location.hostname,
+      };
+
+      const response = await fetch(
+        `${API_BASE}/appointments${editingId ? `/${editingId}` : ''}`,
+        {
+          method: editingId ? 'PUT' : 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Unable to save appointment.');
+      }
+
+      const data = await response.json();
+      const updated = normalizeAppointment(data.appointment);
+
+      setAppointments((prev) => {
+        if (editingId) {
+          return prev.map((appointment) =>
+            appointment.id === editingId ? updated : appointment
+          );
+        }
+
+        return [updated, ...prev];
       });
 
-      setAppointments((prev) => [newAppointment, ...prev]);
+      setShowForm(false);
+      setEditingId(null);
+      resetForm(formState.doctorId);
+    } catch (error) {
+      setFormError(error?.message || 'Unable to save appointment.');
     }
-
-    setShowForm(false);
-    setEditingId(null);
-    resetForm(formState.doctor);
   }
 
-  function handleToggleCompleted(id) {
-    setAppointments((prev) =>
-      prev.map((appointment) =>
-        appointment.id === id
-          ? {
-              ...appointment,
-              status: appointment.status === 'Completed' ? 'Pending' : 'Completed',
-            }
-          : appointment
-      )
-    );
+  async function handleToggleCompleted(appointment) {
+    try {
+      const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-clinic-domain': window.location.hostname,
+        },
+        body: JSON.stringify({ completed: !appointment.completed }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Unable to update appointment.');
+      }
+
+      const data = await response.json();
+      const updated = normalizeAppointment(data.appointment);
+
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === appointment.id ? updated : item))
+      );
+    } catch (error) {
+      window.alert(error?.message || 'Unable to update appointment.');
+    }
   }
 
   function handleEmail(appointment) {
@@ -388,7 +388,7 @@ export default function AdminPage() {
     setShowForm(true);
     setFormState({
       patient: appointment.patient,
-      doctor: appointment.doctor,
+      doctorId: appointment.doctorId,
       date: appointment.dateKey,
       time: appointment.time,
       email: appointment.email || '',
@@ -400,22 +400,39 @@ export default function AdminPage() {
     setMonthCursor(new Date(editDate.getFullYear(), editDate.getMonth(), 1));
   }
 
-  function handleDelete(id) {
+  async function handleDelete(appointment) {
     if (!window.confirm('Delete this appointment?')) {
       return;
     }
 
-    setAppointments((prev) => prev.filter((appointment) => appointment.id !== id));
+    try {
+      const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-clinic-domain': window.location.hostname,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Unable to delete appointment.');
+      }
+
+      setAppointments((prev) =>
+        prev.filter((item) => item.id !== appointment.id)
+      );
+    } catch (error) {
+      window.alert(error?.message || 'Unable to delete appointment.');
+    }
   }
 
   return (
     <main className="page admin-page">
       <header className="admin-topbar">
         <div>
-          <p className="admin-title">Bright Smile Dental Clinic</p>
+          <p className="admin-title">{clinicName || 'Dental Clinic'}</p>
           <p className="admin-subtitle">Receptionist Dashboard</p>
         </div>
-        <button className="cta admin-cta">Patient View</button>
       </header>
 
       <section className="stats-grid">
@@ -460,7 +477,7 @@ export default function AdminPage() {
             type="button"
             onClick={() => {
               if (!showForm) {
-                resetForm(formState.doctor);
+                resetForm(formState.doctorId);
               }
               setShowForm((prev) => !prev);
               setEditingId(null);
@@ -490,14 +507,14 @@ export default function AdminPage() {
                 <label htmlFor="doctor">Doctor</label>
                 <select
                   id="doctor"
-                  value={formState.doctor}
-                  onChange={(event) => handleFormChange('doctor', event.target.value)}
+                  value={formState.doctorId}
+                  onChange={(event) => handleFormChange('doctorId', event.target.value)}
                 >
                   <option value="" disabled>
                     Select a doctor
                   </option>
                   {doctorOptions.map((doctor) => (
-                    <option key={doctor.name} value={doctor.name}>
+                    <option key={doctor.id} value={doctor.id}>
                       {doctor.name} ({doctor.specialty})
                     </option>
                   ))}
@@ -573,14 +590,14 @@ export default function AdminPage() {
                 <label>Choose a time</label>
                 <span className="field-hint">9:00 AM - 4:00 PM, 30 min slots</span>
               </div>
-              {!formState.doctor && (
+              {!formState.doctorId && (
                 <p className="inline-hint">Select a doctor to see availability.</p>
               )}
               {formError && <p className="inline-hint error">{formError}</p>}
               <div className="time-grid">
                 {timeSlots.map((slot) => {
                   const isTaken = bookedTimes.includes(slot.value);
-                  const isDisabled = !formState.doctor || isTaken;
+                  const isDisabled = !formState.doctorId || isTaken;
 
                   return (
                     <button
@@ -670,7 +687,7 @@ export default function AdminPage() {
               >
                 <option value="">All doctors</option>
                 {doctorOptions.map((doctor) => (
-                  <option key={doctor.name} value={doctor.name}>
+                  <option key={doctor.id} value={doctor.id}>
                     {doctor.name}
                   </option>
                 ))}
@@ -696,79 +713,90 @@ export default function AdminPage() {
             <span>Contact</span>
             <span>Actions</span>
           </div>
-          {filteredAppointments.length === 0 && (
+          {loading && (
+            <div className="table-row empty">
+              <p className="row-title">Loading appointments...</p>
+            </div>
+          )}
+          {!loading && loadError && (
+            <div className="table-row empty">
+              <p className="row-title">{loadError}</p>
+            </div>
+          )}
+          {!loading && !loadError && filteredAppointments.length === 0 && (
             <div className="table-row empty">
               <p className="row-title">No appointments match the filters.</p>
             </div>
           )}
-          {filteredAppointments.map((appointment) => (
-            <div
-              key={appointment.id}
-              className={`table-row${appointment.highlight ? ' highlight' : ''}`}
-            >
-              <div>
-                <p className="row-title">
-                  {appointment.patient}
-                  {appointment.status === 'Completed' && (
-                    <span className="badge">Completed</span>
-                  )}
-                </p>
-                <p className="row-subtitle">{appointment.reason}</p>
+          {!loading && !loadError &&
+            filteredAppointments.map((appointment) => (
+              <div
+                key={appointment.id}
+                className={`table-row${appointment.completed ? ' completed' : ''}`}
+              >
+                <div>
+                  <p className="row-title">
+                    {appointment.patient}
+                    {appointment.completed && (
+                      <span className="badge">Completed</span>
+                    )}
+                  </p>
+                  <p className="row-subtitle">{appointment.reason}</p>
+                </div>
+                <div>
+                  <p className="row-title">{appointment.doctor}</p>
+                  <p className="row-subtitle">{appointment.specialty}</p>
+                </div>
+                <div>
+                  <p className="row-title">
+                    {formatDisplayDate(appointment.dateKey)}
+                  </p>
+                  <p className="row-subtitle">{appointment.time}</p>
+                </div>
+                <div>
+                  <p className="row-title">{appointment.email || '—'}</p>
+                  <p className="row-subtitle">{appointment.phone || '—'}</p>
+                </div>
+                <div className="actions-grid">
+                  <button
+                    type="button"
+                    className="icon-pill"
+                    aria-label="Toggle completed"
+                    onClick={() => handleToggleCompleted(appointment)}
+                  >
+                    <img src="/icons/check.svg" alt="" />
+                    {appointment.completed ? 'Undo' : 'Done'}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-pill"
+                    aria-label="Send email"
+                    onClick={() => handleEmail(appointment)}
+                  >
+                    <img src="/icons/mail.svg" alt="" />
+                    Email
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-pill"
+                    aria-label="Edit appointment"
+                    onClick={() => handleEdit(appointment)}
+                  >
+                    <img src="/icons/edit.svg" alt="" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-pill danger"
+                    aria-label="Delete appointment"
+                    onClick={() => handleDelete(appointment)}
+                  >
+                    <img src="/icons/trash.svg" alt="" />
+                    Del
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="row-title">{appointment.doctor}</p>
-                <p className="row-subtitle">{appointment.specialty}</p>
-              </div>
-              <div>
-                <p className="row-title">
-                  {formatDisplayDate(appointment.dateKey)}
-                </p>
-                <p className="row-subtitle">{appointment.time}</p>
-              </div>
-              <div>
-                <p className="row-title">{appointment.email || '—'}</p>
-                <p className="row-subtitle">{appointment.phone || '—'}</p>
-              </div>
-              <div className="actions-grid">
-                <button
-                  type="button"
-                  className="icon-pill"
-                  aria-label="Mark completed"
-                  onClick={() => handleToggleCompleted(appointment.id)}
-                >
-                  <img src="/icons/check.svg" alt="" />
-                  Done
-                </button>
-                <button
-                  type="button"
-                  className="icon-pill"
-                  aria-label="Send email"
-                  onClick={() => handleEmail(appointment)}
-                >
-                  <img src="/icons/mail.svg" alt="" />
-                  Email
-                </button>
-                <button
-                  type="button"
-                  className="icon-pill"
-                  aria-label="Edit appointment"
-                  onClick={() => handleEdit(appointment)}
-                >
-                  <img src="/icons/edit.svg" alt="" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="icon-pill danger"
-                  aria-label="Delete appointment"
-                  onClick={() => handleDelete(appointment.id)}
-                >
-                  <img src="/icons/trash.svg" alt="" />
-                  Del
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       </section>
     </main>
