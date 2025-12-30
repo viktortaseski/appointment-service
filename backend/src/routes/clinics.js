@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, created_at FROM clinics ORDER BY name'
+      'SELECT id, name, domain, logo, phone, email, address, is_disabled, created_at FROM clinics ORDER BY name'
     );
     return res.json({ clinics: result.rows });
   } catch (error) {
@@ -18,7 +18,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, created_at FROM clinics WHERE id = $1',
+      'SELECT id, name, domain, logo, phone, email, address, is_disabled, created_at FROM clinics WHERE id = $1',
       [req.params.id]
     );
 
@@ -33,7 +33,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-  const { name, domain, logo, phone, email, address } = req.body;
+  const { name, domain, logo, phone, email, address, is_disabled: isDisabled } = req.body;
 
   if (!name || !domain) {
     return res.status(400).json({
@@ -43,10 +43,18 @@ router.post('/', async (req, res, next) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO clinics (name, domain, logo, phone, email, address)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, domain, logo, phone, email, address, created_at`,
-      [name, domain, logo || null, phone || null, email || null, address || null]
+      `INSERT INTO clinics (name, domain, logo, phone, email, address, is_disabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, domain, logo, phone, email, address, is_disabled, created_at`,
+      [
+        name,
+        domain,
+        logo || null,
+        phone || null,
+        email || null,
+        address || null,
+        typeof isDisabled === 'boolean' ? isDisabled : false,
+      ]
     );
 
     return res.status(201).json({ clinic: result.rows[0] });

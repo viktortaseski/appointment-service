@@ -6,9 +6,11 @@ const cors = require('cors');
 const clinicResolver = require('./clinic-resolver');
 const authMiddleware = require('./auth-middleware');
 const authRouter = require('./routes/auth');
+const clinicSettingsRouter = require('./routes/clinic-settings');
 const clinicsRouter = require('./routes/clinics');
 const doctorsRouter = require('./routes/doctors');
 const appointmentsRouter = require('./routes/appointments');
+const availabilityRouter = require('./routes/availability');
 const uploadsRouter = require('./routes/uploads');
 
 const app = express();
@@ -49,9 +51,11 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/auth', clinicResolver, authRouter);
+app.use('/clinic', clinicResolver, authMiddleware, clinicSettingsRouter);
 app.use('/clinics', clinicsRouter);
 app.use('/doctors', clinicResolver, doctorsRouter);
 app.use('/appointments', clinicResolver, appointmentsRouter);
+app.use('/availability', clinicResolver, availabilityRouter);
 app.use('/uploads', clinicResolver, authMiddleware, uploadsRouter);
 
 app.use((err, req, res, next) => {

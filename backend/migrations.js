@@ -14,6 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =========================================================
 DROP VIEW IF EXISTS appointments_with_doctors;
 DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS doctor_unavailability CASCADE;
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS clinics CASCADE;
 
@@ -28,6 +29,7 @@ CREATE TABLE clinics (
   phone VARCHAR(50),
   email VARCHAR(255),
   address TEXT,
+  is_disabled BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,6 +39,7 @@ COMMENT ON COLUMN clinics.logo IS 'Public logo image URL';
 COMMENT ON COLUMN clinics.phone IS 'Primary clinic phone number';
 COMMENT ON COLUMN clinics.email IS 'Primary clinic email';
 COMMENT ON COLUMN clinics.address IS 'Clinic address';
+COMMENT ON COLUMN clinics.is_disabled IS 'Disable online appointments';
 
 -- =========================================================
 -- DOCTORS TABLE
@@ -57,6 +60,22 @@ CREATE TABLE doctors (
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
+
+-- =========================================================
+-- DOCTOR UNAVAILABILITY
+-- =========================================================
+CREATE TABLE doctor_unavailability (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+  doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  start_time TIME,
+  end_time TIME,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE doctor_unavailability IS 'Doctor unavailable ranges and time blocks';
 
 -- =========================================================
 -- APPOINTMENTS TABLE
@@ -86,6 +105,9 @@ COMMENT ON COLUMN appointments.completed IS 'Indicates if appointment was attend
 -- INDEXES
 -- =========================================================
 CREATE INDEX idx_doctors_clinic_id ON doctors(clinic_id);
+CREATE INDEX idx_unavailability_clinic_id ON doctor_unavailability(clinic_id);
+CREATE INDEX idx_unavailability_doctor_id ON doctor_unavailability(doctor_id);
+CREATE INDEX idx_unavailability_start_date ON doctor_unavailability(start_date);
 
 CREATE INDEX idx_appointments_clinic_id ON appointments(clinic_id);
 CREATE INDEX idx_appointments_doctor_id ON appointments(doctor_id);

@@ -1,3 +1,5 @@
+'use client';
+
 import LanguageSwitcher from './LanguageSwitcher';
 import { useI18n } from './I18nProvider';
 

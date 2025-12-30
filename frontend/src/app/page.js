@@ -217,23 +217,34 @@ export default function Home() {
 
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {
     const clinicDomain = getClinicDomain();
-    const response = await fetch(
-      `${API_BASE}/appointments?date=${dateKey}&doctorId=${doctorId}`,
-      {
+    const [appointmentsResponse, unavailableResponse] = await Promise.all([
+      fetch(`${API_BASE}/appointments?date=${dateKey}&doctorId=${doctorId}`, {
         headers: {
           'x-clinic-domain': clinicDomain,
         },
-      }
-    );
+      }),
+      fetch(`${API_BASE}/availability?date=${dateKey}&doctorId=${doctorId}`, {
+        headers: {
+          'x-clinic-domain': clinicDomain,
+        },
+      }),
+    ]);
 
-    if (!response.ok) {
-      throw new Error(t('request_failed', { status: response.status }));
+    if (!appointmentsResponse.ok) {
+      throw new Error(t('request_failed', { status: appointmentsResponse.status }));
     }
 
-    const data = await response.json();
-    return (data.appointments || [])
+    if (!unavailableResponse.ok) {
+      throw new Error(t('request_failed', { status: unavailableResponse.status }));
+    }
+
+    const appointmentsData = await appointmentsResponse.json();
+    const unavailableData = await unavailableResponse.json();
+    const booked = (appointmentsData.appointments || [])
       .map((appointment) => appointment.time)
       .filter(Boolean);
+    const unavailable = unavailableData.unavailableTimes || [];
+    return Array.from(new Set([...booked, ...unavailable]));
   }, [t]);
 
   useEffect(() => {
@@ -426,6 +437,22 @@ export default function Home() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (clinic?.is_disabled) {
+    return (
+      <main className="page">
+        <Topbar clinic={clinic} />
+        <section className="hero">
+          <div className="card clinic-status">
+            <p className="status-title">{t('clinic_unavailable_title')}</p>
+            <p className="status-copy">{t('clinic_unavailable_detail')}</p>
+            <p className="status-copy muted">{t('clinic_unavailable_contact')}</p>
+          </div>
+        </section>
+        <SiteFooter clinic={clinic} />
+      </main>
+    );
   }
 
   return (

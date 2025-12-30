@@ -115,6 +115,8 @@ export default function AdminPage() {
   const [appointments, setAppointments] = useState([]);
   const [clinicName, setClinicName] = useState('');
   const [clinicLogo, setClinicLogo] = useState('');
+  const [clinicDisabled, setClinicDisabled] = useState(false);
+  const [clinicStatus, setClinicStatus] = useState({ status: '', error: '' });
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -130,6 +132,23 @@ export default function AdminPage() {
     preview: '',
     status: '',
     error: '',
+  });
+  const [availabilityRecords, setAvailabilityRecords] = useState([]);
+  const [availabilityForm, setAvailabilityForm] = useState({
+    doctorId: '',
+    startDate: '',
+    endDate: '',
+    startTime: '',
+    endTime: '',
+  });
+  const [availabilityStatus, setAvailabilityStatus] = useState({
+    status: '',
+    error: '',
+  });
+  const [blockedTimes, setBlockedTimes] = useState({
+    loading: false,
+    error: '',
+    times: [],
   });
   const [scopeFilter, setScopeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -302,6 +321,7 @@ export default function AdminPage() {
         const resolvedClinic = appointmentsData.clinic || doctorsData.clinic || null;
         setClinicName(resolvedClinic?.name || '');
         setClinicLogo(resolvedClinic?.logo || '');
+        setClinicDisabled(Boolean(resolvedClinic?.is_disabled));
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
         setDoctors(doctorsData.doctors || []);
         setLoading(false);
@@ -321,6 +341,66 @@ export default function AdminPage() {
       setFormState((prev) => ({ ...prev, time: '' }));
     }
   }, [bookedTimes, formState.time]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!showForm || !formState.doctorId || !formState.date) {
+      setBlockedTimes({ loading: false, error: '', times: [] });
+      return () => {
+        isActive = false;
+      };
+    }
+
+    async function loadBlockedTimes() {
+      setBlockedTimes({ loading: true, error: '', times: [] });
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/availability?date=${formState.date}&doctorId=${formState.doctorId}`,
+          {
+            headers: {
+              'x-clinic-domain': getClinicDomain(),
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || t('availability_error'));
+        }
+
+        if (isActive) {
+          setBlockedTimes({
+            loading: false,
+            error: '',
+            times: data.unavailableTimes || [],
+          });
+        }
+      } catch (error) {
+        if (isActive) {
+          setBlockedTimes({
+            loading: false,
+            error: error?.message || t('availability_error'),
+            times: [],
+          });
+        }
+      }
+    }
+
+    loadBlockedTimes();
+
+    return () => {
+      isActive = false;
+    };
+  }, [formState.date, formState.doctorId, showForm, t]);
+
+  useEffect(() => {
+    if (authToken) {
+      loadAvailabilityRecords();
+    }
+  }, [authToken, t]);
 
   function resetForm(doctorId) {
     setMonthCursor(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -349,7 +429,7 @@ export default function AdminPage() {
       return;
     }
 
-    if (bookedTimes.includes(formState.time)) {
+    if (bookedTimes.includes(formState.time) || blockedTimes.times.includes(formState.time)) {
       setFormError(t('admin_time_taken'));
       return;
     }
@@ -528,6 +608,8 @@ export default function AdminPage() {
     setAppointments([]);
     setDoctors([]);
     setClinicLogo('');
+    setClinicDisabled(false);
+    setAvailabilityRecords([]);
   }
 
   async function handleAvatarUpload(event) {
@@ -626,6 +708,149 @@ export default function AdminPage() {
         ...prev,
         error: error?.message || t('admin_logo_error'),
       }));
+    }
+  }
+
+  async function loadAvailabilityRecords() {
+    try {
+      const response = await fetch(`${API_BASE}/availability/records`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-clinic-domain': getClinicDomain(),
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_availability_error'));
+      }
+
+      setAvailabilityRecords(data.records || []);
+    } catch (error) {
+      setAvailabilityStatus((prev) => ({
+        ...prev,
+        error: error?.message || t('admin_availability_error'),
+      }));
+    }
+  }
+
+  async function handleAvailabilitySubmit(event) {
+    event.preventDefault();
+    setAvailabilityStatus({ status: '', error: '' });
+
+    if (!availabilityForm.doctorId || !availabilityForm.startDate || !availabilityForm.endDate) {
+      setAvailabilityStatus({ status: '', error: t('admin_availability_required') });
+      return;
+    }
+
+    if ((availabilityForm.startTime && !availabilityForm.endTime)
+      || (!availabilityForm.startTime && availabilityForm.endTime)) {
+      setAvailabilityStatus({ status: '', error: t('admin_availability_time_required') });
+      return;
+    }
+
+    if (
+      availabilityForm.startTime &&
+      availabilityForm.startDate !== availabilityForm.endDate
+    ) {
+      setAvailabilityStatus({ status: '', error: t('admin_availability_time_date_match') });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/availability/records`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({
+          doctor_id: availabilityForm.doctorId,
+          start_date: availabilityForm.startDate,
+          end_date: availabilityForm.endDate,
+          start_time: availabilityForm.startTime || null,
+          end_time: availabilityForm.endTime || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_availability_error'));
+      }
+
+      setAvailabilityForm({
+        doctorId: availabilityForm.doctorId,
+        startDate: '',
+        endDate: '',
+        startTime: '',
+        endTime: '',
+      });
+      setAvailabilityStatus({ status: t('admin_availability_success'), error: '' });
+      await loadAvailabilityRecords();
+    } catch (error) {
+      setAvailabilityStatus({ status: '', error: error?.message || t('admin_availability_error') });
+    }
+  }
+
+  async function handleAvailabilityDelete(recordId) {
+    if (!window.confirm(t('admin_availability_delete_confirm'))) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/availability/records/${recordId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-clinic-domain': getClinicDomain(),
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_availability_delete_error'));
+      }
+
+      setAvailabilityRecords((prev) =>
+        prev.filter((record) => record.id !== recordId)
+      );
+    } catch (error) {
+      setAvailabilityStatus((prev) => ({
+        ...prev,
+        error: error?.message || t('admin_availability_delete_error'),
+      }));
+    }
+  }
+
+  async function handleClinicStatusChange(nextValue) {
+    setClinicStatus({ status: '', error: '' });
+
+    try {
+      const response = await fetch(`${API_BASE}/clinic`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({ is_disabled: nextValue }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_clinic_status_error'));
+      }
+
+      setClinicDisabled(Boolean(data.clinic?.is_disabled));
+      setClinicStatus({ status: t('admin_clinic_status_success'), error: '' });
+    } catch (error) {
+      setClinicStatus({ status: '', error: error?.message || t('admin_clinic_status_error') });
+      setClinicDisabled((prev) => prev);
     }
   }
 
@@ -888,11 +1113,18 @@ export default function AdminPage() {
                   {!formState.doctorId && (
                     <p className="inline-hint">{t('admin_select_doctor_hint')}</p>
                   )}
+                  {blockedTimes.loading && formState.doctorId && (
+                    <p className="inline-hint">{t('loading_times')}</p>
+                  )}
+                  {blockedTimes.error && (
+                    <p className="inline-hint error">{blockedTimes.error}</p>
+                  )}
                   {formError && <p className="inline-hint error">{formError}</p>}
                   <div className="time-grid">
                     {timeSlots.map((slot) => {
                       const isTaken = bookedTimes.includes(slot.value);
-                      const isDisabled = !formState.doctorId || isTaken;
+                      const isBlocked = blockedTimes.times.includes(slot.value);
+                      const isDisabled = !formState.doctorId || isTaken || isBlocked;
 
                       return (
                         <button
@@ -900,7 +1132,7 @@ export default function AdminPage() {
                           key={slot.value}
                           className={`slot-button time-slot${
                             formState.time === slot.value ? ' selected' : ''
-                          }${isTaken ? ' taken' : ''}`}
+                          }${isTaken || isBlocked ? ' taken' : ''}`}
                           onClick={() => handleFormChange('time', slot.value)}
                           disabled={isDisabled}
                         >
@@ -1108,6 +1340,192 @@ export default function AdminPage() {
               <p className="eyebrow">{t('admin_settings_title')}</p>
               <h2>{t('admin_settings_subtitle')}</h2>
             </div>
+          </div>
+
+          <div className="card clinic-status-card">
+            <div className="upload-header">
+              <div>
+                <p className="row-title">{t('admin_clinic_status_title')}</p>
+                <p className="row-subtitle">{t('admin_clinic_status_subtitle')}</p>
+              </div>
+              <label className="clinic-toggle">
+                <input
+                  type="checkbox"
+                  checked={clinicDisabled}
+                  onChange={(event) => handleClinicStatusChange(event.target.checked)}
+                />
+                <span>{t('admin_clinic_disable_label')}</span>
+              </label>
+            </div>
+            {clinicStatus.status && <p className="status success">{clinicStatus.status}</p>}
+            {clinicStatus.error && <p className="status error">{clinicStatus.error}</p>}
+          </div>
+
+          <div className="card availability-card">
+            <div className="upload-header">
+              <div>
+                <p className="row-title">{t('admin_availability_title')}</p>
+                <p className="row-subtitle">{t('admin_availability_subtitle')}</p>
+              </div>
+            </div>
+            <form className="availability-form" onSubmit={handleAvailabilitySubmit}>
+              <div className="filter-grid">
+                <div className="field">
+                  <label htmlFor="availabilityDoctor">{t('admin_doctor_label')}</label>
+                  <select
+                    id="availabilityDoctor"
+                    value={availabilityForm.doctorId}
+                    onChange={(event) =>
+                      setAvailabilityForm((prev) => ({
+                        ...prev,
+                        doctorId: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">{t('admin_select_doctor')}</option>
+                    {doctorOptions.map((doctor) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {doctor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="availabilityStartDate">
+                    {t('admin_availability_start_date')}
+                  </label>
+                  <input
+                    id="availabilityStartDate"
+                    type="date"
+                    value={availabilityForm.startDate}
+                    onChange={(event) =>
+                      setAvailabilityForm((prev) => ({
+                        ...prev,
+                        startDate: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="availabilityEndDate">
+                    {t('admin_availability_end_date')}
+                  </label>
+                  <input
+                    id="availabilityEndDate"
+                    type="date"
+                    value={availabilityForm.endDate}
+                    onChange={(event) =>
+                      setAvailabilityForm((prev) => ({
+                        ...prev,
+                        endDate: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="filter-grid">
+                <div className="field">
+                  <label htmlFor="availabilityStartTime">
+                    {t('admin_availability_start_time')}
+                  </label>
+                  <input
+                    id="availabilityStartTime"
+                    type="time"
+                    value={availabilityForm.startTime}
+                    onChange={(event) =>
+                      setAvailabilityForm((prev) => ({
+                        ...prev,
+                        startTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="availabilityEndTime">
+                    {t('admin_availability_end_time')}
+                  </label>
+                  <input
+                    id="availabilityEndTime"
+                    type="time"
+                    value={availabilityForm.endTime}
+                    onChange={(event) =>
+                      setAvailabilityForm((prev) => ({
+                        ...prev,
+                        endTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <p className="inline-hint">{t('admin_availability_hint')}</p>
+              <button type="submit" className="cta">
+                {t('admin_availability_add')}
+              </button>
+              {availabilityStatus.status && (
+                <p className="status success">{availabilityStatus.status}</p>
+              )}
+              {availabilityStatus.error && (
+                <p className="status error">{availabilityStatus.error}</p>
+              )}
+            </form>
+            {availabilityRecords.length > 0 && (
+              <div className="availability-list">
+                {availabilityRecords.map((record) => {
+                  const startDate = record.start_date
+                    ? new Date(record.start_date)
+                    : null;
+                  const endDate = record.end_date
+                    ? new Date(record.end_date)
+                    : null;
+                  const dateLabel = startDate && endDate
+                    ? startDate.toLocaleDateString(localeTag, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    }) === endDate.toLocaleDateString(localeTag, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                      ? startDate.toLocaleDateString(localeTag, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                      : `${startDate.toLocaleDateString(localeTag, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })} - ${endDate.toLocaleDateString(localeTag, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}`
+                    : '';
+                  const timeLabel = record.start_time && record.end_time
+                    ? `${record.start_time.slice(0, 5)} - ${record.end_time.slice(0, 5)}`
+                    : t('admin_availability_all_day');
+
+                  return (
+                    <div key={record.id} className="availability-item">
+                      <div>
+                        <p className="row-title">{record.doctor_name || t('doctor_label')}</p>
+                        <p className="row-subtitle">
+                          {dateLabel}{dateLabel ? ' · ' : ''}{timeLabel}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => handleAvailabilityDelete(record.id)}
+                      >
+                        {t('admin_availability_remove')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="card upload-card">

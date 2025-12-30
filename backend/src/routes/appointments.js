@@ -2,6 +2,7 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 
 const pool = require('../db');
+const { computeBlockedTimes } = require('../utils/availability');
 
 const router = express.Router();
 
@@ -133,9 +134,23 @@ router.get('/', async (req, res, next) => {
 
   try {
     const result = await pool.query(query, values);
+    let unavailableTimes = [];
+
+    if (doctorId && date) {
+      const unavailableResult = await pool.query(
+        `SELECT start_date, end_date, start_time, end_time
+         FROM doctor_unavailability
+         WHERE clinic_id = $1 AND doctor_id = $2`,
+        [req.clinic.id, doctorId]
+      );
+
+      unavailableTimes = computeBlockedTimes(date, unavailableResult.rows);
+    }
+
     return res.json({
       clinic: req.clinic,
       appointments: result.rows,
+      unavailableTimes,
     });
   } catch (error) {
     return next(error);
@@ -177,6 +192,12 @@ router.post('/', async (req, res, next) => {
   }
 
   try {
+    if (req.clinic.is_disabled) {
+      return res.status(403).json({
+        error: 'Clinic is not accepting appointments.',
+      });
+    }
+
     const doctorCheck = await pool.query(
       'SELECT id FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, req.clinic.id]
@@ -185,6 +206,22 @@ router.post('/', async (req, res, next) => {
     if (doctorCheck.rowCount === 0) {
       return res.status(400).json({
         error: 'Doctor does not belong to this clinic.',
+      });
+    }
+
+    const availabilityResult = await pool.query(
+      `SELECT start_date, end_date, start_time, end_time
+       FROM doctor_unavailability
+       WHERE clinic_id = $1 AND doctor_id = $2`,
+      [req.clinic.id, doctorId]
+    );
+
+    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows);
+    const normalizedTime = String(time).slice(0, 5);
+
+    if (blockedTimes.includes(normalizedTime)) {
+      return res.status(409).json({
+        error: 'Selected time is unavailable for this doctor.',
       });
     }
 
@@ -276,6 +313,12 @@ router.put('/:id', async (req, res, next) => {
   }
 
   try {
+    if (req.clinic.is_disabled) {
+      return res.status(403).json({
+        error: 'Clinic is not accepting appointments.',
+      });
+    }
+
     const doctorCheck = await pool.query(
       'SELECT id FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, req.clinic.id]
@@ -284,6 +327,22 @@ router.put('/:id', async (req, res, next) => {
     if (doctorCheck.rowCount === 0) {
       return res.status(400).json({
         error: 'Doctor does not belong to this clinic.',
+      });
+    }
+
+    const availabilityResult = await pool.query(
+      `SELECT start_date, end_date, start_time, end_time
+       FROM doctor_unavailability
+       WHERE clinic_id = $1 AND doctor_id = $2`,
+      [req.clinic.id, doctorId]
+    );
+
+    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows);
+    const normalizedTime = String(time).slice(0, 5);
+
+    if (blockedTimes.includes(normalizedTime)) {
+      return res.status(409).json({
+        error: 'Selected time is unavailable for this doctor.',
       });
     }
 
