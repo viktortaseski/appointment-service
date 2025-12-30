@@ -2,7 +2,11 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 
 const pool = require('../db');
-const { computeBlockedTimes } = require('../utils/availability');
+const {
+  buildTimeSlotsFromClinic,
+  computeBlockedTimes,
+  normalizeTime,
+} = require('../utils/availability');
 
 const router = express.Router();
 
@@ -144,7 +148,8 @@ router.get('/', async (req, res, next) => {
         [req.clinic.id, doctorId]
       );
 
-      unavailableTimes = computeBlockedTimes(date, unavailableResult.rows);
+      const slots = buildTimeSlotsFromClinic(req.clinic);
+      unavailableTimes = computeBlockedTimes(date, unavailableResult.rows, slots);
     }
 
     return res.json({
@@ -209,6 +214,15 @@ router.post('/', async (req, res, next) => {
       });
     }
 
+    const normalizedTime = normalizeTime(time);
+    const allowedTimes = buildTimeSlotsFromClinic(req.clinic);
+
+    if (!normalizedTime || !allowedTimes.includes(normalizedTime)) {
+      return res.status(400).json({
+        error: 'Selected time is outside clinic hours.',
+      });
+    }
+
     const availabilityResult = await pool.query(
       `SELECT start_date, end_date, start_time, end_time
        FROM doctor_unavailability
@@ -216,8 +230,7 @@ router.post('/', async (req, res, next) => {
       [req.clinic.id, doctorId]
     );
 
-    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows);
-    const normalizedTime = String(time).slice(0, 5);
+    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows, allowedTimes);
 
     if (blockedTimes.includes(normalizedTime)) {
       return res.status(409).json({
@@ -330,6 +343,15 @@ router.put('/:id', async (req, res, next) => {
       });
     }
 
+    const normalizedTime = normalizeTime(time);
+    const allowedTimes = buildTimeSlotsFromClinic(req.clinic);
+
+    if (!normalizedTime || !allowedTimes.includes(normalizedTime)) {
+      return res.status(400).json({
+        error: 'Selected time is outside clinic hours.',
+      });
+    }
+
     const availabilityResult = await pool.query(
       `SELECT start_date, end_date, start_time, end_time
        FROM doctor_unavailability
@@ -337,8 +359,7 @@ router.put('/:id', async (req, res, next) => {
       [req.clinic.id, doctorId]
     );
 
-    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows);
-    const normalizedTime = String(time).slice(0, 5);
+    const blockedTimes = computeBlockedTimes(date, availabilityResult.rows, allowedTimes);
 
     if (blockedTimes.includes(normalizedTime)) {
       return res.status(409).json({

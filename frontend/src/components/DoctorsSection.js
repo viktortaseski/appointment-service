@@ -15,7 +15,13 @@ function getInitials(name) {
     .join('');
 }
 
-export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }) {
+export default function DoctorsSection({
+  clinic,
+  doctors,
+  status,
+  onBookDoctor,
+  availabilityLabel,
+}) {
   const { t } = useI18n();
   const clinicName = clinic?.name || t('brand_title_fallback');
 
@@ -64,7 +70,9 @@ export default function DoctorsSection({ clinic, doctors, status, onBookDoctor }
               </div>
               <div>
                 <p className="doctor-clinic">{clinicName}</p>
-                <p className="doctor-availability">{t('availability_label')}</p>
+                <p className="doctor-availability">
+                  {availabilityLabel || t('availability_label')}
+                </p>
               </div>
               <button
                 type="button"

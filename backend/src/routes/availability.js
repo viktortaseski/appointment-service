@@ -2,7 +2,11 @@ const express = require('express');
 
 const authMiddleware = require('../auth-middleware');
 const pool = require('../db');
-const { computeBlockedTimes, normalizeDateKey } = require('../utils/availability');
+const {
+  buildTimeSlotsFromClinic,
+  computeBlockedTimes,
+  normalizeDateKey,
+} = require('../utils/availability');
 
 const router = express.Router();
 
@@ -22,7 +26,8 @@ router.get('/', async (req, res, next) => {
       [req.clinic.id, doctorId]
     );
 
-    const unavailableTimes = computeBlockedTimes(dateKey, result.rows);
+    const slots = buildTimeSlotsFromClinic(req.clinic);
+    const unavailableTimes = computeBlockedTimes(dateKey, result.rows, slots);
 
     return res.json({
       clinic: req.clinic,

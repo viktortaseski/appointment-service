@@ -22,6 +22,27 @@ function formatDisplayDate(dateKey, localeTag) {
   });
 }
 
+function formatTimeDisplay(value, localeTag) {
+  if (!value) {
+    return '';
+  }
+
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  const hours = Number(hour);
+  const minutes = Number(minute || 0);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return normalized.slice(0, 5);
+  }
+
+  const date = new Date(Date.UTC(1970, 0, 1, hours, minutes));
+  return date.toLocaleTimeString(localeTag || 'en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function normalizeTime(value) {
   if (!value) {
     return '';
@@ -73,12 +94,34 @@ function buildMonthGrid(cursor) {
   return slots;
 }
 
-function buildTimeSlots(startHour, endHour, intervalMinutes) {
-  const slots = [];
-  const startMinutes = startHour * 60;
-  const endMinutes = endHour * 60;
+function parseTimeToMinutes(value) {
+  if (!value) {
+    return null;
+  }
 
-  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  const hours = Number(hour);
+  const minutes = Number(minute || 0);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function buildTimeSlots(startTime, endTime, intervalMinutes) {
+  const slots = [];
+  const startMinutes = parseTimeToMinutes(startTime) ?? 9 * 60;
+  const endMinutes = parseTimeToMinutes(endTime) ?? 16 * 60;
+  const interval = Number(intervalMinutes) || 30;
+
+  if (interval <= 0) {
+    return slots;
+  }
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += interval) {
     const hour = Math.floor(minutes / 60);
     const minute = minutes % 60;
     const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -117,6 +160,12 @@ export default function AdminPage() {
   const [clinicLogo, setClinicLogo] = useState('');
   const [clinicDisabled, setClinicDisabled] = useState(false);
   const [clinicStatus, setClinicStatus] = useState({ status: '', error: '' });
+  const [clinicSchedule, setClinicSchedule] = useState({
+    opensAt: '09:00',
+    closesAt: '16:00',
+    slotMinutes: 30,
+  });
+  const [scheduleStatus, setScheduleStatus] = useState({ status: '', error: '' });
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -170,7 +219,22 @@ export default function AdminPage() {
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
-  const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
+  const timeSlots = useMemo(
+    () =>
+      buildTimeSlots(
+        clinicSchedule.opensAt,
+        clinicSchedule.closesAt,
+        clinicSchedule.slotMinutes
+      ),
+    [clinicSchedule]
+  );
+  const scheduleStartLabel = formatTimeDisplay(clinicSchedule.opensAt, localeTag);
+  const scheduleEndLabel = formatTimeDisplay(clinicSchedule.closesAt, localeTag);
+  const scheduleTimeHint = t('admin_time_hint', {
+    start: scheduleStartLabel,
+    end: scheduleEndLabel,
+    interval: clinicSchedule.slotMinutes || 30,
+  });
   const weekdayLabels = useMemo(
     () => [
       t('weekday_sun'),
@@ -322,6 +386,11 @@ export default function AdminPage() {
         setClinicName(resolvedClinic?.name || '');
         setClinicLogo(resolvedClinic?.logo || '');
         setClinicDisabled(Boolean(resolvedClinic?.is_disabled));
+        setClinicSchedule({
+          opensAt: resolvedClinic?.opens_at || '09:00',
+          closesAt: resolvedClinic?.closes_at || '16:00',
+          slotMinutes: resolvedClinic?.slot_minutes || 30,
+        });
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
         setDoctors(doctorsData.doctors || []);
         setLoading(false);
@@ -854,6 +923,61 @@ export default function AdminPage() {
     }
   }
 
+  async function handleScheduleSubmit(event) {
+    event.preventDefault();
+    setScheduleStatus({ status: '', error: '' });
+
+    const startMinutes = parseTimeToMinutes(clinicSchedule.opensAt);
+    const endMinutes = parseTimeToMinutes(clinicSchedule.closesAt);
+    const slotMinutes = Number(clinicSchedule.slotMinutes);
+
+    if (startMinutes === null || endMinutes === null || !clinicSchedule.slotMinutes) {
+      setScheduleStatus({ status: '', error: t('admin_schedule_required') });
+      return;
+    }
+
+    if (startMinutes > endMinutes) {
+      setScheduleStatus({ status: '', error: t('admin_schedule_invalid') });
+      return;
+    }
+
+    if (!Number.isInteger(slotMinutes) || slotMinutes <= 0) {
+      setScheduleStatus({ status: '', error: t('admin_schedule_slot_error') });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/clinic`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({
+          opens_at: clinicSchedule.opensAt,
+          closes_at: clinicSchedule.closesAt,
+          slot_minutes: slotMinutes,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_schedule_error'));
+      }
+
+      setClinicSchedule({
+        opensAt: data.clinic?.opens_at || clinicSchedule.opensAt,
+        closesAt: data.clinic?.closes_at || clinicSchedule.closesAt,
+        slotMinutes: data.clinic?.slot_minutes || slotMinutes,
+      });
+      setScheduleStatus({ status: t('admin_schedule_success'), error: '' });
+    } catch (error) {
+      setScheduleStatus({ status: '', error: error?.message || t('admin_schedule_error') });
+    }
+  }
+
   if (!authReady) {
     return (
       <main className="page admin-page">
@@ -1108,7 +1232,7 @@ export default function AdminPage() {
                 <div className="field">
                   <div className="field-heading">
                     <label>{t('admin_choose_time')}</label>
-                    <span className="field-hint">{t('admin_time_hint')}</span>
+                    <span className="field-hint">{scheduleTimeHint}</span>
                   </div>
                   {!formState.doctorId && (
                     <p className="inline-hint">{t('admin_select_doctor_hint')}</p>
@@ -1359,6 +1483,73 @@ export default function AdminPage() {
             </div>
             {clinicStatus.status && <p className="status success">{clinicStatus.status}</p>}
             {clinicStatus.error && <p className="status error">{clinicStatus.error}</p>}
+          </div>
+
+          <div className="card clinic-schedule-card">
+            <div className="upload-header">
+              <div>
+                <p className="row-title">{t('admin_schedule_title')}</p>
+                <p className="row-subtitle">{t('admin_schedule_subtitle')}</p>
+              </div>
+            </div>
+            <form className="availability-form" onSubmit={handleScheduleSubmit}>
+              <div className="filter-grid">
+                <div className="field">
+                  <label htmlFor="clinicOpen">{t('admin_schedule_open')}</label>
+                  <input
+                    id="clinicOpen"
+                    type="time"
+                    value={clinicSchedule.opensAt}
+                    onChange={(event) =>
+                      setClinicSchedule((prev) => ({
+                        ...prev,
+                        opensAt: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="clinicClose">{t('admin_schedule_close')}</label>
+                  <input
+                    id="clinicClose"
+                    type="time"
+                    value={clinicSchedule.closesAt}
+                    onChange={(event) =>
+                      setClinicSchedule((prev) => ({
+                        ...prev,
+                        closesAt: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="slotMinutes">{t('admin_schedule_slot')}</label>
+                  <input
+                    id="slotMinutes"
+                    type="number"
+                    min="5"
+                    step="5"
+                    value={clinicSchedule.slotMinutes}
+                    onChange={(event) =>
+                      setClinicSchedule((prev) => ({
+                        ...prev,
+                        slotMinutes: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <p className="inline-hint">{scheduleTimeHint}</p>
+              <button type="submit" className="cta">
+                {t('admin_schedule_save')}
+              </button>
+              {scheduleStatus.status && (
+                <p className="status success">{scheduleStatus.status}</p>
+              )}
+              {scheduleStatus.error && (
+                <p className="status error">{scheduleStatus.error}</p>
+              )}
+            </form>
           </div>
 
           <div className="card availability-card">

@@ -31,6 +31,7 @@ export default function BookingForm({
   selectedDoctor,
   onSelectDoctor,
   timeSlots,
+  timeHint,
   selectedTime,
   onSelectTime,
   availability,
@@ -148,7 +149,7 @@ export default function BookingForm({
       <div className="field" style={{ margin: "20px 0px" }}>
         <div className="field-heading">
           <label>{t('choose_time_label')}</label>
-          <span className="field-hint">{t('time_hint')}</span>
+          <span className="field-hint">{timeHint || t('time_hint')}</span>
         </div>
         {!selectedDoctor && (
           <p className="inline-hint">{t('select_doctor_hint')}</p>

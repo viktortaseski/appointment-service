@@ -27,7 +27,7 @@ module.exports = async function clinicResolver(req, res, next) {
 
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, is_disabled, created_at FROM clinics WHERE domain = $1 LIMIT 1',
+      'SELECT id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, created_at FROM clinics WHERE domain = $1 LIMIT 1',
       [hostname]
     );
 

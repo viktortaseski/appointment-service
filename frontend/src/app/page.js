@@ -40,12 +40,34 @@ function buildMonthGrid(cursor) {
   return slots;
 }
 
-function buildTimeSlots(startHour, endHour, intervalMinutes) {
-  const slots = [];
-  const startMinutes = startHour * 60;
-  const endMinutes = endHour * 60;
+function parseTimeToMinutes(value) {
+  if (!value) {
+    return null;
+  }
 
-  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  const hours = Number(hour);
+  const minutes = Number(minute || 0);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function buildTimeSlots(startTime, endTime, intervalMinutes) {
+  const slots = [];
+  const startMinutes = parseTimeToMinutes(startTime) ?? 9 * 60;
+  const endMinutes = parseTimeToMinutes(endTime) ?? 16 * 60;
+  const interval = Number(intervalMinutes) || 30;
+
+  if (interval <= 0) {
+    return slots;
+  }
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += interval) {
     const hour = Math.floor(minutes / 60);
     const minute = minutes % 60;
     const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -76,6 +98,27 @@ function formatDisplayDate(dateKey, localeTag) {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+  });
+}
+
+function formatTimeDisplay(value, localeTag) {
+  if (!value) {
+    return '';
+  }
+
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  const hours = Number(hour);
+  const minutes = Number(minute || 0);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return normalized.slice(0, 5);
+  }
+
+  const date = new Date(Date.UTC(1970, 0, 1, hours, minutes));
+  return date.toLocaleTimeString(localeTag || 'en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
@@ -137,7 +180,24 @@ export default function Home() {
       }),
     [monthCursor, localeTag]
   );
-  const timeSlots = useMemo(() => buildTimeSlots(9, 16, 30), []);
+  const timeSlots = useMemo(
+    () => buildTimeSlots(clinic?.opens_at, clinic?.closes_at, clinic?.slot_minutes),
+    [clinic?.opens_at, clinic?.closes_at, clinic?.slot_minutes]
+  );
+  const scheduleStart = clinic?.opens_at || '09:00';
+  const scheduleEnd = clinic?.closes_at || '16:00';
+  const scheduleInterval = clinic?.slot_minutes || 30;
+  const scheduleStartLabel = formatTimeDisplay(scheduleStart, localeTag);
+  const scheduleEndLabel = formatTimeDisplay(scheduleEnd, localeTag);
+  const scheduleTimeHint = t('time_hint', {
+    start: scheduleStartLabel,
+    end: scheduleEndLabel,
+    interval: scheduleInterval,
+  });
+  const availabilityLabel = t('availability_label', {
+    start: scheduleStartLabel,
+    end: scheduleEndLabel,
+  });
   const normalizedTakenTimes = useMemo(
     () => availability.takenTimes.map(normalizeTime).filter(Boolean),
     [availability.takenTimes]
@@ -570,6 +630,7 @@ export default function Home() {
             }
           }}
           timeSlots={timeSlots}
+          timeHint={scheduleTimeHint}
           selectedTime={selectedTime}
           onSelectTime={(time) => {
             setSelectedTime(time);
@@ -591,6 +652,7 @@ export default function Home() {
         doctors={doctors}
         status={status}
         onBookDoctor={handleBookDoctor}
+        availabilityLabel={availabilityLabel}
       />
       <SiteFooter clinic={clinic} />
     </main>

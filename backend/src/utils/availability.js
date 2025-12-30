@@ -1,27 +1,71 @@
-const DEFAULT_START_HOUR = 9;
-const DEFAULT_END_HOUR = 16;
+const DEFAULT_START_TIME = '09:00';
+const DEFAULT_END_TIME = '16:00';
 const DEFAULT_INTERVAL_MINUTES = 30;
 
-function buildTimeSlots(
-  startHour = DEFAULT_START_HOUR,
-  endHour = DEFAULT_END_HOUR,
-  intervalMinutes = DEFAULT_INTERVAL_MINUTES
-) {
-  const slots = [];
-  const startMinutes = startHour * 60;
-  const endMinutes = endHour * 60;
+function parseTimeToMinutes(value) {
+  if (!value) {
+    return null;
+  }
 
-  for (let minutes = startMinutes; minutes <= endMinutes; minutes += intervalMinutes) {
-    const hour = Math.floor(minutes / 60);
-    const minute = minutes % 60;
-    const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-    slots.push(value);
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  const hours = Number(hour);
+  const minutes = Number(minute || 0);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(totalMinutes) {
+  const safeMinutes = Math.max(0, totalMinutes);
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function normalizeTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  const normalized = typeof value === 'string' ? value : String(value);
+  const [hour, minute] = normalized.split(':');
+  if (!hour) {
+    return '';
+  }
+  return `${hour.padStart(2, '0')}:${String(minute || '00').padStart(2, '0')}`;
+}
+
+function buildTimeSlotsFromTimes(startTime, endTime, intervalMinutes) {
+  const startMinutes = parseTimeToMinutes(startTime || DEFAULT_START_TIME);
+  const endMinutes = parseTimeToMinutes(endTime || DEFAULT_END_TIME);
+  const interval = Number(intervalMinutes) || DEFAULT_INTERVAL_MINUTES;
+
+  if (startMinutes === null || endMinutes === null || interval <= 0) {
+    return [];
+  }
+
+  const slots = [];
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += interval) {
+    slots.push(minutesToTime(minutes));
   }
 
   return slots;
 }
 
-const DEFAULT_TIME_SLOTS = buildTimeSlots();
+function buildTimeSlotsFromClinic(clinic) {
+  return buildTimeSlotsFromTimes(
+    clinic?.opens_at,
+    clinic?.closes_at,
+    clinic?.slot_minutes
+  );
+}
+
+const DEFAULT_TIME_SLOTS = buildTimeSlotsFromTimes();
 
 function normalizeDateKey(value) {
   if (!value) {
@@ -40,20 +84,7 @@ function normalizeDateKey(value) {
 }
 
 function timeToMinutes(value) {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = typeof value === 'string' ? value : String(value);
-  const [hour, minute] = normalized.split(':');
-  const hours = Number(hour);
-  const minutes = Number(minute || 0);
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return null;
-  }
-
-  return hours * 60 + minutes;
+  return parseTimeToMinutes(value);
 }
 
 function computeBlockedTimes(dateKey, records, slots = DEFAULT_TIME_SLOTS) {
@@ -100,8 +131,10 @@ function computeBlockedTimes(dateKey, records, slots = DEFAULT_TIME_SLOTS) {
 }
 
 module.exports = {
-  buildTimeSlots,
+  buildTimeSlotsFromTimes,
+  buildTimeSlotsFromClinic,
   computeBlockedTimes,
   normalizeDateKey,
+  normalizeTime,
   DEFAULT_TIME_SLOTS,
 };

@@ -30,6 +30,9 @@ CREATE TABLE clinics (
   email VARCHAR(255),
   address TEXT,
   is_disabled BOOLEAN DEFAULT FALSE,
+  opens_at TIME DEFAULT '09:00',
+  closes_at TIME DEFAULT '16:00',
+  slot_minutes INTEGER DEFAULT 30,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -40,6 +43,9 @@ COMMENT ON COLUMN clinics.phone IS 'Primary clinic phone number';
 COMMENT ON COLUMN clinics.email IS 'Primary clinic email';
 COMMENT ON COLUMN clinics.address IS 'Clinic address';
 COMMENT ON COLUMN clinics.is_disabled IS 'Disable online appointments';
+COMMENT ON COLUMN clinics.opens_at IS 'Clinic opening time';
+COMMENT ON COLUMN clinics.closes_at IS 'Clinic closing time';
+COMMENT ON COLUMN clinics.slot_minutes IS 'Appointment slot duration in minutes';
 
 -- =========================================================
 -- DOCTORS TABLE
