@@ -668,6 +668,17 @@ select.error {
   gap: 56px;
 }
 
+.login-card {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .admin-topbar {
   display: flex;
   align-items: center;
@@ -759,6 +770,35 @@ select.error {
 
 .filter-card {
   padding: 20px;
+}
+
+.upload-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.upload-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.upload-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 1px solid var(--stroke);
 }
 
 .filter-header {

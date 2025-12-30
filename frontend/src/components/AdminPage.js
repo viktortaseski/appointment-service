@@ -101,11 +101,22 @@ function getClinicDomain() {
 export default function AdminPage() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const [authToken, setAuthToken] = useState('');
+  const [authReady, setAuthReady] = useState(false);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
   const [appointments, setAppointments] = useState([]);
   const [clinicName, setClinicName] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [uploadState, setUploadState] = useState({
+    doctorId: '',
+    file: null,
+    preview: '',
+    status: '',
+    error: '',
+  });
   const [scopeFilter, setScopeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [doctorFilter, setDoctorFilter] = useState('');
@@ -228,6 +239,12 @@ export default function AdminPage() {
   }, [appointments, formState.date, formState.doctorId, editingId]);
 
   useEffect(() => {
+    const storedToken = window.localStorage.getItem('adminToken') || '';
+    setAuthToken(storedToken);
+    setAuthReady(true);
+  }, []);
+
+  useEffect(() => {
     async function loadData() {
       setLoading(true);
       setLoadError('');
@@ -264,8 +281,10 @@ export default function AdminPage() {
       }
     }
 
-    loadData();
-  }, []);
+    if (authToken) {
+      loadData();
+    }
+  }, [authToken]);
 
   useEffect(() => {
     if (formState.time && bookedTimes.includes(formState.time)) {
@@ -436,6 +455,151 @@ export default function AdminPage() {
     }
   }
 
+  async function handleLoginSubmit(event) {
+    event.preventDefault();
+    setLoginError('');
+
+    if (!loginForm.username || !loginForm.password) {
+      setLoginError('Username and password are required.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({
+          username: loginForm.username,
+          password: loginForm.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to sign in.');
+      }
+
+      window.localStorage.setItem('adminToken', data.token);
+      setAuthToken(data.token);
+      setLoginForm({ username: '', password: '' });
+    } catch (error) {
+      setLoginError(error?.message || 'Unable to sign in.');
+    }
+  }
+
+  function handleLogout() {
+    window.localStorage.removeItem('adminToken');
+    setAuthToken('');
+    setAppointments([]);
+    setDoctors([]);
+  }
+
+  async function handleAvatarUpload(event) {
+    event.preventDefault();
+    setUploadState((prev) => ({ ...prev, status: '', error: '' }));
+
+    if (!uploadState.doctorId || !uploadState.file) {
+      setUploadState((prev) => ({
+        ...prev,
+        error: 'Select a doctor and an image file.',
+      }));
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('doctorId', uploadState.doctorId);
+      formData.append('image', uploadState.file);
+
+      const response = await fetch(`${API_BASE}/uploads/doctor-avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to upload image.');
+      }
+
+      setDoctors((prev) =>
+        prev.map((doctor) =>
+          doctor.id === data.doctor.id
+            ? { ...doctor, avatar: data.doctor.avatar }
+            : doctor
+        )
+      );
+      setUploadState((prev) => ({
+        ...prev,
+        status: 'Avatar updated successfully.',
+        error: '',
+        preview: data.url,
+      }));
+    } catch (error) {
+      setUploadState((prev) => ({
+        ...prev,
+        error: error?.message || 'Unable to upload image.',
+      }));
+    }
+  }
+
+  if (!authReady) {
+    return (
+      <main className="page admin-page">
+        <p className="status">Checking session...</p>
+      </main>
+    );
+  }
+
+  if (!authToken) {
+    return (
+      <main className="page admin-page">
+        <div className="card login-card">
+          <div className="form-header">
+            <h2>Admin Sign In</h2>
+            <p>Use your doctor name and password.</p>
+          </div>
+          <form className="login-form" onSubmit={handleLoginSubmit}>
+            <div className="field">
+              <label htmlFor="username">Doctor name</label>
+              <input
+                id="username"
+                value={loginForm.username}
+                onChange={(event) =>
+                  setLoginForm((prev) => ({ ...prev, username: event.target.value }))
+                }
+                placeholder="Dr. Sarah Johnson"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={loginForm.password}
+                onChange={(event) =>
+                  setLoginForm((prev) => ({ ...prev, password: event.target.value }))
+                }
+              />
+            </div>
+            {loginError && <p className="status error">{loginError}</p>}
+            <button className="cta full" type="submit">
+              Sign in
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="page admin-page">
       <header className="admin-topbar">
@@ -443,6 +607,9 @@ export default function AdminPage() {
           <p className="admin-title">{clinicName || 'Dental Clinic'}</p>
           <p className="admin-subtitle">Receptionist Dashboard</p>
         </div>
+        <button type="button" className="ghost" onClick={handleLogout}>
+          Log out
+        </button>
       </header>
 
       <section className="stats-grid">
@@ -495,6 +662,72 @@ export default function AdminPage() {
           >
             + New Appointment
           </button>
+        </div>
+
+        <div className="card upload-card">
+          <div className="upload-header">
+            <div>
+              <p className="row-title">Upload doctor avatar</p>
+              <p className="row-subtitle">
+                Upload a new profile image for a selected doctor.
+              </p>
+            </div>
+            {uploadState.preview && (
+              <img
+                src={uploadState.preview}
+                alt="Uploaded avatar preview"
+                className="upload-preview"
+              />
+            )}
+          </div>
+          <form className="upload-form" onSubmit={handleAvatarUpload}>
+            <div className="field">
+              <label htmlFor="avatarDoctor">Doctor</label>
+              <select
+                id="avatarDoctor"
+                value={uploadState.doctorId}
+                onChange={(event) =>
+                  setUploadState((prev) => ({
+                    ...prev,
+                    doctorId: event.target.value,
+                    error: '',
+                    status: '',
+                  }))
+                }
+              >
+                <option value="">Select a doctor</option>
+                {doctorOptions.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="avatarFile">Image</label>
+              <input
+                id="avatarFile"
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  const preview = file ? URL.createObjectURL(file) : '';
+                  setUploadState((prev) => ({
+                    ...prev,
+                    file,
+                    preview,
+                    error: '',
+                    status: '',
+                  }));
+                }}
+              />
+            </div>
+            <button type="submit" className="cta">
+              Upload image
+            </button>
+          </form>
+          {uploadState.error && <p className="status error">{uploadState.error}</p>}
+          {uploadState.status && <p className="status">{uploadState.status}</p>}
         </div>
 
         {showForm && (

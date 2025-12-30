@@ -4,9 +4,12 @@ const express = require('express');
 const cors = require('cors');
 
 const clinicResolver = require('./clinic-resolver');
+const authMiddleware = require('./auth-middleware');
+const authRouter = require('./routes/auth');
 const clinicsRouter = require('./routes/clinics');
 const doctorsRouter = require('./routes/doctors');
 const appointmentsRouter = require('./routes/appointments');
+const uploadsRouter = require('./routes/uploads');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -45,9 +48,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.use('/auth', clinicResolver, authRouter);
 app.use('/clinics', clinicsRouter);
 app.use('/doctors', clinicResolver, doctorsRouter);
 app.use('/appointments', clinicResolver, appointmentsRouter);
+app.use('/uploads', clinicResolver, authMiddleware, uploadsRouter);
 
 app.use((err, req, res, next) => {
   // eslint-disable-next-line no-console
