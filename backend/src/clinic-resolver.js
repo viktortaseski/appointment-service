@@ -1,11 +1,15 @@
 const pool = require('./db');
 
 function getHostname(req) {
+  const explicitDomain = req.headers['x-clinic-domain'];
+  const explicitHost = Array.isArray(explicitDomain)
+    ? explicitDomain[0]
+    : explicitDomain;
   const forwardedHost = req.headers['x-forwarded-host'];
   const hostHeader = Array.isArray(forwardedHost)
     ? forwardedHost[0]
     : forwardedHost;
-  const rawHost = hostHeader || req.headers.host || req.hostname;
+  const rawHost = explicitHost || hostHeader || req.headers.host || req.hostname;
 
   if (!rawHost) {
     return null;
