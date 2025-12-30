@@ -135,7 +135,7 @@ function formatPhoneInput(value) {
   return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 }
 
-export default function Home() {
+function BookingPageContent() {
   const { t, localeTag } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -657,4 +657,28 @@ export default function Home() {
       <SiteFooter clinic={clinic} />
     </main>
   );
+}
+
+export default function Home() {
+  const { t } = useI18n();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  if (!isReady) {
+    return (
+      <main className="page">
+        <Topbar clinic={null} />
+        <section className="hero">
+          <div className="card clinic-status">
+            <p className="status-title">{t('loading_doctors')}</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return <BookingPageContent />;
 }

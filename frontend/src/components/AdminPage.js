@@ -142,7 +142,7 @@ function getClinicDomain() {
   return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || window.location.hostname;
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { t, localeTag } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -1832,4 +1832,30 @@ export default function AdminPage() {
       )}
     </main>
   );
+}
+
+export default function AdminPage() {
+  const { t } = useI18n();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  if (!isReady) {
+    return (
+      <main className="page admin-page">
+        <div className="admin-language-bar">
+          <LanguageSwitcher />
+        </div>
+        <section className="hero">
+          <div className="card clinic-status">
+            <p className="status-title">{t('admin_checking')}</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return <AdminPageContent />;
 }
