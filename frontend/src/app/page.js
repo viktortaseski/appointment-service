@@ -305,18 +305,21 @@ export default function Home() {
 
   function validateForm() {
     const errors = {};
+    const email = formState.patientEmail.trim();
+    const phone = formState.patientPhone.trim();
+    const name = formState.patientName.trim();
 
-    if (!formState.patientName.trim()) {
+    if (!name) {
       errors.patientName = 'Full name is required.';
     }
 
-    if (!formState.patientEmail.trim()) {
+    if (!email) {
       errors.patientEmail = 'Email is required.';
-    } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formState.patientEmail)) {
+    } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
       errors.patientEmail = 'Enter a valid email address.';
     }
 
-    if (!formState.patientPhone.trim()) {
+    if (!phone) {
       errors.patientPhone = 'Phone number is required.';
     }
 
@@ -359,9 +362,9 @@ export default function Home() {
         },
         body: JSON.stringify({
           doctor_id: selectedDoctor,
-          patient_name: formState.patientName,
-          patient_email: formState.patientEmail,
-          patient_phone: formState.patientPhone,
+          patient_name: formState.patientName.trim(),
+          patient_email: formState.patientEmail.trim(),
+          patient_phone: formState.patientPhone.trim(),
           date: selectedDate,
           time: selectedTime,
         }),
