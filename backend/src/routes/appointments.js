@@ -7,6 +7,16 @@ const router = express.Router();
 
 let cachedTransporter;
 
+function maskEmail(value) {
+  if (!value || !value.includes('@')) {
+    return value || '';
+  }
+
+  const [name, domain] = value.split('@');
+  const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : name[0];
+  return `${maskedName}@${domain}`;
+}
+
 function getEmailTransporter() {
   if (cachedTransporter) {
     return cachedTransporter;
@@ -19,8 +29,19 @@ function getEmailTransporter() {
   const pass = process.env.SMTP_PASS;
 
   if (!host) {
+    // eslint-disable-next-line no-console
+    console.log('SMTP not configured: SMTP_HOST is missing.');
     return null;
   }
+
+  // eslint-disable-next-line no-console
+  console.log('SMTP config:', {
+    host,
+    port,
+    secure,
+    user: user ? maskEmail(user) : null,
+    hasPass: Boolean(pass),
+  });
 
   cachedTransporter = nodemailer.createTransport({
     host,
@@ -40,6 +61,14 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
   const transporter = getEmailTransporter();
 
   if (!to || !from || !transporter) {
+    // eslint-disable-next-line no-console
+    console.log('Email send skipped:', {
+      hasTo: Boolean(to),
+      hasFrom: Boolean(from),
+      hasTransport: Boolean(transporter),
+      to: maskEmail(to),
+      from,
+    });
     return { sent: false, error: 'Email service not configured.' };
   }
 
@@ -48,6 +77,12 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
   const text = `You have an appointment at ${safeClinicName} on ${date} at ${time}.`;
 
   try {
+    // eslint-disable-next-line no-console
+    console.log('Email send attempt:', {
+      to: maskEmail(to),
+      from,
+      subject,
+    });
     await transporter.sendMail({
       from,
       to,
@@ -55,6 +90,8 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
       text,
     });
 
+    // eslint-disable-next-line no-console
+    console.log('Email send success:', { to: maskEmail(to) });
     return { sent: true };
   } catch (error) {
     // eslint-disable-next-line no-console
