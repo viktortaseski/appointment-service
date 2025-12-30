@@ -124,6 +124,7 @@ export default function Home() {
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmNotice, setConfirmNotice] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
   const [availability, setAvailability] = useState({
     loading: false,
@@ -338,10 +339,11 @@ export default function Home() {
     return errors;
   }
 
-  async function handleSubmit(event) {
+  function handlePreviewSubmit(event) {
     event.preventDefault();
     setSubmitError('');
     setSuccessNotice(null);
+    setConfirmNotice(null);
 
     const errors = validateForm();
     setFormErrors(errors);
@@ -350,6 +352,20 @@ export default function Home() {
       return;
     }
 
+    const doctorName =
+      doctors.find((doctor) => doctor.id === selectedDoctor)?.name || 'Doctor';
+    const timeLabel =
+      timeSlots.find((slot) => slot.value === selectedTime)?.label || selectedTime;
+
+    setConfirmNotice({
+      clinicName: clinic?.name || 'the clinic',
+      date: formatDisplayDate(selectedDate),
+      time: timeLabel,
+      doctor: doctorName,
+    });
+  }
+
+  async function handleReserveAppointment() {
     setIsSubmitting(true);
 
     try {
@@ -386,9 +402,8 @@ export default function Home() {
         date: formatDisplayDate(appointmentDate),
         time: normalizeTime(appointment.time) || selectedTime,
         doctor: appointment.doctor_name || '',
-        emailSent: data.email_sent,
-        emailError: data.email_error,
       });
+      setConfirmNotice(null);
 
       setFormState({
         patientName: '',
@@ -428,15 +443,9 @@ export default function Home() {
             {successNotice.doctor && (
               <p className="success-detail">Doctor: {successNotice.doctor}</p>
             )}
-            {successNotice.emailSent ? (
-              <p className="success-detail muted">
-                A confirmation email has been sent.
-              </p>
-            ) : (
-              <p className="success-detail muted">
-                Email not sent: {successNotice.emailError || 'No email provided.'}
-              </p>
-            )}
+            <p className="success-detail muted">
+              A confirmation email will be sent shortly.
+            </p>
           </div>
           <button
             type="button"
@@ -445,6 +454,37 @@ export default function Home() {
           >
             Dismiss
           </button>
+        </div>
+      )}
+
+      {confirmNotice && (
+        <div className="card confirm-banner">
+          <div>
+            <p className="confirm-title">Confirm your appointment</p>
+            <p className="confirm-detail">
+              {confirmNotice.clinicName} · {confirmNotice.date} · {confirmNotice.time}
+            </p>
+            <p className="confirm-detail muted">Doctor: {confirmNotice.doctor}</p>
+            {submitError && <p className="status error">{submitError}</p>}
+          </div>
+          <div className="confirm-actions">
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setConfirmNotice(null)}
+              disabled={isSubmitting}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="cta"
+              onClick={handleReserveAppointment}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Reserving...' : 'Yes, reserve'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -490,7 +530,7 @@ export default function Home() {
             ...availability,
             takenTimes: normalizedTakenTimes,
           }}
-          onSubmit={handleSubmit}
+          onSubmit={handlePreviewSubmit}
           isSubmitting={isSubmitting}
           submitError={submitError}
         />

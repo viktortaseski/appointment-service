@@ -544,6 +544,37 @@ select.error {
   box-shadow: 0 20px 40px rgba(90, 200, 120, 0.2);
 }
 
+.confirm-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(255, 245, 230, 0.9);
+  border: 1px solid rgba(255, 183, 125, 0.6);
+  box-shadow: 0 20px 40px rgba(255, 183, 125, 0.25);
+}
+
+.confirm-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.confirm-detail {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
+.confirm-detail.muted {
+  color: var(--muted);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .success-title {
   margin: 0;
   font-size: 20px;
@@ -818,6 +849,11 @@ select.error {
   }
 
   .success-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .confirm-banner {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -155,29 +155,34 @@ export default function BookingForm({
         {!selectedDoctor && (
           <p className="inline-hint">Select a doctor to see availability.</p>
         )}
+        {availability.loading && selectedDoctor && (
+          <p className="inline-hint">Loading available times...</p>
+        )}
         {availability.error && (
           <p className="inline-hint error">{availability.error}</p>
         )}
-        <div className="time-grid">
-          {timeSlots.map((slot) => {
-            const isTaken = availability.takenTimes.includes(slot.value);
-            const isDisabled = !selectedDoctor || availability.loading || isTaken;
+        {!availability.loading && (
+          <div className="time-grid">
+            {timeSlots.map((slot) => {
+              const isTaken = availability.takenTimes.includes(slot.value);
+              const isDisabled = !selectedDoctor || isTaken;
 
-            return (
-              <button
-                type="button"
-                key={slot.value}
-                className={`slot-button time-slot${
-                  selectedTime === slot.value ? ' selected' : ''
-                }${isTaken ? ' taken' : ''}`}
-                onClick={() => onSelectTime(slot.value)}
-                disabled={isDisabled}
-              >
-                {slot.label}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  type="button"
+                  key={slot.value}
+                  className={`slot-button time-slot${
+                    selectedTime === slot.value ? ' selected' : ''
+                  }${isTaken ? ' taken' : ''}`}
+                  onClick={() => onSelectTime(slot.value)}
+                  disabled={isDisabled}
+                >
+                  {slot.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {formErrors.time && <span className="field-error">{formErrors.time}</span>}
       </div>
       {submitError && <p className="status error">{submitError}</p>}
