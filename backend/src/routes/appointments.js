@@ -426,7 +426,7 @@ router.post('/', async (req, res, next) => {
     );
 
     if (patientEmail) {
-      await enqueueEmailJob(
+      void enqueueEmailJob(
         () =>
           sendAppointmentEmail({
             to: patientEmail,
@@ -439,7 +439,13 @@ router.post('/', async (req, res, next) => {
           appointmentId: insertResult.rows[0].id,
           recipient: maskEmail(patientEmail),
         }
-      );
+      ).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('[mail] queue: unhandled error', {
+          message: error?.message || error,
+          code: error?.code,
+        });
+      });
     }
 
     return res.status(201).json({
