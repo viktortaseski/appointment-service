@@ -315,7 +315,7 @@ export default function Home() {
 
     if (!email) {
       errors.patientEmail = 'Email is required.';
-    } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.patientEmail = 'Enter a valid email address.';
     }
 
