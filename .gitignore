@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+.next/cache/
+
+# production builds
+build/
+dist/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# env files
+.env
+.env.*
+!.env.example
+./frontend/.env
+./backend/.env
+
+# coverage
+coverage/
+.nyc_output/
+
+# misc
+.DS_Store
+*.pem
+*.log
+
+# editor
+.idea/
+.vscode/
