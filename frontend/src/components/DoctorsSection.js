@@ -3,10 +3,12 @@ export default function DoctorsSection({ clinic, doctors, status }) {
     <section className="section" id="doctors">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Doctors you can trust</p>
+          <p className="eyebrow">Meet your care team</p>
           <h2>{clinic?.name || 'Clinic'} care team.</h2>
+          <p className="section-subtitle">
+            Healthy smiles start with people you can trust.
+          </p>
         </div>
-        <button className="ghost">View all doctors</button>
       </div>
       {status.loading && <p className="status">Loading doctors...</p>}
       {!status.loading && status.error && (

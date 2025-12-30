@@ -71,4 +71,39 @@ router.post('/doctor-avatar', upload.single('image'), async (req, res, next) => 
   }
 });
 
+router.post('/clinic-logo', upload.single('image'), async (req, res, next) => {
+  if (!cloudinary.config().cloud_name) {
+    return res.status(500).json({ error: 'Cloudinary not configured.' });
+  }
+
+  if (!req.auth || req.auth.clinicId !== req.clinic.id) {
+    return res.status(403).json({ error: 'Not authorized for this clinic.' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Image file is required.' });
+  }
+
+  try {
+    const uploadResult = await uploadBufferToCloudinary(req.file.buffer, {
+      folder: `clinics/${req.clinic.id}`,
+      public_id: 'logo',
+      overwrite: true,
+      resource_type: 'image',
+    });
+
+    const updateResult = await pool.query(
+      'UPDATE clinics SET logo = $1 WHERE id = $2 RETURNING id, name, logo',
+      [uploadResult.secure_url, req.clinic.id]
+    );
+
+    return res.json({
+      clinic: updateResult.rows[0],
+      url: uploadResult.secure_url,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;

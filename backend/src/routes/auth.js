@@ -6,15 +6,24 @@ const pool = require('../db');
 const router = express.Router();
 
 router.post('/login', async (req, res, next) => {
-  const { username, password } = req.body;
+  const { clinicName, username, password } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required.' });
+  if (!clinicName || !username || !password) {
+    return res
+      .status(400)
+      .json({ error: 'clinicName, username, and password are required.' });
   }
 
   try {
+    const normalizedClinicName = clinicName.trim().toLowerCase();
+    const resolvedClinicName = req.clinic?.name?.trim().toLowerCase();
+
+    if (!resolvedClinicName || normalizedClinicName !== resolvedClinicName) {
+      return res.status(401).json({ error: 'Clinic name does not match this domain.' });
+    }
+
     const result = await pool.query(
-      'SELECT id, clinic_id, name, password FROM doctors WHERE clinic_id = $1 AND name = $2 LIMIT 1',
+      'SELECT id, clinic_id, name, username, password FROM doctors WHERE clinic_id = $1 AND username = $2 LIMIT 1',
       [req.clinic.id, username]
     );
 
@@ -37,6 +46,7 @@ router.post('/login', async (req, res, next) => {
         doctorId: doctor.id,
         clinicId: doctor.clinic_id,
         name: doctor.name,
+        username: doctor.username,
       },
       process.env.JWT_SECRET || 'dev-secret',
       { expiresIn: '8h' }

@@ -40,7 +40,7 @@ export default function BookingForm({
     <form className="card form" id="book" onSubmit={onSubmit}>
       <div className="form-header">
         <h2>Reserve your visit</h2>
-        <p>We will confirm by email within minutes.</p>
+        <p>Healthy smiles start here. We will confirm by email within minutes.</p>
       </div>
       <div className="field">
         <div className="field-heading">

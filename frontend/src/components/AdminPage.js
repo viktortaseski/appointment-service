@@ -103,16 +103,27 @@ export default function AdminPage() {
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const [authToken, setAuthToken] = useState('');
   const [authReady, setAuthReady] = useState(false);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginForm, setLoginForm] = useState({
+    clinicName: '',
+    username: '',
+    password: '',
+  });
   const [loginError, setLoginError] = useState('');
   const [activePanel, setActivePanel] = useState('appointments');
   const [appointments, setAppointments] = useState([]);
   const [clinicName, setClinicName] = useState('');
+  const [clinicLogo, setClinicLogo] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [uploadState, setUploadState] = useState({
     doctorId: '',
+    file: null,
+    preview: '',
+    status: '',
+    error: '',
+  });
+  const [logoUploadState, setLogoUploadState] = useState({
     file: null,
     preview: '',
     status: '',
@@ -272,7 +283,9 @@ export default function AdminPage() {
         const appointmentsData = await appointmentsResponse.json();
         const doctorsData = await doctorsResponse.json();
 
-        setClinicName(appointmentsData.clinic?.name || doctorsData.clinic?.name || '');
+        const resolvedClinic = appointmentsData.clinic || doctorsData.clinic || null;
+        setClinicName(resolvedClinic?.name || '');
+        setClinicLogo(resolvedClinic?.logo || '');
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
         setDoctors(doctorsData.doctors || []);
         setLoading(false);
@@ -460,8 +473,8 @@ export default function AdminPage() {
     event.preventDefault();
     setLoginError('');
 
-    if (!loginForm.username || !loginForm.password) {
-      setLoginError('Username and password are required.');
+    if (!loginForm.clinicName || !loginForm.username || !loginForm.password) {
+      setLoginError('Clinic name, username, and password are required.');
       return;
     }
 
@@ -473,6 +486,7 @@ export default function AdminPage() {
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify({
+          clinicName: loginForm.clinicName,
           username: loginForm.username,
           password: loginForm.password,
         }),
@@ -486,7 +500,7 @@ export default function AdminPage() {
 
       window.localStorage.setItem('adminToken', data.token);
       setAuthToken(data.token);
-      setLoginForm({ username: '', password: '' });
+      setLoginForm({ clinicName: '', username: '', password: '' });
     } catch (error) {
       setLoginError(error?.message || 'Unable to sign in.');
     }
@@ -497,6 +511,7 @@ export default function AdminPage() {
     setAuthToken('');
     setAppointments([]);
     setDoctors([]);
+    setClinicLogo('');
   }
 
   async function handleAvatarUpload(event) {
@@ -552,6 +567,52 @@ export default function AdminPage() {
     }
   }
 
+  async function handleLogoUpload(event) {
+    event.preventDefault();
+    setLogoUploadState((prev) => ({ ...prev, status: '', error: '' }));
+
+    if (!logoUploadState.file) {
+      setLogoUploadState((prev) => ({
+        ...prev,
+        error: 'Select an image file.',
+      }));
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', logoUploadState.file);
+
+      const response = await fetch(`${API_BASE}/uploads/clinic-logo`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to upload logo.');
+      }
+
+      setClinicLogo(data.clinic?.logo || data.url || '');
+      setLogoUploadState((prev) => ({
+        ...prev,
+        status: 'Clinic logo updated successfully.',
+        error: '',
+        preview: data.url,
+      }));
+    } catch (error) {
+      setLogoUploadState((prev) => ({
+        ...prev,
+        error: error?.message || 'Unable to upload logo.',
+      }));
+    }
+  }
+
   if (!authReady) {
     return (
       <main className="page admin-page">
@@ -566,18 +627,29 @@ export default function AdminPage() {
         <div className="card login-card">
           <div className="form-header">
             <h2>Admin Sign In</h2>
-            <p>Use your doctor name and password.</p>
+            <p>Use your clinic name, doctor username, and password.</p>
           </div>
           <form className="login-form" onSubmit={handleLoginSubmit}>
             <div className="field">
-              <label htmlFor="username">Doctor name</label>
+              <label htmlFor="clinicName">Clinic name</label>
+              <input
+                id="clinicName"
+                value={loginForm.clinicName}
+                onChange={(event) =>
+                  setLoginForm((prev) => ({ ...prev, clinicName: event.target.value }))
+                }
+                placeholder="Viva Dent"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="username">Doctor username</label>
               <input
                 id="username"
                 value={loginForm.username}
                 onChange={(event) =>
                   setLoginForm((prev) => ({ ...prev, username: event.target.value }))
                 }
-                placeholder="Dr. Sarah Johnson"
+                placeholder="dr.sarah"
               />
             </div>
             <div className="field">
@@ -1006,6 +1078,54 @@ export default function AdminPage() {
               <p className="eyebrow">Settings</p>
               <h2>Clinic assets and branding.</h2>
             </div>
+          </div>
+
+          <div className="card upload-card">
+            <div className="upload-header">
+              <div>
+                <p className="row-title">Upload clinic logo</p>
+                <p className="row-subtitle">
+                  Update the logo shown on the patient booking page.
+                </p>
+              </div>
+              {(logoUploadState.preview || clinicLogo) && (
+                <img
+                  src={logoUploadState.preview || clinicLogo}
+                  alt="Clinic logo preview"
+                  className="upload-preview"
+                />
+              )}
+            </div>
+            <form className="upload-form" onSubmit={handleLogoUpload}>
+              <div className="field">
+                <label htmlFor="clinicLogo">Logo image</label>
+                <input
+                  id="clinicLogo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    const preview = file ? URL.createObjectURL(file) : '';
+                    setLogoUploadState((prev) => ({
+                      ...prev,
+                      file,
+                      preview,
+                      error: '',
+                      status: '',
+                    }));
+                  }}
+                />
+              </div>
+              <button className="cta" type="submit">
+                Upload logo
+              </button>
+              {logoUploadState.status && (
+                <p className="status success">{logoUploadState.status}</p>
+              )}
+              {logoUploadState.error && (
+                <p className="status error">{logoUploadState.error}</p>
+              )}
+            </form>
           </div>
 
           <div className="card upload-card">

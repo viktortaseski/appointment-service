@@ -4,27 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import BookingForm from '../components/BookingForm';
 import DoctorsSection from '../components/DoctorsSection';
-import HeroCopy from '../components/HeroCopy';
 import SiteFooter from '../components/SiteFooter';
-import StepsSection from '../components/StepsSection';
 import Topbar from '../components/Topbar';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-const steps = [
-  {
-    title: 'Choose a clinic',
-    detail: 'Pick the location or specialty that fits your care plan.',
-  },
-  {
-    title: 'Select a doctor',
-    detail: 'Review bios, availability, and patient focus areas.',
-  },
-  {
-    title: 'Confirm your time',
-    detail: 'Lock in a visit and get an instant email confirmation.',
-  },
-];
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -114,7 +97,6 @@ export default function Home() {
   const [clinic, setClinic] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [status, setStatus] = useState({ loading: true, error: null });
-  const [hostname, setHostname] = useState('');
   const [monthCursor, setMonthCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
@@ -162,10 +144,6 @@ export default function Home() {
   const isPrevDisabled =
     monthCursor.getFullYear() === today.getFullYear() &&
     monthCursor.getMonth() === today.getMonth();
-
-  useEffect(() => {
-    setHostname(getClinicDomain());
-  }, []);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -502,7 +480,6 @@ export default function Home() {
       )}
 
       <section className="hero">
-        <HeroCopy clinic={clinic} hostname={hostname} />
         <BookingForm
           monthLabel={monthLabel}
           monthGrid={monthGrid}
@@ -551,7 +528,6 @@ export default function Home() {
       </section>
 
       <DoctorsSection clinic={clinic} doctors={doctors} status={status} />
-      <StepsSection steps={steps} />
       <SiteFooter />
     </main>
   );

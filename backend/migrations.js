@@ -24,11 +24,13 @@ CREATE TABLE clinics (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   domain VARCHAR(255) UNIQUE NOT NULL,
+  logo TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE clinics IS 'Dental clinics (multi-tenant root table)';
 COMMENT ON COLUMN clinics.domain IS 'Used to resolve clinic from request hostname';
+COMMENT ON COLUMN clinics.logo IS 'Public logo image URL';
 
 -- =========================================================
 -- DOCTORS TABLE
@@ -37,6 +39,7 @@ CREATE TABLE doctors (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
+  username VARCHAR(255),
   specialty VARCHAR(255) NOT NULL,
   avatar TEXT,
   password TEXT,
@@ -45,6 +48,7 @@ CREATE TABLE doctors (
 );
 
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
+COMMENT ON COLUMN doctors.username IS 'Clinic login username';
 
 -- =========================================================
 -- APPOINTMENTS TABLE
