@@ -13,6 +13,8 @@ const router = express.Router();
 
 let cachedTransporter;
 let smtpVerified = false;
+const emailQueue = [];
+let emailQueueRunning = false;
 
 function maskEmail(value) {
   if (!value || !value.includes('@')) {
@@ -33,6 +35,7 @@ function getSmtpConfig() {
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM,
     debug: process.env.SMTP_DEBUG === 'true',
+    verify: process.env.SMTP_VERIFY === 'true',
     connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 0),
     greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 0),
     socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 0),
@@ -125,6 +128,73 @@ async function logSmtpDiagnostics({ host, port, secure, user, from, debug }) {
   }
 }
 
+function enqueueEmailJob(job, context) {
+  return new Promise((resolve, reject) => {
+    emailQueue.push({ job, resolve, reject, context });
+    if (!emailQueueRunning) {
+      void runEmailQueue();
+    }
+  });
+}
+
+async function runEmailQueue() {
+  emailQueueRunning = true;
+
+  while (emailQueue.length > 0) {
+    const { job, resolve, reject, context } = emailQueue.shift();
+
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[mail] queue: start', context);
+      const result = await job();
+      // eslint-disable-next-line no-console
+      console.log('[mail] queue: done', context);
+      resolve(result);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[mail] queue: error', {
+        context,
+        message: error?.message || error,
+        code: error?.code,
+      });
+      reject(error);
+    }
+  }
+
+  emailQueueRunning = false;
+}
+
+async function verifyTransporter(transporter, debugEnabled, forceVerify) {
+  if (!transporter) {
+    return;
+  }
+
+  if (!forceVerify && smtpVerified) {
+    return;
+  }
+
+  if (!debugEnabled && !forceVerify) {
+    return;
+  }
+
+  try {
+    // eslint-disable-next-line no-console
+    console.log('[mail] verify: before');
+    const verified = await transporter.verify();
+    smtpVerified = true;
+    // eslint-disable-next-line no-console
+    console.log('[mail] verify: after', verified);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[mail] verify: failed', {
+      message: error?.message || error,
+      code: error?.code,
+      command: error?.command,
+      response: error?.response,
+    });
+  }
+}
+
 async function sendAppointmentEmail({ to, clinicName, date, time }) {
   const {
     host,
@@ -133,6 +203,7 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
     user: smtpUser,
     from: smtpFrom,
     debug,
+    verify,
   } = getSmtpConfig();
   const displayName = clinicName || 'Dental Clinic';
   const from =
@@ -160,22 +231,7 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
     debug,
   });
 
-  if (debug && !smtpVerified) {
-    try {
-      await transporter.verify();
-      smtpVerified = true;
-      // eslint-disable-next-line no-console
-      console.log('SMTP verify success.');
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('SMTP verify failed:', {
-        message: error?.message || error,
-        code: error?.code,
-        command: error?.command,
-        response: error?.response,
-      });
-    }
-  }
+  await verifyTransporter(transporter, debug, verify);
 
   const safeClinicName = clinicName || 'the clinic';
   const subject = `Appointment confirmed at ${safeClinicName}`;
@@ -183,12 +239,12 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
 
   try {
     // eslint-disable-next-line no-console
-    console.log('Email send attempt:', {
+    console.log('[mail] sendMail: before', {
       to: maskEmail(to),
       from,
       subject,
     });
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from,
       to,
       subject,
@@ -196,8 +252,14 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
     });
 
     // eslint-disable-next-line no-console
-    console.log('Email send success:', { to: maskEmail(to) });
-    return { sent: true };
+    console.log('[mail] sendMail: after', {
+      messageId: info?.messageId,
+      response: info?.response,
+      accepted: info?.accepted,
+      rejected: info?.rejected,
+    });
+
+    return { sent: true, info };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Email send failed:', {
@@ -364,12 +426,20 @@ router.post('/', async (req, res, next) => {
     );
 
     if (patientEmail) {
-      sendAppointmentEmail({
-        to: patientEmail,
-        clinicName: req.clinic.name,
-        date,
-        time,
-      }).catch(() => {});
+      await enqueueEmailJob(
+        () =>
+          sendAppointmentEmail({
+            to: patientEmail,
+            clinicName: req.clinic.name,
+            date,
+            time,
+          }),
+        {
+          clinicId: req.clinic.id,
+          appointmentId: insertResult.rows[0].id,
+          recipient: maskEmail(patientEmail),
+        }
+      );
     }
 
     return res.status(201).json({
