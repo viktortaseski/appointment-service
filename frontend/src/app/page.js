@@ -124,7 +124,6 @@ export default function Home() {
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmNotice, setConfirmNotice] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
   const [availability, setAvailability] = useState({
     loading: false,
@@ -339,11 +338,10 @@ export default function Home() {
     return errors;
   }
 
-  function handlePreviewSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setSubmitError('');
     setSuccessNotice(null);
-    setConfirmNotice(null);
 
     const errors = validateForm();
     setFormErrors(errors);
@@ -352,20 +350,6 @@ export default function Home() {
       return;
     }
 
-    const doctorName =
-      doctors.find((doctor) => doctor.id === selectedDoctor)?.name || 'Doctor';
-    const timeLabel =
-      timeSlots.find((slot) => slot.value === selectedTime)?.label || selectedTime;
-
-    setConfirmNotice({
-      clinicName: clinic?.name || 'the clinic',
-      date: formatDisplayDate(selectedDate),
-      time: timeLabel,
-      doctor: doctorName,
-    });
-  }
-
-  async function handleReserveAppointment() {
     setIsSubmitting(true);
 
     try {
@@ -403,7 +387,6 @@ export default function Home() {
         time: normalizeTime(appointment.time) || selectedTime,
         doctor: appointment.doctor_name || '',
       });
-      setConfirmNotice(null);
 
       setFormState({
         patientName: '',
@@ -433,56 +416,27 @@ export default function Home() {
       <Topbar clinic={clinic} />
 
       {successNotice && (
-        <div className="card success-banner">
-          <div>
-            <p className="success-title">Appointment confirmed</p>
-            <p className="success-detail">
-              You have an appointment at {successNotice.clinicName} on{' '}
-              {successNotice.date} at {successNotice.time}.
-            </p>
-            {successNotice.doctor && (
-              <p className="success-detail">Doctor: {successNotice.doctor}</p>
-            )}
-            <p className="success-detail muted">
-              A confirmation email will be sent shortly.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => setSuccessNotice(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {confirmNotice && (
-        <div className="card confirm-banner">
-          <div>
-            <p className="confirm-title">Confirm your appointment</p>
-            <p className="confirm-detail">
-              {confirmNotice.clinicName} · {confirmNotice.date} · {confirmNotice.time}
-            </p>
-            <p className="confirm-detail muted">Doctor: {confirmNotice.doctor}</p>
-            {submitError && <p className="status error">{submitError}</p>}
-          </div>
-          <div className="confirm-actions">
+        <div className="notice-overlay">
+          <div className="card success-banner notice-card">
+            <div>
+              <p className="success-title">Appointment confirmed</p>
+              <p className="success-detail">
+                You have an appointment at {successNotice.clinicName} on{' '}
+                {successNotice.date} at {successNotice.time}.
+              </p>
+              {successNotice.doctor && (
+                <p className="success-detail">Doctor: {successNotice.doctor}</p>
+              )}
+              <p className="success-detail muted">
+                A confirmation email will be sent shortly.
+              </p>
+            </div>
             <button
               type="button"
               className="ghost"
-              onClick={() => setConfirmNotice(null)}
-              disabled={isSubmitting}
+              onClick={() => setSuccessNotice(null)}
             >
-              Back
-            </button>
-            <button
-              type="button"
-              className="cta"
-              onClick={handleReserveAppointment}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Reserving...' : 'Yes, reserve'}
+              Dismiss
             </button>
           </div>
         </div>
@@ -530,9 +484,10 @@ export default function Home() {
             ...availability,
             takenTimes: normalizedTakenTimes,
           }}
-          onSubmit={handlePreviewSubmit}
+          onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           submitError={submitError}
+          doctorsStatus={status}
         />
       </section>
 

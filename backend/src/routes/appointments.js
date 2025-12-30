@@ -170,28 +170,17 @@ router.post('/', async (req, res, next) => {
       [insertResult.rows[0].id]
     );
 
-    let emailSent = false;
-    let emailError = null;
-
     if (patientEmail) {
-      try {
-        const emailResult = await sendAppointmentEmail({
-          to: patientEmail,
-          clinicName: req.clinic.name,
-          date,
-          time,
-        });
-        emailSent = emailResult.sent;
-        emailError = emailResult.error || null;
-      } catch (error) {
-        emailError = 'Unable to send confirmation email.';
-      }
+      sendAppointmentEmail({
+        to: patientEmail,
+        clinicName: req.clinic.name,
+        date,
+        time,
+      }).catch(() => {});
     }
 
     return res.status(201).json({
       appointment: appointmentResult.rows[0],
-      email_sent: emailSent,
-      email_error: emailError,
     });
   } catch (error) {
     if (error.code === '23505') {
