@@ -1,3 +1,4 @@
+const dns = require('dns');
 const express = require('express');
 const nodemailer = require('nodemailer');
 
@@ -11,6 +12,7 @@ const {
 const router = express.Router();
 
 let cachedTransporter;
+let smtpVerified = false;
 
 function maskEmail(value) {
   if (!value || !value.includes('@')) {
@@ -22,16 +24,37 @@ function maskEmail(value) {
   return `${maskedName}@${domain}`;
 }
 
+function getSmtpConfig() {
+  return {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM,
+    debug: process.env.SMTP_DEBUG === 'true',
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 0),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 0),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 0),
+  };
+}
+
 function getEmailTransporter() {
   if (cachedTransporter) {
     return cachedTransporter;
   }
 
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const secure = process.env.SMTP_SECURE === 'true';
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const {
+    host,
+    port,
+    secure,
+    user,
+    pass,
+    debug,
+    connectionTimeout,
+    greetingTimeout,
+    socketTimeout,
+  } = getSmtpConfig();
 
   if (!host) {
     // eslint-disable-next-line no-console
@@ -48,21 +71,72 @@ function getEmailTransporter() {
     hasPass: Boolean(pass),
   });
 
-  cachedTransporter = nodemailer.createTransport({
+  const transportOptions = {
     host,
     port,
     secure,
     auth: user ? { user, pass } : undefined,
-  });
+  };
+
+  if (connectionTimeout > 0) {
+    transportOptions.connectionTimeout = connectionTimeout;
+  }
+
+  if (greetingTimeout > 0) {
+    transportOptions.greetingTimeout = greetingTimeout;
+  }
+
+  if (socketTimeout > 0) {
+    transportOptions.socketTimeout = socketTimeout;
+  }
+
+  if (debug) {
+    transportOptions.logger = true;
+    transportOptions.debug = true;
+  }
+
+  cachedTransporter = nodemailer.createTransport(transportOptions);
 
   return cachedTransporter;
 }
 
+async function logSmtpDiagnostics({ host, port, secure, user, from, debug }) {
+  if (!debug || !host) {
+    return;
+  }
+
+  // eslint-disable-next-line no-console
+  console.log('SMTP diagnostics:', {
+    host,
+    port,
+    secure,
+    from,
+    user: user ? maskEmail(user) : null,
+    node: process.version,
+  });
+
+  try {
+    const lookup = await dns.promises.lookup(host);
+    // eslint-disable-next-line no-console
+    console.log('SMTP DNS lookup:', lookup);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('SMTP DNS lookup failed:', error?.message || error);
+  }
+}
+
 async function sendAppointmentEmail({ to, clinicName, date, time }) {
-  const smtpUser = process.env.SMTP_USER;
+  const {
+    host,
+    port,
+    secure,
+    user: smtpUser,
+    from: smtpFrom,
+    debug,
+  } = getSmtpConfig();
   const displayName = clinicName || 'Dental Clinic';
   const from =
-    process.env.SMTP_FROM || (smtpUser ? `${displayName} <${smtpUser}>` : null);
+    smtpFrom || (smtpUser ? `${displayName} <${smtpUser}>` : null);
   const transporter = getEmailTransporter();
 
   if (!to || !from || !transporter) {
@@ -75,6 +149,32 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
       from,
     });
     return { sent: false, error: 'Email service not configured.' };
+  }
+
+  await logSmtpDiagnostics({
+    host,
+    port,
+    secure,
+    user: smtpUser,
+    from,
+    debug,
+  });
+
+  if (debug && !smtpVerified) {
+    try {
+      await transporter.verify();
+      smtpVerified = true;
+      // eslint-disable-next-line no-console
+      console.log('SMTP verify success.');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('SMTP verify failed:', {
+        message: error?.message || error,
+        code: error?.code,
+        command: error?.command,
+        response: error?.response,
+      });
+    }
   }
 
   const safeClinicName = clinicName || 'the clinic';
@@ -100,7 +200,13 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
     return { sent: true };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Email send failed:', error?.message || error);
+    console.error('Email send failed:', {
+      message: error?.message || error,
+      code: error?.code,
+      command: error?.command,
+      response: error?.response,
+      stack: error?.stack,
+    });
     return {
       sent: false,
       error: error?.message || 'Unable to send confirmation email.',
