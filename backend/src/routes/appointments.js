@@ -1,8 +1,7 @@
-const dns = require('dns');
 const express = require('express');
-const nodemailer = require('nodemailer');
 
 const pool = require('../db');
+const { sendBrevoEmail } = require('../services/brevoMail');
 const {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -11,8 +10,6 @@ const {
 
 const router = express.Router();
 
-let cachedTransporter;
-let smtpVerified = false;
 const emailQueue = [];
 let emailQueueRunning = false;
 
@@ -24,108 +21,6 @@ function maskEmail(value) {
   const [name, domain] = value.split('@');
   const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : name[0];
   return `${maskedName}@${domain}`;
-}
-
-function getSmtpConfig() {
-  return {
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM,
-    debug: process.env.SMTP_DEBUG === 'true',
-    verify: process.env.SMTP_VERIFY === 'true',
-    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 0),
-    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 0),
-    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 0),
-  };
-}
-
-function getEmailTransporter() {
-  if (cachedTransporter) {
-    return cachedTransporter;
-  }
-
-  const {
-    host,
-    port,
-    secure,
-    user,
-    pass,
-    debug,
-    connectionTimeout,
-    greetingTimeout,
-    socketTimeout,
-  } = getSmtpConfig();
-
-  if (!host) {
-    // eslint-disable-next-line no-console
-    console.log('SMTP not configured: SMTP_HOST is missing.');
-    return null;
-  }
-
-  // eslint-disable-next-line no-console
-  console.log('SMTP config:', {
-    host,
-    port,
-    secure,
-    user: user ? maskEmail(user) : null,
-    hasPass: Boolean(pass),
-  });
-
-  const transportOptions = {
-    host,
-    port,
-    secure,
-    auth: user ? { user, pass } : undefined,
-  };
-
-  if (connectionTimeout > 0) {
-    transportOptions.connectionTimeout = connectionTimeout;
-  }
-
-  if (greetingTimeout > 0) {
-    transportOptions.greetingTimeout = greetingTimeout;
-  }
-
-  if (socketTimeout > 0) {
-    transportOptions.socketTimeout = socketTimeout;
-  }
-
-  if (debug) {
-    transportOptions.logger = true;
-    transportOptions.debug = true;
-  }
-
-  cachedTransporter = nodemailer.createTransport(transportOptions);
-
-  return cachedTransporter;
-}
-
-async function logSmtpDiagnostics({ host, port, secure, user, from, debug }) {
-  if (!debug || !host) {
-    return;
-  }
-
-  // eslint-disable-next-line no-console
-  console.log('SMTP diagnostics:', {
-    host,
-    port,
-    secure,
-    from,
-    user: user ? maskEmail(user) : null,
-    node: process.version,
-  });
-
-  try {
-    const lookup = await dns.promises.lookup(host);
-    // eslint-disable-next-line no-console
-    console.log('SMTP DNS lookup:', lookup);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('SMTP DNS lookup failed:', error?.message || error);
-  }
 }
 
 function enqueueEmailJob(job, context) {
@@ -164,105 +59,33 @@ async function runEmailQueue() {
   emailQueueRunning = false;
 }
 
-async function verifyTransporter(transporter, debugEnabled, forceVerify) {
-  if (!transporter) {
-    return;
-  }
-
-  if (!forceVerify && smtpVerified) {
-    return;
-  }
-
-  if (!debugEnabled && !forceVerify) {
-    return;
-  }
-
-  try {
-    // eslint-disable-next-line no-console
-    console.log('[mail] verify: before');
-    const verified = await transporter.verify();
-    smtpVerified = true;
-    // eslint-disable-next-line no-console
-    console.log('[mail] verify: after', verified);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('[mail] verify: failed', {
-      message: error?.message || error,
-      code: error?.code,
-      command: error?.command,
-      response: error?.response,
-    });
-  }
-}
-
 async function sendAppointmentEmail({ to, clinicName, date, time }) {
-  const {
-    host,
-    port,
-    secure,
-    user: smtpUser,
-    from: smtpFrom,
-    debug,
-    verify,
-  } = getSmtpConfig();
-  const displayName = clinicName || 'Dental Clinic';
-  const from =
-    smtpFrom || (smtpUser ? `${displayName} <${smtpUser}>` : null);
-  const transporter = getEmailTransporter();
-
-  if (!to || !from || !transporter) {
-    // eslint-disable-next-line no-console
-    console.log('Email send skipped:', {
-      hasTo: Boolean(to),
-      hasFrom: Boolean(from),
-      hasTransport: Boolean(transporter),
-      to: maskEmail(to),
-      from,
-    });
-    return { sent: false, error: 'Email service not configured.' };
-  }
-
-  await logSmtpDiagnostics({
-    host,
-    port,
-    secure,
-    user: smtpUser,
-    from,
-    debug,
-  });
-
-  await verifyTransporter(transporter, debug, verify);
-
   const safeClinicName = clinicName || 'the clinic';
   const subject = `Appointment confirmed at ${safeClinicName}`;
   const text = `You have an appointment at ${safeClinicName} on ${date} at ${time}.`;
 
   try {
     // eslint-disable-next-line no-console
-    console.log('[mail] sendMail: before', {
+    console.log('[mail] sendBrevoEmail: before', {
       to: maskEmail(to),
-      from,
       subject,
     });
-    const info = await transporter.sendMail({
-      from,
+    const info = await sendBrevoEmail({
       to,
       subject,
       text,
+      senderName: safeClinicName,
     });
 
     // eslint-disable-next-line no-console
-    console.log('[mail] sendMail: after', {
+    console.log('[mail] sendBrevoEmail: after', {
       messageId: info?.messageId,
-      response: info?.response,
-      accepted: info?.accepted,
-      rejected: info?.rejected,
     });
 
     return { sent: true, info };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Email send failed:', {
+    console.error('[mail] sendBrevoEmail: failed', {
       message: error?.message || error,
       code: error?.code,
       command: error?.command,

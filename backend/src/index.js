@@ -12,24 +12,6 @@ const doctorsRouter = require('./routes/doctors');
 const appointmentsRouter = require('./routes/appointments');
 const availabilityRouter = require('./routes/availability');
 const uploadsRouter = require('./routes/uploads');
-import { sendBrevoEmail } from "./services/brevoMail.js";
-
-app.get("/email-test", async (req, res) => {
-  try {
-    const result = await sendBrevoEmail({
-      to: "your_real_email@gmail.com",
-      subject: "Brevo HTTP API test",
-      text: "If you received this, Brevo HTTP API works 🎉",
-      html: "<b>If you received this, Brevo HTTP API works 🎉</b>",
-    });
-
-    res.json({ ok: true, result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
 
 const app = express();
 const port = process.env.PORT || 4000;
