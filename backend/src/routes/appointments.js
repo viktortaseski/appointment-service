@@ -74,7 +74,6 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
       to,
       subject,
       text,
-      senderName: safeClinicName,
     });
 
     // eslint-disable-next-line no-console
