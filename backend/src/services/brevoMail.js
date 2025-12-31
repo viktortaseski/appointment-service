@@ -1,11 +1,8 @@
-const SENDER_NAME = 'Dentra Support';
-const SENDER_EMAIL = 'dentra@10422919.brevosend.com';
-
-function sendBrevoEmail({ to, subject, text }) {
+function sendBrevoEmail({ to, subject, text, senderName }) {
     const payload = {
         sender: {
-            name: SENDER_NAME,
-            email: SENDER_EMAIL,
+            name: senderName || 'Dentra',
+            email: 'vtaseski24@gmail.com',
         },
         to: [{ email: to }],
         subject,
