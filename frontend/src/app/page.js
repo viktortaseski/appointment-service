@@ -253,7 +253,17 @@ function BookingPageContent() {
           return;
         }
 
-        setClinic(data.clinic || null);
+        const rawClinic = data.clinic || null;
+        const normalizedClinic = rawClinic
+          ? {
+              ...rawClinic,
+              opens_at: rawClinic.opens_at ?? rawClinic.opensAt,
+              closes_at: rawClinic.closes_at ?? rawClinic.closesAt,
+              slot_minutes: rawClinic.slot_minutes ?? rawClinic.slotMinutes,
+            }
+          : null;
+
+        setClinic(normalizedClinic);
         setDoctors(data.doctors || []);
         setStatus({ loading: false, error: null });
       } catch (error) {
