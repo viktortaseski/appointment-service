@@ -305,6 +305,14 @@ textarea {
   resize: vertical;
 }
 
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 input.error,
 select.error {
   border-color: rgba(156, 43, 43, 0.5);
