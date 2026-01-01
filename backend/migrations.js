@@ -60,7 +60,7 @@ CREATE TABLE doctors (
   description TEXT,
   avatar TEXT,
   is_disabled BOOLEAN DEFAULT FALSE,
-  password TEXT,
+  password_hash TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -69,6 +69,7 @@ COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
 COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appointments';
+COMMENT ON COLUMN doctors.password_hash IS 'Hashed doctor password';
 
 -- =========================================================
 -- DOCTOR UNAVAILABILITY
@@ -101,6 +102,21 @@ CREATE TABLE patients (
 COMMENT ON TABLE patients IS 'Unique patient records across clinics';
 COMMENT ON COLUMN patients.email IS 'Unique patient email when provided';
 COMMENT ON COLUMN patients.phone IS 'Unique patient phone when provided';
+
+-- =========================================================
+-- AUDIT LOGS
+-- =========================================================
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  clinic_id UUID REFERENCES clinics(id) ON DELETE CASCADE,
+  doctor_id UUID REFERENCES doctors(id) ON DELETE SET NULL,
+  action VARCHAR(255) NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE audit_logs IS 'Security and admin audit trail';
+COMMENT ON COLUMN audit_logs.action IS 'Action name for the audit event';
 
 -- =========================================================
 -- APPOINTMENTS TABLE
@@ -147,6 +163,9 @@ CREATE UNIQUE INDEX idx_patients_email_unique
 CREATE UNIQUE INDEX idx_patients_phone_unique
   ON patients(phone)
   WHERE phone IS NOT NULL;
+
+CREATE INDEX idx_audit_logs_clinic_id ON audit_logs(clinic_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- =========================================================
 -- UPDATED_AT TRIGGER FUNCTION

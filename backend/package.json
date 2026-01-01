@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js",
-    "migrate": "node migrations.js"
+    "migrate": "node migrations.js",
+    "hash-passwords": "node scripts/hash-passwords.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

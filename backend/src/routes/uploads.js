@@ -3,6 +3,7 @@ const multer = require('multer');
 
 const cloudinary = require('../cloudinary');
 const pool = require('../db');
+const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -62,6 +63,15 @@ router.post('/doctor-avatar', upload.single('image'), async (req, res, next) => 
       [uploadResult.secure_url, doctorId]
     );
 
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'doctor_avatar_uploaded',
+      metadata: {
+        targetDoctorId: doctorId,
+      },
+    });
+
     return res.json({
       doctor: updateResult.rows[0],
       url: uploadResult.secure_url,
@@ -96,6 +106,13 @@ router.post('/clinic-logo', upload.single('image'), async (req, res, next) => {
       'UPDATE clinics SET logo = $1 WHERE id = $2 RETURNING id, name, logo',
       [uploadResult.secure_url, req.clinic.id]
     );
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'clinic_logo_uploaded',
+      metadata: {},
+    });
 
     return res.json({
       clinic: updateResult.rows[0],

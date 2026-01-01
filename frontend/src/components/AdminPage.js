@@ -589,6 +589,7 @@ function AdminPageContent() {
 
       const headers = {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
         'x-clinic-domain': clinicDomain,
       };
 
@@ -633,6 +634,7 @@ function AdminPageContent() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify({ completed: !appointment.completed }),
@@ -689,6 +691,7 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
         method: 'DELETE',
         headers: {
+          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
       });

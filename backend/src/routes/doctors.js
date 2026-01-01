@@ -1,7 +1,9 @@
+const bcrypt = require('bcryptjs');
 const express = require('express');
 
 const authMiddleware = require('../auth-middleware');
 const pool = require('../db');
+const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -43,8 +45,12 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
-  const { name, specialty, avatar, description, username } = req.body;
+router.post('/', authMiddleware, async (req, res, next) => {
+  if (!req.auth || req.auth.clinicId !== req.clinic.id) {
+    return res.status(403).json({ error: 'Not authorized for this clinic.' });
+  }
+
+  const { name, specialty, avatar, description, username, password } = req.body;
 
   if (!name || !specialty) {
     return res.status(400).json({
@@ -53,9 +59,11 @@ router.post('/', async (req, res, next) => {
   }
 
   try {
+    const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+
     const result = await pool.query(
-      `INSERT INTO doctors (clinic_id, name, username, specialty, description, avatar)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO doctors (clinic_id, name, username, specialty, description, avatar, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at`,
       [
         req.clinic.id,
@@ -64,8 +72,18 @@ router.post('/', async (req, res, next) => {
         specialty,
         description || null,
         avatar || null,
+        passwordHash,
       ]
     );
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth.doctorId,
+      action: 'doctor_created',
+      metadata: {
+        createdDoctorId: result.rows[0].id,
+      },
+    });
 
     return res.status(201).json({ doctor: result.rows[0] });
   } catch (error) {
@@ -117,8 +135,15 @@ router.patch('/:id', authMiddleware, async (req, res, next) => {
   }
 
   if (password !== undefined) {
-    values.push(password ? password.trim() : null);
-    updates.push(`password = $${values.length}`);
+    const trimmed = password ? password.trim() : '';
+    if (trimmed) {
+      const hashed = await bcrypt.hash(trimmed, 10);
+      values.push(hashed);
+      updates.push(`password_hash = $${values.length}`);
+    } else {
+      values.push(null);
+      updates.push(`password_hash = $${values.length}`);
+    }
   }
 
   if (typeof isDisabled === 'boolean') {
@@ -145,6 +170,16 @@ router.patch('/:id', authMiddleware, async (req, res, next) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Doctor not found.' });
     }
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth.doctorId,
+      action: 'doctor_updated',
+      metadata: {
+        updatedDoctorId: result.rows[0].id,
+        fields: updates.map((field) => field.split('=')[0].trim()).filter((field) => field !== 'password_hash'),
+      },
+    });
 
     return res.json({ doctor: result.rows[0] });
   } catch (error) {

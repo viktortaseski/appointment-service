@@ -2,6 +2,7 @@ const express = require('express');
 
 const authMiddleware = require('../auth-middleware');
 const pool = require('../db');
+const { logAudit } = require('../utils/audit');
 const {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -133,6 +134,17 @@ router.post('/records', async (req, res, next) => {
       ]
     );
 
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'doctor_unavailability_added',
+      metadata: {
+        targetDoctorId: doctorId,
+        startDate,
+        endDate,
+      },
+    });
+
     return res.status(201).json({ record: result.rows[0] });
   } catch (error) {
     return next(error);
@@ -149,6 +161,15 @@ router.delete('/records/:id', async (req, res, next) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Record not found.' });
     }
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'doctor_unavailability_removed',
+      metadata: {
+        recordId: result.rows[0].id,
+      },
+    });
 
     return res.json({ id: result.rows[0].id });
   } catch (error) {

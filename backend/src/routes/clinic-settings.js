@@ -1,6 +1,7 @@
 const express = require('express');
 
 const pool = require('../db');
+const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -53,6 +54,15 @@ router.patch('/', async (req, res, next) => {
        RETURNING id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes`,
       values
     );
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'clinic_settings_updated',
+      metadata: {
+        updates: Object.keys(req.body || {}),
+      },
+    });
 
     return res.json({ clinic: result.rows[0] });
   } catch (error) {

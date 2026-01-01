@@ -1,7 +1,10 @@
 const express = require('express');
 
+const authMiddleware = require('../auth-middleware');
 const pool = require('../db');
 const { sendBrevoEmail } = require('../services/brevoMail');
+const rateLimit = require('../middleware/rate-limit');
+const { logAudit } = require('../utils/audit');
 const {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -12,6 +15,12 @@ const router = express.Router();
 
 const emailQueue = [];
 let emailQueueRunning = false;
+
+const bookingLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  keyPrefix: 'book',
+});
 
 async function pruneOldAppointments() {
   await pool.query(
@@ -194,7 +203,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', bookingLimiter, async (req, res, next) => {
   const {
     doctor_id: doctorId,
     patient_name: patientName,
@@ -322,7 +331,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', authMiddleware, async (req, res, next) => {
   const { completed } = req.body;
 
   if (typeof completed !== 'boolean') {
@@ -344,13 +353,23 @@ router.patch('/:id', async (req, res, next) => {
       [req.params.id]
     );
 
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'appointment_completion_toggled',
+      metadata: {
+        appointmentId: req.params.id,
+        completed,
+      },
+    });
+
     return res.json({ appointment: appointmentResult.rows[0] });
   } catch (error) {
     return next(error);
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', authMiddleware, async (req, res, next) => {
   const {
     doctor_id: doctorId,
     patient_name: patientName,
@@ -446,6 +465,15 @@ router.put('/:id', async (req, res, next) => {
       [req.params.id]
     );
 
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'appointment_updated',
+      metadata: {
+        appointmentId: req.params.id,
+      },
+    });
+
     return res.json({ appointment: appointmentResult.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
@@ -458,7 +486,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authMiddleware, async (req, res, next) => {
   try {
     const deleteResult = await pool.query(
       'DELETE FROM appointments WHERE id = $1 AND clinic_id = $2',
@@ -468,6 +496,15 @@ router.delete('/:id', async (req, res, next) => {
     if (deleteResult.rowCount === 0) {
       return res.status(404).json({ error: 'Appointment not found.' });
     }
+
+    await logAudit({
+      clinicId: req.clinic.id,
+      doctorId: req.auth?.doctorId,
+      action: 'appointment_deleted',
+      metadata: {
+        appointmentId: req.params.id,
+      },
+    });
 
     return res.status(204).send();
   } catch (error) {
