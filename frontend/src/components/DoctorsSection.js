@@ -78,6 +78,7 @@ export default function DoctorsSection({
                 type="button"
                 className="ghost"
                 onClick={() => onBookDoctor?.(doctor.id)}
+                disabled={doctor.is_disabled}
               >
                 {t('book_with_doctor')}
               </button>

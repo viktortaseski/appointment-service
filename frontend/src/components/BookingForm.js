@@ -71,8 +71,9 @@ export default function BookingForm({
             <button
               type="button"
               key={doctor.id}
-              className={`doctor-card${selectedDoctor === doctor.id ? ' selected' : ''}`}
+              className={`doctor-card${selectedDoctor === doctor.id ? ' selected' : ''}${doctor.is_disabled ? ' disabled' : ''}`}
               onClick={() => onSelectDoctor(doctor.id)}
+              disabled={doctor.is_disabled}
             >
               <div className="doctor-avatar">
                 {doctor.avatar ? (

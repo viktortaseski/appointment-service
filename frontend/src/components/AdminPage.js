@@ -165,6 +165,7 @@ function AdminPageContent() {
     closesAt: '16:00',
     slotMinutes: 30,
   });
+  const [settingsPanel, setSettingsPanel] = useState('clinic');
   const [scheduleStatus, setScheduleStatus] = useState({ status: '', error: '' });
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -191,6 +192,19 @@ function AdminPageContent() {
     endTime: '',
   });
   const [availabilityStatus, setAvailabilityStatus] = useState({
+    status: '',
+    error: '',
+  });
+  const [doctorForm, setDoctorForm] = useState({
+    doctorId: '',
+    name: '',
+    username: '',
+    specialty: '',
+    description: '',
+    password: '',
+    isDisabled: false,
+  });
+  const [doctorFormStatus, setDoctorFormStatus] = useState({
     status: '',
     error: '',
   });
@@ -410,6 +424,35 @@ function AdminPageContent() {
       setFormState((prev) => ({ ...prev, time: '' }));
     }
   }, [bookedTimes, formState.time]);
+
+  useEffect(() => {
+    if (!doctorForm.doctorId) {
+      return;
+    }
+
+    const selected = doctorOptions.find((doctor) => doctor.id === doctorForm.doctorId);
+    if (!selected) {
+      setDoctorForm({
+        doctorId: '',
+        name: '',
+        username: '',
+        specialty: '',
+        description: '',
+        password: '',
+        isDisabled: false,
+      });
+      return;
+    }
+
+    setDoctorForm((prev) => ({
+      ...prev,
+      name: selected.name || '',
+      username: selected.username || '',
+      specialty: selected.specialty || '',
+      description: selected.description || '',
+      isDisabled: Boolean(selected.is_disabled),
+    }));
+  }, [doctorForm.doctorId, doctorOptions]);
 
   useEffect(() => {
     let isActive = true;
@@ -978,6 +1021,91 @@ function AdminPageContent() {
     }
   }
 
+  function handleDoctorSelect(doctorId) {
+    if (!doctorId) {
+      setDoctorForm({
+        doctorId: '',
+        name: '',
+        username: '',
+        specialty: '',
+        description: '',
+        password: '',
+        isDisabled: false,
+      });
+      setDoctorFormStatus({ status: '', error: '' });
+      return;
+    }
+
+    setDoctorForm((prev) => ({
+      ...prev,
+      doctorId,
+      password: '',
+    }));
+    setDoctorFormStatus({ status: '', error: '' });
+  }
+
+  async function handleDoctorUpdateSubmit(event) {
+    event.preventDefault();
+    setDoctorFormStatus({ status: '', error: '' });
+
+    if (!doctorForm.doctorId) {
+      setDoctorFormStatus({ status: '', error: t('admin_doctor_update_required') });
+      return;
+    }
+
+    if (!doctorForm.name.trim() || !doctorForm.specialty.trim()) {
+      setDoctorFormStatus({ status: '', error: t('admin_doctor_update_required') });
+      return;
+    }
+
+    const payload = {
+      name: doctorForm.name.trim(),
+      username: doctorForm.username.trim() || null,
+      specialty: doctorForm.specialty.trim(),
+      description: doctorForm.description.trim() || null,
+      is_disabled: doctorForm.isDisabled,
+    };
+
+    if (doctorForm.password.trim()) {
+      payload.password = doctorForm.password.trim();
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/doctors/${doctorForm.doctorId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_doctor_update_error'));
+      }
+
+      setDoctors((prev) =>
+        prev.map((doctor) =>
+          doctor.id === data.doctor?.id ? { ...doctor, ...data.doctor } : doctor
+        )
+      );
+      setDoctorForm((prev) => ({
+        ...prev,
+        password: '',
+        isDisabled: Boolean(data.doctor?.is_disabled),
+      }));
+      setDoctorFormStatus({ status: t('admin_doctor_update_success'), error: '' });
+    } catch (error) {
+      setDoctorFormStatus({
+        status: '',
+        error: error?.message || t('admin_doctor_update_error'),
+      });
+    }
+  }
+
   if (!authReady) {
     return (
       <main className="page admin-page">
@@ -1466,368 +1594,521 @@ function AdminPageContent() {
             </div>
           </div>
 
-          <div className="card clinic-status-card">
-            <div className="upload-header">
-              <div>
-                <p className="row-title">{t('admin_clinic_status_title')}</p>
-                <p className="row-subtitle">{t('admin_clinic_status_subtitle')}</p>
-              </div>
-              <label className="clinic-toggle">
-                <input
-                  type="checkbox"
-                  checked={clinicDisabled}
-                  onChange={(event) => handleClinicStatusChange(event.target.checked)}
-                />
-                <span>{t('admin_clinic_disable_label')}</span>
-              </label>
-            </div>
-            {clinicStatus.status && <p className="status success">{clinicStatus.status}</p>}
-            {clinicStatus.error && <p className="status error">{clinicStatus.error}</p>}
+          <div className="settings-tabs">
+            <button
+              type="button"
+              className={settingsPanel === 'clinic' ? 'active' : ''}
+              onClick={() => setSettingsPanel('clinic')}
+            >
+              {t('admin_settings_clinic')}
+            </button>
+            <button
+              type="button"
+              className={settingsPanel === 'doctor' ? 'active' : ''}
+              onClick={() => setSettingsPanel('doctor')}
+            >
+              {t('admin_settings_doctor')}
+            </button>
           </div>
 
-          <div className="card clinic-schedule-card">
-            <div className="upload-header">
-              <div>
-                <p className="row-title">{t('admin_schedule_title')}</p>
-                <p className="row-subtitle">{t('admin_schedule_subtitle')}</p>
+          {settingsPanel === 'clinic' && (
+            <>
+              <div className="card clinic-status-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_clinic_status_title')}</p>
+                    <p className="row-subtitle">{t('admin_clinic_status_subtitle')}</p>
+                  </div>
+                  <label className="clinic-toggle">
+                    <input
+                      type="checkbox"
+                      checked={clinicDisabled}
+                      onChange={(event) => handleClinicStatusChange(event.target.checked)}
+                    />
+                    <span>{t('admin_clinic_disable_label')}</span>
+                  </label>
+                </div>
+                {clinicStatus.status && <p className="status success">{clinicStatus.status}</p>}
+                {clinicStatus.error && <p className="status error">{clinicStatus.error}</p>}
               </div>
-            </div>
-            <form className="availability-form" onSubmit={handleScheduleSubmit}>
-              <div className="filter-grid">
-                <div className="field">
-                  <label htmlFor="clinicOpen">{t('admin_schedule_open')}</label>
-                  <input
-                    id="clinicOpen"
-                    type="time"
-                    value={clinicSchedule.opensAt}
-                    onChange={(event) =>
-                      setClinicSchedule((prev) => ({
-                        ...prev,
-                        opensAt: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="clinicClose">{t('admin_schedule_close')}</label>
-                  <input
-                    id="clinicClose"
-                    type="time"
-                    value={clinicSchedule.closesAt}
-                    onChange={(event) =>
-                      setClinicSchedule((prev) => ({
-                        ...prev,
-                        closesAt: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="slotMinutes">{t('admin_schedule_slot')}</label>
-                  <input
-                    id="slotMinutes"
-                    type="number"
-                    min="5"
-                    step="5"
-                    value={clinicSchedule.slotMinutes}
-                    onChange={(event) =>
-                      setClinicSchedule((prev) => ({
-                        ...prev,
-                        slotMinutes: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <p className="inline-hint">{scheduleTimeHint}</p>
-              <button type="submit" className="cta">
-                {t('admin_schedule_save')}
-              </button>
-              {scheduleStatus.status && (
-                <p className="status success">{scheduleStatus.status}</p>
-              )}
-              {scheduleStatus.error && (
-                <p className="status error">{scheduleStatus.error}</p>
-              )}
-            </form>
-          </div>
 
-          <div className="card availability-card">
-            <div className="upload-header">
-              <div>
-                <p className="row-title">{t('admin_availability_title')}</p>
-                <p className="row-subtitle">{t('admin_availability_subtitle')}</p>
-              </div>
-            </div>
-            <form className="availability-form" onSubmit={handleAvailabilitySubmit}>
-              <div className="filter-grid">
-                <div className="field">
-                  <label htmlFor="availabilityDoctor">{t('admin_doctor_label')}</label>
-                  <select
-                    id="availabilityDoctor"
-                    value={availabilityForm.doctorId}
-                    onChange={(event) =>
-                      setAvailabilityForm((prev) => ({
-                        ...prev,
-                        doctorId: event.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">{t('admin_select_doctor')}</option>
-                    {doctorOptions.map((doctor) => (
-                      <option key={doctor.id} value={doctor.id}>
-                        {doctor.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="card clinic-schedule-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_schedule_title')}</p>
+                    <p className="row-subtitle">{t('admin_schedule_subtitle')}</p>
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="availabilityStartDate">
-                    {t('admin_availability_start_date')}
-                  </label>
-                  <input
-                    id="availabilityStartDate"
-                    type="date"
-                    value={availabilityForm.startDate}
-                    onChange={(event) =>
-                      setAvailabilityForm((prev) => ({
-                        ...prev,
-                        startDate: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="availabilityEndDate">
-                    {t('admin_availability_end_date')}
-                  </label>
-                  <input
-                    id="availabilityEndDate"
-                    type="date"
-                    value={availabilityForm.endDate}
-                    onChange={(event) =>
-                      setAvailabilityForm((prev) => ({
-                        ...prev,
-                        endDate: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="filter-grid">
-                <div className="field">
-                  <label htmlFor="availabilityStartTime">
-                    {t('admin_availability_start_time')}
-                  </label>
-                  <input
-                    id="availabilityStartTime"
-                    type="time"
-                    value={availabilityForm.startTime}
-                    onChange={(event) =>
-                      setAvailabilityForm((prev) => ({
-                        ...prev,
-                        startTime: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="availabilityEndTime">
-                    {t('admin_availability_end_time')}
-                  </label>
-                  <input
-                    id="availabilityEndTime"
-                    type="time"
-                    value={availabilityForm.endTime}
-                    onChange={(event) =>
-                      setAvailabilityForm((prev) => ({
-                        ...prev,
-                        endTime: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <p className="inline-hint">{t('admin_availability_hint')}</p>
-              <button type="submit" className="cta">
-                {t('admin_availability_add')}
-              </button>
-              {availabilityStatus.status && (
-                <p className="status success">{availabilityStatus.status}</p>
-              )}
-              {availabilityStatus.error && (
-                <p className="status error">{availabilityStatus.error}</p>
-              )}
-            </form>
-            {availabilityRecords.length > 0 && (
-              <div className="availability-list">
-                {availabilityRecords.map((record) => {
-                  const startDate = record.start_date
-                    ? new Date(record.start_date)
-                    : null;
-                  const endDate = record.end_date
-                    ? new Date(record.end_date)
-                    : null;
-                  const dateLabel = startDate && endDate
-                    ? startDate.toLocaleDateString(localeTag, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    }) === endDate.toLocaleDateString(localeTag, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                      ? startDate.toLocaleDateString(localeTag, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
-                      : `${startDate.toLocaleDateString(localeTag, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })} - ${endDate.toLocaleDateString(localeTag, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}`
-                    : '';
-                  const timeLabel = record.start_time && record.end_time
-                    ? `${record.start_time.slice(0, 5)} - ${record.end_time.slice(0, 5)}`
-                    : t('admin_availability_all_day');
-
-                  return (
-                    <div key={record.id} className="availability-item">
-                      <div>
-                        <p className="row-title">{record.doctor_name || t('doctor_label')}</p>
-                        <p className="row-subtitle">
-                          {dateLabel}{dateLabel ? ' · ' : ''}{timeLabel}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className="ghost"
-                        onClick={() => handleAvailabilityDelete(record.id)}
-                      >
-                        {t('admin_availability_remove')}
-                      </button>
+                <form className="availability-form" onSubmit={handleScheduleSubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="clinicOpen">{t('admin_schedule_open')}</label>
+                      <input
+                        id="clinicOpen"
+                        type="time"
+                        value={clinicSchedule.opensAt}
+                        onChange={(event) =>
+                          setClinicSchedule((prev) => ({
+                            ...prev,
+                            opensAt: event.target.value,
+                          }))
+                        }
+                      />
                     </div>
-                  );
-                })}
+                    <div className="field">
+                      <label htmlFor="clinicClose">{t('admin_schedule_close')}</label>
+                      <input
+                        id="clinicClose"
+                        type="time"
+                        value={clinicSchedule.closesAt}
+                        onChange={(event) =>
+                          setClinicSchedule((prev) => ({
+                            ...prev,
+                            closesAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="slotMinutes">{t('admin_schedule_slot')}</label>
+                      <input
+                        id="slotMinutes"
+                        type="number"
+                        min="5"
+                        step="5"
+                        value={clinicSchedule.slotMinutes}
+                        onChange={(event) =>
+                          setClinicSchedule((prev) => ({
+                            ...prev,
+                            slotMinutes: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{scheduleTimeHint}</p>
+                  <button type="submit" className="cta">
+                    {t('admin_schedule_save')}
+                  </button>
+                  {scheduleStatus.status && (
+                    <p className="status success">{scheduleStatus.status}</p>
+                  )}
+                  {scheduleStatus.error && (
+                    <p className="status error">{scheduleStatus.error}</p>
+                  )}
+                </form>
               </div>
-            )}
-          </div>
 
-          <div className="card upload-card">
-            <div className="upload-header">
-              <div>
-                <p className="row-title">{t('admin_logo_title')}</p>
-                <p className="row-subtitle">{t('admin_logo_subtitle')}</p>
-              </div>
-              {(logoUploadState.preview || clinicLogo) && (
-                <img
-                  src={logoUploadState.preview || clinicLogo}
-                  alt={t('admin_logo_title')}
-                  className="upload-preview"
-                />
-              )}
-            </div>
-            <form className="upload-form" onSubmit={handleLogoUpload}>
-              <div className="field">
-                <label htmlFor="clinicLogo">{t('admin_logo_label')}</label>
-                <input
-                  id="clinicLogo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] || null;
-                    const preview = file ? URL.createObjectURL(file) : '';
-                    setLogoUploadState((prev) => ({
-                      ...prev,
-                      file,
-                      preview,
-                      error: '',
-                      status: '',
-                    }));
-                  }}
-                />
-              </div>
-              <button className="cta" type="submit">
-                {t('admin_logo_button')}
-              </button>
-              {logoUploadState.status && (
-                <p className="status success">{logoUploadState.status}</p>
-              )}
-              {logoUploadState.error && (
-                <p className="status error">{logoUploadState.error}</p>
-              )}
-            </form>
-          </div>
+              <div className="card availability-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_availability_title')}</p>
+                    <p className="row-subtitle">{t('admin_availability_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleAvailabilitySubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="availabilityDoctor">{t('admin_doctor_label')}</label>
+                      <select
+                        id="availabilityDoctor"
+                        value={availabilityForm.doctorId}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            doctorId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">{t('admin_select_doctor')}</option>
+                        {doctorOptions.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityStartDate">
+                        {t('admin_availability_start_date')}
+                      </label>
+                      <input
+                        id="availabilityStartDate"
+                        type="date"
+                        value={availabilityForm.startDate}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            startDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityEndDate">
+                        {t('admin_availability_end_date')}
+                      </label>
+                      <input
+                        id="availabilityEndDate"
+                        type="date"
+                        value={availabilityForm.endDate}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            endDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="availabilityStartTime">
+                        {t('admin_availability_start_time')}
+                      </label>
+                      <input
+                        id="availabilityStartTime"
+                        type="time"
+                        value={availabilityForm.startTime}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            startTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityEndTime">
+                        {t('admin_availability_end_time')}
+                      </label>
+                      <input
+                        id="availabilityEndTime"
+                        type="time"
+                        value={availabilityForm.endTime}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            endTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{t('admin_availability_hint')}</p>
+                  <button type="submit" className="cta">
+                    {t('admin_availability_add')}
+                  </button>
+                  {availabilityStatus.status && (
+                    <p className="status success">{availabilityStatus.status}</p>
+                  )}
+                  {availabilityStatus.error && (
+                    <p className="status error">{availabilityStatus.error}</p>
+                  )}
+                </form>
+                {availabilityRecords.length > 0 && (
+                  <div className="availability-list">
+                    {availabilityRecords.map((record) => {
+                      const startDate = record.start_date
+                        ? new Date(record.start_date)
+                        : null;
+                      const endDate = record.end_date
+                        ? new Date(record.end_date)
+                        : null;
+                      const dateLabel = startDate && endDate
+                        ? startDate.toLocaleDateString(localeTag, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        }) === endDate.toLocaleDateString(localeTag, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                          ? startDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                          : `${startDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })} - ${endDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}`
+                        : '';
+                      const timeLabel = record.start_time && record.end_time
+                        ? `${record.start_time.slice(0, 5)} - ${record.end_time.slice(0, 5)}`
+                        : t('admin_availability_all_day');
 
-          <div className="card upload-card">
-            <div className="upload-header">
-              <div>
-                <p className="row-title">{t('admin_avatar_title')}</p>
-                <p className="row-subtitle">{t('admin_avatar_subtitle')}</p>
+                      return (
+                        <div key={record.id} className="availability-item">
+                          <div>
+                            <p className="row-title">{record.doctor_name || t('doctor_label')}</p>
+                            <p className="row-subtitle">
+                              {dateLabel}{dateLabel ? ' · ' : ''}{timeLabel}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => handleAvailabilityDelete(record.id)}
+                          >
+                            {t('admin_availability_remove')}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {uploadState.preview && (
-                <img
-                  src={uploadState.preview}
-                  alt={t('admin_avatar_title')}
-                  className="upload-preview"
-                />
-              )}
-            </div>
-            <form className="upload-form" onSubmit={handleAvatarUpload}>
-              <div className="field">
-                <label htmlFor="avatarDoctor">{t('admin_avatar_doctor_label')}</label>
-                <select
-                  id="avatarDoctor"
-                  value={uploadState.doctorId}
-                  onChange={(event) =>
-                    setUploadState((prev) => ({
-                      ...prev,
-                      doctorId: event.target.value,
-                      error: '',
-                      status: '',
-                    }))
-                  }
-                >
-                  <option value="">{t('admin_select_doctor')}</option>
-                  {doctorOptions.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.name}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="card upload-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_logo_title')}</p>
+                    <p className="row-subtitle">{t('admin_logo_subtitle')}</p>
+                  </div>
+                  {(logoUploadState.preview || clinicLogo) && (
+                    <img
+                      src={logoUploadState.preview || clinicLogo}
+                      alt={t('admin_logo_title')}
+                      className="upload-preview"
+                    />
+                  )}
+                </div>
+                <form className="upload-form" onSubmit={handleLogoUpload}>
+                  <div className="field">
+                    <label htmlFor="clinicLogo">{t('admin_logo_label')}</label>
+                    <input
+                      id="clinicLogo"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        const preview = file ? URL.createObjectURL(file) : '';
+                        setLogoUploadState((prev) => ({
+                          ...prev,
+                          file,
+                          preview,
+                          error: '',
+                          status: '',
+                        }));
+                      }}
+                    />
+                  </div>
+                  <button className="cta" type="submit">
+                    {t('admin_logo_button')}
+                  </button>
+                  {logoUploadState.status && (
+                    <p className="status success">{logoUploadState.status}</p>
+                  )}
+                  {logoUploadState.error && (
+                    <p className="status error">{logoUploadState.error}</p>
+                  )}
+                </form>
               </div>
-              <div className="field">
-                <label htmlFor="avatarFile">{t('admin_avatar_image_label')}</label>
-                <input
-                  id="avatarFile"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] || null;
-                    const preview = file ? URL.createObjectURL(file) : '';
-                    setUploadState((prev) => ({
-                      ...prev,
-                      file,
-                      preview,
-                      error: '',
-                      status: '',
-                    }));
-                  }}
-                />
+            </>
+          )}
+
+          {settingsPanel === 'doctor' && (
+            <>
+              <div className="card doctor-edit-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_doctor_update_title')}</p>
+                    <p className="row-subtitle">{t('admin_doctor_update_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleDoctorUpdateSubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorEditSelect">{t('admin_doctor_select_label')}</label>
+                      <select
+                        id="doctorEditSelect"
+                        value={doctorForm.doctorId}
+                        onChange={(event) => handleDoctorSelect(event.target.value)}
+                      >
+                        <option value="">{t('admin_select_doctor')}</option>
+                        {doctorOptions.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorName">{t('admin_doctor_name_label')}</label>
+                      <input
+                        id="doctorName"
+                        value={doctorForm.name}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorUsername">{t('admin_doctor_username_label')}</label>
+                      <input
+                        id="doctorUsername"
+                        value={doctorForm.username}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            username: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorSpecialty">
+                        {t('admin_doctor_specialty_label')}
+                      </label>
+                      <input
+                        id="doctorSpecialty"
+                        value={doctorForm.specialty}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            specialty: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorPassword">
+                        {t('admin_doctor_password_label')}
+                      </label>
+                      <input
+                        id="doctorPassword"
+                        type="password"
+                        value={doctorForm.password}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            password: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="doctorDescription">
+                      {t('admin_doctor_description_label')}
+                    </label>
+                    <textarea
+                      id="doctorDescription"
+                      rows={3}
+                      value={doctorForm.description}
+                      onChange={(event) =>
+                        setDoctorForm((prev) => ({
+                          ...prev,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <label className="danger-toggle">
+                    <div className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={doctorForm.isDisabled}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            isDisabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span className="toggle-text">{t('admin_doctor_disable_label')}</span>
+                    </div>
+                    <span className="toggle-hint">{t('admin_doctor_disable_hint')}</span>
+                  </label>
+                  <button type="submit" className="cta">
+                    {t('admin_doctor_update_button')}
+                  </button>
+                  {doctorFormStatus.status && (
+                    <p className="status success">{doctorFormStatus.status}</p>
+                  )}
+                  {doctorFormStatus.error && (
+                    <p className="status error">{doctorFormStatus.error}</p>
+                  )}
+                </form>
               </div>
-              <button type="submit" className="cta">
-                {t('admin_avatar_button')}
-              </button>
-            </form>
-            {uploadState.error && <p className="status error">{uploadState.error}</p>}
-            {uploadState.status && <p className="status">{uploadState.status}</p>}
-          </div>
+
+              <div className="card upload-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_avatar_title')}</p>
+                    <p className="row-subtitle">{t('admin_avatar_subtitle')}</p>
+                  </div>
+                  {uploadState.preview && (
+                    <img
+                      src={uploadState.preview}
+                      alt={t('admin_avatar_title')}
+                      className="upload-preview"
+                    />
+                  )}
+                </div>
+                <form className="upload-form" onSubmit={handleAvatarUpload}>
+                  <div className="field">
+                    <label htmlFor="avatarDoctor">{t('admin_avatar_doctor_label')}</label>
+                    <select
+                      id="avatarDoctor"
+                      value={uploadState.doctorId}
+                      onChange={(event) =>
+                        setUploadState((prev) => ({
+                          ...prev,
+                          doctorId: event.target.value,
+                          error: '',
+                          status: '',
+                        }))
+                      }
+                    >
+                      <option value="">{t('admin_select_doctor')}</option>
+                      {doctorOptions.map((doctor) => (
+                        <option key={doctor.id} value={doctor.id}>
+                          {doctor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="avatarFile">{t('admin_avatar_image_label')}</label>
+                    <input
+                      id="avatarFile"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        const preview = file ? URL.createObjectURL(file) : '';
+                        setUploadState((prev) => ({
+                          ...prev,
+                          file,
+                          preview,
+                          error: '',
+                          status: '',
+                        }));
+                      }}
+                    />
+                  </div>
+                  <button type="submit" className="cta">
+                    {t('admin_avatar_button')}
+                  </button>
+                </form>
+                {uploadState.error && <p className="status error">{uploadState.error}</p>}
+                {uploadState.status && <p className="status">{uploadState.status}</p>}
+              </div>
+            </>
+          )}
         </section>
       )}
     </main>

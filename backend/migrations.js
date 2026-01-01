@@ -58,6 +58,7 @@ CREATE TABLE doctors (
   specialty VARCHAR(255) NOT NULL,
   description TEXT,
   avatar TEXT,
+  is_disabled BOOLEAN DEFAULT FALSE,
   password TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -66,6 +67,7 @@ CREATE TABLE doctors (
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
+COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appointments';
 
 -- =========================================================
 -- DOCTOR UNAVAILABILITY

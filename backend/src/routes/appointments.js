@@ -195,13 +195,19 @@ router.post('/', async (req, res, next) => {
     }
 
     const doctorCheck = await pool.query(
-      'SELECT id FROM doctors WHERE id = $1 AND clinic_id = $2',
+      'SELECT id, is_disabled FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, req.clinic.id]
     );
 
     if (doctorCheck.rowCount === 0) {
       return res.status(400).json({
         error: 'Doctor does not belong to this clinic.',
+      });
+    }
+
+    if (doctorCheck.rows[0].is_disabled) {
+      return res.status(403).json({
+        error: 'Doctor is not accepting appointments.',
       });
     }
 
@@ -338,13 +344,19 @@ router.put('/:id', async (req, res, next) => {
     }
 
     const doctorCheck = await pool.query(
-      'SELECT id FROM doctors WHERE id = $1 AND clinic_id = $2',
+      'SELECT id, is_disabled FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, req.clinic.id]
     );
 
     if (doctorCheck.rowCount === 0) {
       return res.status(400).json({
         error: 'Doctor does not belong to this clinic.',
+      });
+    }
+
+    if (doctorCheck.rows[0].is_disabled) {
+      return res.status(403).json({
+        error: 'Doctor is not accepting appointments.',
       });
     }
 
