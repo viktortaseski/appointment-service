@@ -13,6 +13,29 @@ const router = express.Router();
 const emailQueue = [];
 let emailQueueRunning = false;
 
+async function pruneOldAppointments() {
+  await pool.query(
+    "DELETE FROM appointments WHERE date < (CURRENT_DATE - INTERVAL '2 days')"
+  );
+}
+
+async function upsertPatientRecord({ name, email, phone }) {
+  const normalizedEmail = email?.trim() || null;
+  const normalizedPhone = phone?.trim() || null;
+  const normalizedName = name?.trim();
+
+  if (!normalizedName || (!normalizedEmail && !normalizedPhone)) {
+    return;
+  }
+
+  await pool.query(
+    `INSERT INTO patients (name, email, phone)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [normalizedName, normalizedEmail, normalizedPhone]
+  );
+}
+
 function maskEmail(value) {
   if (!value || !value.includes('@')) {
     return value || '';
@@ -128,6 +151,7 @@ router.get('/', async (req, res, next) => {
   `;
 
   try {
+    await pruneOldAppointments();
     const result = await pool.query(query, values);
     let unavailableTimes = [];
 
@@ -188,6 +212,7 @@ router.post('/', async (req, res, next) => {
   }
 
   try {
+    await pruneOldAppointments();
     if (req.clinic.is_disabled) {
       return res.status(403).json({
         error: 'Clinic is not accepting appointments.',
@@ -253,6 +278,12 @@ router.post('/', async (req, res, next) => {
       'SELECT * FROM appointments_with_doctors WHERE id = $1',
       [insertResult.rows[0].id]
     );
+
+    await upsertPatientRecord({
+      name: patientName,
+      email: patientEmail,
+      phone: patientPhone,
+    });
 
     if (patientEmail) {
       void enqueueEmailJob(
@@ -337,6 +368,7 @@ router.put('/:id', async (req, res, next) => {
   }
 
   try {
+    await pruneOldAppointments();
     if (req.clinic.is_disabled) {
       return res.status(403).json({
         error: 'Clinic is not accepting appointments.',
@@ -402,6 +434,12 @@ router.put('/:id', async (req, res, next) => {
     if (updateResult.rowCount === 0) {
       return res.status(404).json({ error: 'Appointment not found.' });
     }
+
+    await upsertPatientRecord({
+      name: patientName,
+      email: patientEmail,
+      phone: patientPhone,
+    });
 
     const appointmentResult = await pool.query(
       'SELECT * FROM appointments_with_doctors WHERE id = $1',

@@ -14,6 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =========================================================
 DROP VIEW IF EXISTS appointments_with_doctors;
 DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS patients CASCADE;
 DROP TABLE IF EXISTS doctor_unavailability CASCADE;
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS clinics CASCADE;
@@ -86,6 +87,22 @@ CREATE TABLE doctor_unavailability (
 COMMENT ON TABLE doctor_unavailability IS 'Doctor unavailable ranges and time blocks';
 
 -- =========================================================
+-- PATIENTS TABLE
+-- =========================================================
+CREATE TABLE patients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
+  phone VARCHAR(50),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE patients IS 'Unique patient records across clinics';
+COMMENT ON COLUMN patients.email IS 'Unique patient email when provided';
+COMMENT ON COLUMN patients.phone IS 'Unique patient phone when provided';
+
+-- =========================================================
 -- APPOINTMENTS TABLE
 -- =========================================================
 CREATE TABLE appointments (
@@ -123,6 +140,14 @@ CREATE INDEX idx_appointments_date ON appointments(date);
 CREATE INDEX idx_appointments_completed ON appointments(completed);
 CREATE INDEX idx_appointments_patient_email ON appointments(patient_email);
 
+CREATE UNIQUE INDEX idx_patients_email_unique
+  ON patients(email)
+  WHERE email IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_patients_phone_unique
+  ON patients(phone)
+  WHERE phone IS NOT NULL;
+
 -- =========================================================
 -- UPDATED_AT TRIGGER FUNCTION
 -- =========================================================
@@ -144,6 +169,11 @@ EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_appointments_updated_at
 BEFORE UPDATE ON appointments
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_patients_updated_at
+BEFORE UPDATE ON patients
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
