@@ -992,6 +992,46 @@ select.error {
   background: rgba(255, 255, 255, 0.7);
 }
 
+.patients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.patients-header,
+.patient-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.patients-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.patient-row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(205, 188, 170, 0.3);
+}
+
+.patient-row:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 720px) {
+  .patients-header,
+  .patient-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
 .admin-nav {
   display: flex;
   gap: 12px;

@@ -208,6 +208,9 @@ function AdminPageContent() {
     status: '',
     error: '',
   });
+  const [patients, setPatients] = useState([]);
+  const [patientsStatus, setPatientsStatus] = useState({ loading: false, error: '' });
+  const [patientSearch, setPatientSearch] = useState('');
   const [blockedTimes, setBlockedTimes] = useState({
     loading: false,
     error: '',
@@ -325,6 +328,17 @@ function AdminPageContent() {
       });
   }, [appointments, scopeFilter, searchQuery, doctorFilter, dateFilter, todayKey, weekEnd]);
 
+  const filteredPatients = useMemo(() => {
+    if (!patientSearch) {
+      return patients;
+    }
+
+    const query = patientSearch.toLowerCase();
+    return patients.filter((patient) =>
+      (patient.name || '').toLowerCase().includes(query)
+    );
+  }, [patients, patientSearch]);
+
   const monthGrid = useMemo(
     () =>
       buildMonthGrid(monthCursor).map((slot) =>
@@ -371,6 +385,7 @@ function AdminPageContent() {
     async function loadData() {
       setLoading(true);
       setLoadError('');
+      setPatientsStatus({ loading: true, error: '' });
 
       try {
         const clinicDomain = getClinicDomain();
@@ -378,9 +393,15 @@ function AdminPageContent() {
           'x-clinic-domain': clinicDomain,
         };
 
-        const [appointmentsResponse, doctorsResponse] = await Promise.all([
+        const [appointmentsResponse, doctorsResponse, patientsResponse] = await Promise.all([
           fetch(`${API_BASE}/appointments`, { headers }),
           fetch(`${API_BASE}/doctors`, { headers }),
+          fetch(`${API_BASE}/patients`, {
+            headers: {
+              ...headers,
+              Authorization: `Bearer ${authToken}`,
+            },
+          }),
         ]);
 
         if (!appointmentsResponse.ok) {
@@ -393,8 +414,13 @@ function AdminPageContent() {
           throw new Error(t('request_failed', { status: doctorsResponse.status }));
         }
 
+        if (!patientsResponse.ok) {
+          throw new Error(t('request_failed', { status: patientsResponse.status }));
+        }
+
         const appointmentsData = await appointmentsResponse.json();
         const doctorsData = await doctorsResponse.json();
+        const patientsData = await patientsResponse.json();
 
         const resolvedClinic = appointmentsData.clinic || doctorsData.clinic || null;
         setClinicName(resolvedClinic?.name || '');
@@ -407,9 +433,12 @@ function AdminPageContent() {
         });
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
         setDoctors(doctorsData.doctors || []);
+        setPatients(patientsData.patients || []);
+        setPatientsStatus({ loading: false, error: '' });
         setLoading(false);
       } catch (error) {
         setLoadError(error?.message || t('admin_load_error'));
+        setPatientsStatus({ loading: false, error: error?.message || t('admin_load_error') });
         setLoading(false);
       }
     }
@@ -1194,6 +1223,13 @@ function AdminPageContent() {
         </button>
         <button
           type="button"
+          className={activePanel === 'patients' ? 'active' : ''}
+          onClick={() => setActivePanel('patients')}
+        >
+          {t('admin_tab_patients')}
+        </button>
+        <button
+          type="button"
           className={activePanel === 'settings' ? 'active' : ''}
           onClick={() => setActivePanel('settings')}
         >
@@ -1583,6 +1619,55 @@ function AdminPageContent() {
             </div>
           </section>
         </>
+      )}
+
+      {activePanel === 'patients' && (
+        <section className="admin-section">
+          <div className="admin-section-header">
+            <div>
+              <p className="eyebrow">{t('admin_patients_title')}</p>
+              <h2>{t('admin_patients_subtitle')}</h2>
+            </div>
+          </div>
+
+          <div className="card filter-card">
+            <div className="field">
+              <label htmlFor="patientSearch">{t('admin_patients_search_label')}</label>
+              <input
+                id="patientSearch"
+                value={patientSearch}
+                onChange={(event) => setPatientSearch(event.target.value)}
+                placeholder={t('admin_patients_search_placeholder')}
+              />
+            </div>
+          </div>
+
+          <div className="card patient-list-card">
+            {patientsStatus.loading && <p className="status">{t('admin_patients_loading')}</p>}
+            {!patientsStatus.loading && patientsStatus.error && (
+              <p className="status error">{patientsStatus.error}</p>
+            )}
+            {!patientsStatus.loading && !patientsStatus.error && filteredPatients.length === 0 && (
+              <p className="status">{t('admin_patients_empty')}</p>
+            )}
+            {!patientsStatus.loading && !patientsStatus.error && filteredPatients.length > 0 && (
+              <div className="patients-list">
+                <div className="patients-header">
+                  <span>{t('admin_patients_name')}</span>
+                  <span>{t('admin_patients_email')}</span>
+                  <span>{t('admin_patients_phone')}</span>
+                </div>
+                {filteredPatients.map((patient) => (
+                  <div key={patient.id} className="patient-row">
+                    <span className="row-title">{patient.name}</span>
+                    <span className="row-subtitle">{patient.email || '—'}</span>
+                    <span className="row-subtitle">{patient.phone || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {activePanel === 'settings' && (
