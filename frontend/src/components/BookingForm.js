@@ -26,6 +26,7 @@ export default function BookingForm({
   formState,
   formErrors,
   onFieldChange,
+  phoneCountries,
   doctors,
   doctorsStatus,
   selectedDoctor,
@@ -34,6 +35,9 @@ export default function BookingForm({
   timeHint,
   selectedTime,
   onSelectTime,
+  phoneCountry,
+  phoneNumber,
+  onPhoneCountryChange,
   availability,
   onSubmit,
   isSubmitting,
@@ -213,14 +217,30 @@ export default function BookingForm({
       </div>
       <div className="field">
         <label htmlFor="patientPhone">{t('phone_label')}</label>
-        <input
-          id="patientPhone"
-          type="tel"
-          value={formState.patientPhone}
-          onChange={(event) => onFieldChange('patientPhone', event.target.value)}
-          placeholder={t('phone_placeholder')}
-          className={formErrors.patientPhone ? 'error' : ''}
-        />
+        <div className="phone-field">
+          <select
+            id="patientPhoneCountry"
+            value={phoneCountry}
+            onChange={(event) => onPhoneCountryChange(event.target.value)}
+            aria-label={t('phone_country_label')}
+          >
+            {phoneCountries.map((country) => (
+              <option key={country.dial} value={country.dial}>
+                {country.label}
+              </option>
+            ))}
+          </select>
+          <input
+            id="patientPhone"
+            type="tel"
+            value={phoneNumber}
+            onChange={(event) => onFieldChange('patientPhoneNumber', event.target.value)}
+            placeholder={t('phone_number_placeholder')}
+            className={formErrors.patientPhone ? 'error' : ''}
+            inputMode="numeric"
+            autoComplete="tel-national"
+          />
+        </div>
         {formErrors.patientPhone && (
           <span className="field-error">{formErrors.patientPhone}</span>
         )}

@@ -130,9 +130,10 @@ function getClinicDomain() {
   return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || window.location.hostname;
 }
 
-function formatPhoneInput(value) {
+function formatPhoneInput(value, maxDigits) {
   const digits = value.replace(/\D/g, '');
-  return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+  const trimmed = maxDigits ? digits.slice(0, maxDigits) : digits;
+  return trimmed.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 }
 
 function BookingPageContent() {
@@ -148,12 +149,31 @@ function BookingPageContent() {
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const phoneCountries = useMemo(
+    () => [
+      { code: 'MK', dial: '+389', label: 'MK +389', length: 8 },
+      { code: 'AL', dial: '+355', label: 'AL +355', length: 9 },
+      { code: 'US', dial: '+1', label: 'US +1', length: 10 },
+      { code: 'UK', dial: '+44', label: 'UK +44', length: 10 },
+      { code: 'DE', dial: '+49', label: 'DE +49', length: 10 },
+    ],
+    []
+  );
+
   const [formState, setFormState] = useState({
     patientName: '',
     patientEmail: '',
-    patientPhone: '',
+    patientPhoneCountry: '+389',
+    patientPhoneNumber: '',
     patientNotes: '',
   });
+  const selectedPhoneCountry = useMemo(
+    () =>
+      phoneCountries.find((country) => country.dial === formState.patientPhoneCountry) ||
+      phoneCountries[0],
+    [formState.patientPhoneCountry, phoneCountries]
+  );
+
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -368,7 +388,10 @@ function BookingPageContent() {
   }, [selectedDate]);
 
   function handleFieldChange(field, value) {
-    const nextValue = field === 'patientPhone' ? formatPhoneInput(value) : value;
+    const nextValue =
+      field === 'patientPhoneNumber'
+        ? formatPhoneInput(value, selectedPhoneCountry?.length)
+        : value;
     setFormState((prev) => ({ ...prev, [field]: nextValue }));
     setFormErrors((prev) => ({ ...prev, [field]: '' }));
   }
@@ -376,7 +399,7 @@ function BookingPageContent() {
   function validateForm() {
     const errors = {};
     const email = formState.patientEmail.trim();
-    const phone = formState.patientPhone.trim();
+    const phoneDigits = formState.patientPhoneNumber.replace(/\D/g, '');
     const name = formState.patientName.trim();
 
     if (!name) {
@@ -389,8 +412,15 @@ function BookingPageContent() {
       errors.patientEmail = t('validation_email_invalid');
     }
 
-    if (!phone) {
+    if (!phoneDigits) {
       errors.patientPhone = t('validation_phone_required');
+    } else if (
+      selectedPhoneCountry?.length &&
+      phoneDigits.length !== selectedPhoneCountry.length
+    ) {
+      errors.patientPhone = t('validation_phone_invalid', {
+        length: selectedPhoneCountry.length,
+      });
     }
 
     if (!selectedDate) {
@@ -406,6 +436,20 @@ function BookingPageContent() {
     }
 
     return errors;
+  }
+
+  function handlePhoneCountryChange(value) {
+    const resolved =
+      phoneCountries.find((country) => country.dial === value) || phoneCountries[0];
+    const digits = formState.patientPhoneNumber.replace(/\D/g, '');
+    const nextNumber = formatPhoneInput(digits, resolved?.length);
+
+    setFormState((prev) => ({
+      ...prev,
+      patientPhoneCountry: value,
+      patientPhoneNumber: nextNumber,
+    }));
+    setFormErrors((prev) => ({ ...prev, patientPhone: '' }));
   }
 
   function handlePreviewSubmit(event) {
@@ -472,7 +516,7 @@ function BookingPageContent() {
           doctor_id: selectedDoctor,
           patient_name: formState.patientName.trim(),
           patient_email: formState.patientEmail.trim(),
-          patient_phone: formState.patientPhone.trim(),
+          patient_phone: `${formState.patientPhoneCountry}${formState.patientPhoneNumber.replace(/\D/g, '')}`,
           date: selectedDate,
           time: selectedTime,
           notes: formState.patientNotes.trim() || null,
@@ -501,7 +545,8 @@ function BookingPageContent() {
       setFormState({
         patientName: '',
         patientEmail: '',
-        patientPhone: '',
+        patientPhoneCountry: formState.patientPhoneCountry,
+        patientPhoneNumber: '',
         patientNotes: '',
       });
       setSelectedTime('');
@@ -652,6 +697,7 @@ function BookingPageContent() {
           formState={formState}
           formErrors={formErrors}
           onFieldChange={handleFieldChange}
+          phoneCountries={phoneCountries}
           doctors={doctors}
           selectedDoctor={selectedDoctor}
           onSelectDoctor={(doctorId) => {
@@ -676,6 +722,9 @@ function BookingPageContent() {
             setFormErrors((prev) => ({ ...prev, time: '' }));
             setPromptNotice((prev) => (prev?.type === 'time' ? null : prev));
           }}
+          phoneCountry={formState.patientPhoneCountry}
+          phoneNumber={formState.patientPhoneNumber}
+          onPhoneCountryChange={handlePhoneCountryChange}
           availability={{
             ...availability,
             takenTimes: normalizedTakenTimes,

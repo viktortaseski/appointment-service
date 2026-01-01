@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { Client } = require('pg');
 
@@ -13,10 +14,16 @@ if (!connectionString) {
 }
 
 async function run() {
-  const client = new Client({
-    connectionString,
-    ssl: isProduction ? { rejectUnauthorized: false } : undefined,
-  });
+const sslRequired =
+  isProduction ||
+  process.env.DATABASE_SSL === 'true' ||
+  process.env.PGSSLMODE === 'require' ||
+  (connectionString && connectionString.includes('render.com'));
+
+const client = new Client({
+  connectionString,
+  ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+});
 
   try {
     await client.connect();
