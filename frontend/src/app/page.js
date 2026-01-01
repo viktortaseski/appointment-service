@@ -133,7 +133,14 @@ function getClinicDomain() {
 function formatPhoneInput(value, maxDigits) {
   const digits = value.replace(/\D/g, '');
   const trimmed = maxDigits ? digits.slice(0, maxDigits) : digits;
-  return trimmed.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+  if (trimmed.length <= 2) {
+    return trimmed;
+  }
+
+  const first = trimmed.slice(0, 2);
+  const rest = trimmed.slice(2);
+  const chunks = rest.match(/.{1,3}/g) || [];
+  return [first, ...chunks].join(' ').trim();
 }
 
 function BookingPageContent() {
