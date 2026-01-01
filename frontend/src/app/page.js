@@ -159,6 +159,7 @@ function BookingPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmNotice, setConfirmNotice] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
+  const [promptNotice, setPromptNotice] = useState(null);
   const [availability, setAvailability] = useState({
     loading: false,
     error: null,
@@ -412,9 +413,20 @@ function BookingPageContent() {
     setSubmitError('');
     setSuccessNotice(null);
     setConfirmNotice(null);
+    setPromptNotice(null);
 
     const errors = validateForm();
     setFormErrors(errors);
+
+    if (errors.doctor) {
+      setPromptNotice({ type: 'doctor', message: t('prompt_select_doctor') });
+      return;
+    }
+
+    if (errors.time) {
+      setPromptNotice({ type: 'time', message: t('prompt_select_time') });
+      return;
+    }
 
     if (Object.keys(errors).length > 0) {
       return;
@@ -437,6 +449,7 @@ function BookingPageContent() {
     setSelectedDoctor(doctorId);
     setSelectedTime('');
     setFormErrors((prev) => ({ ...prev, doctor: '', time: '' }));
+    setPromptNotice((prev) => (prev?.type === 'doctor' ? null : prev));
 
     const form = document.getElementById('book');
     if (form) {
@@ -561,6 +574,21 @@ function BookingPageContent() {
         </div>
       )}
 
+      {promptNotice && (
+        <div className="notice-overlay">
+          <div className="card prompt-banner notice-card">
+            <p className="prompt-title">{promptNotice.message}</p>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setPromptNotice(null)}
+            >
+              {t('dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {confirmNotice && (
         <div className="notice-overlay">
           <div className="card confirm-banner notice-card">
@@ -630,6 +658,7 @@ function BookingPageContent() {
             setSelectedDoctor(doctorId);
             setSelectedTime('');
             setFormErrors((prev) => ({ ...prev, doctor: '', time: '' }));
+            setPromptNotice((prev) => (prev?.type === 'doctor' ? null : prev));
             if (typeof window !== 'undefined') {
               window.requestAnimationFrame(() => {
                 const target = document.getElementById('booking-date');
@@ -645,6 +674,7 @@ function BookingPageContent() {
           onSelectTime={(time) => {
             setSelectedTime(time);
             setFormErrors((prev) => ({ ...prev, time: '' }));
+            setPromptNotice((prev) => (prev?.type === 'time' ? null : prev));
           }}
           availability={{
             ...availability,

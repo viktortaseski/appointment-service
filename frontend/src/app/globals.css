@@ -771,6 +771,23 @@ select.error {
   box-shadow: 0 20px 40px rgba(255, 183, 125, 0.25);
 }
 
+.prompt-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(235, 245, 255, 0.92);
+  border: 1px solid rgba(125, 174, 255, 0.45);
+  box-shadow: 0 20px 40px rgba(125, 174, 255, 0.2);
+}
+
+.prompt-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .confirm-title {
   margin: 0;
   font-size: 20px;
