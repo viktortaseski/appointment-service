@@ -8,7 +8,7 @@ import SiteFooter from '../components/SiteFooter';
 import Topbar from '../components/Topbar';
 import { useI18n } from '../components/I18nProvider';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 function formatDateKey(date) {
   const year = date.getFullYear();

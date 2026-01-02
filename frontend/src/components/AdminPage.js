@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useI18n } from './I18nProvider';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 function formatDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
