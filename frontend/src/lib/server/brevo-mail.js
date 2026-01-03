@@ -1,6 +1,13 @@
 import { debugLog } from './debug';
 
-export async function sendBrevoEmail({ to, subject, text, senderName }) {
+export async function sendBrevoEmail({
+  to,
+  subject,
+  text,
+  senderName,
+  templateId,
+  params,
+}) {
   if (!process.env.BREVO_API_KEY) {
     debugLog('brevo: missing api key');
   }
@@ -11,11 +18,23 @@ export async function sendBrevoEmail({ to, subject, text, senderName }) {
       email: 'vtaseski24@gmail.com',
     },
     to: [{ email: to }],
-    subject,
-    textContent: text,
   };
 
-  debugLog('brevo: send start', { to: Boolean(to), subject: Boolean(subject) });
+  if (templateId) {
+    payload.templateId = templateId;
+    if (params) {
+      payload.params = params;
+    }
+  } else {
+    payload.subject = subject;
+    payload.textContent = text;
+  }
+
+  debugLog('brevo: send start', {
+    to: Boolean(to),
+    subject: Boolean(subject),
+    templateId: Boolean(templateId),
+  });
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',

@@ -5,6 +5,8 @@ import { pool } from '@/lib/server/db';
 import { sendBrevoEmail } from '@/lib/server/brevo-mail';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 import { debugLog } from '@/lib/server/debug';
+import { createCancelToken } from '@/lib/server/appointment-cancel';
+import { getHeader } from '@/lib/server/headers';
 import {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -49,6 +51,14 @@ function maskEmail(value) {
   return `${maskedName}@${domain}`;
 }
 
+function getFirstName(value) {
+  if (!value) {
+    return '';
+  }
+
+  return value.trim().split(/\s+/)[0] || '';
+}
+
 function enqueueEmailJob(job, context) {
   return new Promise((resolve, reject) => {
     emailQueue.push({ job, resolve, reject, context });
@@ -85,10 +95,43 @@ async function runEmailQueue() {
   emailQueueRunning = false;
 }
 
-async function sendAppointmentEmail({ to, clinicName, date, time }) {
+function getBaseUrl(headers) {
+  const forwardedProto = getHeader(headers, 'x-forwarded-proto');
+  const forwardedHost = getHeader(headers, 'x-forwarded-host');
+  const host = forwardedHost || getHeader(headers, 'host');
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  }
+
+  const proto = forwardedProto ? forwardedProto.split(',')[0].trim() : 'https';
+  return `${proto}://${host.split(',')[0].trim()}`;
+}
+
+async function sendAppointmentEmail({
+  to,
+  clinicName,
+  clinicId,
+  clinicLogo,
+  date,
+  time,
+  appointmentId,
+  patientName,
+  baseUrl,
+}) {
   const safeClinicName = clinicName || 'the clinic';
   const subject = `Appointment confirmed at ${safeClinicName}`;
   const text = `You have an appointment at ${safeClinicName} on ${date} at ${time}.`;
+  const token = createCancelToken({
+    appointmentId,
+    clinicId,
+    patientEmail: to,
+  });
+  const cancelUrl = token && baseUrl
+    ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(token)}`
+    : null;
+  const templateId = Number(process.env.BREVO_APPOINTMENT_TEMPLATE_ID);
+  const cancelToken = token || '';
 
   try {
     // eslint-disable-next-line no-console
@@ -99,8 +142,18 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
     const info = await sendBrevoEmail({
       to,
       subject,
-      text,
+      text: cancelUrl ? `${text}\n\nCancel: ${cancelUrl}` : text,
       senderName: safeClinicName,
+      templateId: Number.isInteger(templateId) ? templateId : null,
+      params: {
+        FIRSTNAME: getFirstName(patientName || ''),
+        clinic_name: safeClinicName,
+        clinic_logo: clinicLogo || '',
+        clinic_id: clinicId || '',
+        date,
+        time,
+        cancel_token: cancelToken,
+      },
     });
 
     // eslint-disable-next-line no-console
@@ -332,8 +385,13 @@ export async function POST(request) {
           sendAppointmentEmail({
             to: patientEmail,
             clinicName: clinic.name,
+            clinicId: clinic.id,
+            clinicLogo: clinic.logo,
             date,
             time: normalizedTime,
+            appointmentId: insertResult.rows[0].id,
+            patientName,
+            baseUrl: getBaseUrl(request.headers),
           }),
         {
           clinicId: clinic.id,
