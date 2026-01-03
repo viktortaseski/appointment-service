@@ -4,6 +4,7 @@ import { resolveClinic } from '@/lib/server/clinic-resolver';
 import { pool } from '@/lib/server/db';
 import { sendBrevoEmail } from '@/lib/server/brevo-mail';
 import { checkRateLimit } from '@/lib/server/rate-limit';
+import { debugLog } from '@/lib/server/debug';
 import {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -125,8 +126,10 @@ async function sendAppointmentEmail({ to, clinicName, date, time }) {
 }
 
 export async function GET(request) {
+  debugLog('appointments: GET start');
   const { clinic, error } = await resolveClinic(request.headers);
   if (error) {
+    debugLog('appointments: GET clinic error', { error });
     return NextResponse.json({ error }, { status: 404 });
   }
 
@@ -191,6 +194,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  debugLog('appointments: POST start');
   const limit = checkRateLimit(request.headers, {
     windowMs: 5 * 60 * 1000,
     max: 20,
@@ -198,6 +202,7 @@ export async function POST(request) {
   });
 
   if (limit.limited) {
+    debugLog('appointments: POST rate limited');
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
@@ -206,6 +211,7 @@ export async function POST(request) {
 
   const { clinic, error } = await resolveClinic(request.headers);
   if (error) {
+    debugLog('appointments: POST clinic error', { error });
     return NextResponse.json({ error }, { status: 404 });
   }
 
@@ -221,6 +227,12 @@ export async function POST(request) {
   } = body || {};
 
   if (!doctorId || !patientName || !date || !time) {
+    debugLog('appointments: POST missing fields', {
+      hasDoctor: Boolean(doctorId),
+      hasName: Boolean(patientName),
+      hasDate: Boolean(date),
+      hasTime: Boolean(time),
+    });
     return NextResponse.json(
       { error: 'doctor_id, patient_name, date, and time are required.' },
       { status: 400 }
@@ -230,6 +242,7 @@ export async function POST(request) {
   try {
     await pruneOldAppointments();
     if (clinic.is_disabled) {
+      debugLog('appointments: POST clinic disabled', { clinicId: clinic.id });
       return NextResponse.json(
         { error: 'Clinic is not accepting appointments.' },
         { status: 403 }
@@ -242,6 +255,7 @@ export async function POST(request) {
     );
 
     if (doctorCheck.rowCount === 0) {
+      debugLog('appointments: POST doctor mismatch', { doctorId });
       return NextResponse.json(
         { error: 'Doctor does not belong to this clinic.' },
         { status: 400 }
@@ -249,6 +263,7 @@ export async function POST(request) {
     }
 
     if (doctorCheck.rows[0].is_disabled) {
+      debugLog('appointments: POST doctor disabled', { doctorId });
       return NextResponse.json(
         { error: 'Doctor is not accepting appointments.' },
         { status: 403 }
@@ -259,6 +274,10 @@ export async function POST(request) {
     const allowedTimes = buildTimeSlotsFromClinic(clinic);
 
     if (!normalizedTime || !allowedTimes.includes(normalizedTime)) {
+      debugLog('appointments: POST time outside hours', {
+        time: normalizedTime,
+        allowedCount: allowedTimes.length,
+      });
       return NextResponse.json(
         { error: 'Selected time is outside clinic hours.' },
         { status: 400 }
@@ -275,6 +294,7 @@ export async function POST(request) {
     const blockedTimes = computeBlockedTimes(date, availabilityResult.rows, allowedTimes);
 
     if (blockedTimes.includes(normalizedTime)) {
+      debugLog('appointments: POST time blocked', { time: normalizedTime });
       return NextResponse.json(
         { error: 'Selected time is unavailable for this doctor.' },
         { status: 409 }
@@ -329,9 +349,11 @@ export async function POST(request) {
       });
     }
 
+    debugLog('appointments: POST success', { appointmentId: insertResult.rows[0].id });
     return NextResponse.json({ appointment: appointmentResult.rows[0] }, { status: 201 });
   } catch (err) {
     if (err?.code === '23505') {
+      debugLog('appointments: POST conflict');
       return NextResponse.json(
         { error: 'Appointment slot already booked.' },
         { status: 409 }

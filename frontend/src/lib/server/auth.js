@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
 
+import { debugLog } from './debug';
 import { pool } from './db';
 
 export async function requireAuth(request, clinic) {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
+    debugLog('auth: missing JWT_SECRET');
     return { error: 'JWT_SECRET not configured.', status: 500 };
   }
 
@@ -12,6 +14,7 @@ export async function requireAuth(request, clinic) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
+    debugLog('auth: missing bearer token');
     return { error: 'Missing auth token.', status: 401 };
   }
 
@@ -19,6 +22,10 @@ export async function requireAuth(request, clinic) {
     const payload = jwt.verify(token, secret);
 
     if (clinic && payload.clinicId !== clinic.id) {
+      debugLog('auth: clinic mismatch', {
+        tokenClinicId: payload.clinicId,
+        clinicId: clinic.id,
+      });
       return { error: 'Token not valid for this clinic.', status: 403 };
     }
 
@@ -28,15 +35,26 @@ export async function requireAuth(request, clinic) {
     );
 
     if (result.rowCount === 0) {
+      debugLog('auth: doctor not found', {
+        doctorId: payload.doctorId,
+        clinicId: payload.clinicId,
+      });
       return { error: 'Invalid auth token.', status: 401 };
     }
 
     if (result.rows[0].is_disabled) {
+      debugLog('auth: doctor disabled', {
+        doctorId: payload.doctorId,
+        clinicId: payload.clinicId,
+      });
       return { error: 'Doctor account disabled.', status: 403 };
     }
 
     return { auth: payload };
   } catch (error) {
+    debugLog('auth: token verify failed', {
+      message: error?.message || error,
+    });
     return { error: 'Invalid auth token.', status: 401 };
   }
 }

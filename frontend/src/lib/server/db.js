@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
 
+import { debugLog } from './debug';
+
 const isProduction = process.env.NODE_ENV === 'production';
 const connectionString = isProduction
   ? process.env.DATABASE_URL
@@ -19,4 +21,10 @@ const sslRequired =
 export const pool = new Pool({
   connectionString,
   ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+});
+
+debugLog('db:init', {
+  hasConnectionString: Boolean(connectionString),
+  sslRequired,
+  nodeEnv: process.env.NODE_ENV,
 });

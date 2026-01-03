@@ -1,4 +1,10 @@
+import { debugLog } from './debug';
+
 export async function sendBrevoEmail({ to, subject, text, senderName }) {
+  if (!process.env.BREVO_API_KEY) {
+    debugLog('brevo: missing api key');
+  }
+
   const payload = {
     sender: {
       name: senderName || 'Dentra',
@@ -8,6 +14,8 @@ export async function sendBrevoEmail({ to, subject, text, senderName }) {
     subject,
     textContent: text,
   };
+
+  debugLog('brevo: send start', { to: Boolean(to), subject: Boolean(subject) });
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -25,6 +33,8 @@ export async function sendBrevoEmail({ to, subject, text, senderName }) {
     console.error('Brevo API error:', data);
     throw new Error('Brevo email failed');
   }
+
+  debugLog('brevo: send success', { messageId: data?.messageId });
 
   return data;
 }
