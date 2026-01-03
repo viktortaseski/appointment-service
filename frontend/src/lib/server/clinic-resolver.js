@@ -1,10 +1,11 @@
 import { debugLog } from './debug';
 import { pool } from './db';
+import { getHeader, getHeaders } from './headers';
 
-function getHostname(headers) {
-  const explicitDomain = headers.get('x-clinic-domain');
-  const forwardedHost = headers.get('x-forwarded-host');
-  const hostHeader = forwardedHost || headers.get('host');
+function getHostname(source) {
+  const explicitDomain = getHeader(source, 'x-clinic-domain');
+  const forwardedHost = getHeader(source, 'x-forwarded-host');
+  const hostHeader = forwardedHost || getHeader(source, 'host');
   const rawHost = explicitDomain || hostHeader;
 
   if (!rawHost) {
@@ -14,13 +15,13 @@ function getHostname(headers) {
   return rawHost.split(',')[0].trim().replace(/:\d+$/, '');
 }
 
-export async function resolveClinic(headers) {
-  const hostname = getHostname(headers);
+export async function resolveClinic(source) {
+  const hostname = getHostname(source);
 
   if (!hostname) {
     debugLog('clinic-resolver: missing host', {
-      forwardedHost: headers.get('x-forwarded-host'),
-      host: headers.get('host'),
+      forwardedHost: getHeader(source, 'x-forwarded-host'),
+      host: getHeader(source, 'host'),
     });
     return { error: 'Missing hostname.' };
   }

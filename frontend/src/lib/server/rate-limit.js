@@ -1,18 +1,20 @@
+import { getHeader } from './headers';
+
 const buckets = new Map();
 
-function getClientIp(headers) {
-  const forwarded = headers.get('x-forwarded-for');
+function getClientIp(source) {
+  const forwarded = getHeader(source, 'x-forwarded-for');
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
 
-  return headers.get('x-real-ip') || 'unknown';
+  return getHeader(source, 'x-real-ip') || 'unknown';
 }
 
-export function checkRateLimit(headers, options = {}) {
+export function checkRateLimit(source, options = {}) {
   const { windowMs = 60000, max = 60, keyPrefix = 'default' } = options;
   const now = Date.now();
-  const key = `${keyPrefix}:${getClientIp(headers)}`;
+  const key = `${keyPrefix}:${getClientIp(source)}`;
   const current = buckets.get(key);
 
   if (!current || current.resetAt <= now) {

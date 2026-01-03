@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import { debugLog } from './debug';
 import { pool } from './db';
+import { getHeader } from './headers';
 
 export async function requireAuth(request, clinic) {
   const secret = process.env.JWT_SECRET;
@@ -10,7 +11,7 @@ export async function requireAuth(request, clinic) {
     return { error: 'JWT_SECRET not configured.', status: 500 };
   }
 
-  const authHeader = request.headers.get('authorization') || '';
+  const authHeader = getHeader(request, 'authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
