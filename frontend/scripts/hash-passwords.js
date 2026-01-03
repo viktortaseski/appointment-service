@@ -1,7 +1,43 @@
 /* eslint-disable no-console */
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const { Client } = require('pg');
+
+function loadEnvFile() {
+  const envPath = path.resolve(__dirname, '../.env');
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const idx = line.indexOf('=');
+    if (idx === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadEnvFile();
 
 const isProduction = process.env.NODE_ENV === 'production';
 const connectionString = isProduction
@@ -14,16 +50,16 @@ if (!connectionString) {
 }
 
 async function run() {
-const sslRequired =
-  isProduction ||
-  process.env.DATABASE_SSL === 'true' ||
-  process.env.PGSSLMODE === 'require' ||
-  (connectionString && connectionString.includes('render.com'));
+  const sslRequired =
+    isProduction ||
+    process.env.DATABASE_SSL === 'true' ||
+    process.env.PGSSLMODE === 'require' ||
+    (connectionString && connectionString.includes('render.com'));
 
-const client = new Client({
-  connectionString,
-  ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
-});
+  const client = new Client({
+    connectionString,
+    ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+  });
 
   try {
     await client.connect();

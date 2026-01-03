@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate": "node scripts/migrations.js",
+    "hash-passwords": "node scripts/hash-passwords.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
