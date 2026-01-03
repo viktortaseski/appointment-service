@@ -21,8 +21,8 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
-./frontend/.env
-./backend/.env
+frontend/.env
+backend/.env
 
 # coverage
 coverage/
