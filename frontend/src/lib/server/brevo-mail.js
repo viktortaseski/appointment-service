@@ -15,7 +15,7 @@ export async function sendBrevoEmail({
   const payload = {
     sender: {
       name: senderName || 'Dentra',
-      email: 'vtaseski24@gmail.com',
+      email: 'appointments@dentra.mk',
     },
     to: [{ email: to }],
   };
