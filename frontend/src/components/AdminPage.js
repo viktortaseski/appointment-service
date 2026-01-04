@@ -143,7 +143,7 @@ function getClinicDomain() {
 }
 
 function AdminPageContent() {
-  const { t, localeTag } = useI18n();
+  const { t, localeTag, setLocale } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const [authToken, setAuthToken] = useState('');
@@ -431,6 +431,14 @@ function AdminPageContent() {
           closesAt: resolvedClinic?.closes_at || '16:00',
           slotMinutes: resolvedClinic?.slot_minutes || 30,
         });
+        const preferredLocale = resolvedClinic?.default_language;
+        if (preferredLocale) {
+          const stored = window.localStorage.getItem('locale');
+          const supportedLocales = ['en', 'mk', 'al'];
+          if (!stored && supportedLocales.includes(preferredLocale)) {
+            setLocale(preferredLocale);
+          }
+        }
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));
         setDoctors(doctorsData.doctors || []);
         setPatients(patientsData.patients || []);

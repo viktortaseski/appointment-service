@@ -66,7 +66,7 @@ export async function PATCH(request) {
     `UPDATE clinics
      SET ${updates.join(', ')}
      WHERE id = $${values.length}
-     RETURNING id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes`,
+     RETURNING id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, default_language`,
     values
   );
 

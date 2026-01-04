@@ -144,7 +144,7 @@ function formatPhoneInput(value, maxDigits) {
 }
 
 function BookingPageContent() {
-  const { t, localeTag } = useI18n();
+  const { t, localeTag, setLocale } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const [clinic, setClinic] = useState(null);
@@ -288,6 +288,8 @@ function BookingPageContent() {
               opens_at: rawClinic.opens_at ?? rawClinic.opensAt,
               closes_at: rawClinic.closes_at ?? rawClinic.closesAt,
               slot_minutes: rawClinic.slot_minutes ?? rawClinic.slotMinutes,
+              default_language:
+                rawClinic.default_language ?? rawClinic.defaultLanguage ?? null,
             }
           : null;
 
@@ -312,6 +314,24 @@ function BookingPageContent() {
       isActive = false;
     };
   }, [t]);
+
+  useEffect(() => {
+    if (!clinic?.default_language) {
+      return;
+    }
+
+    const stored = window.localStorage.getItem('locale');
+    if (stored) {
+      return;
+    }
+
+    const supportedLocales = ['en', 'mk', 'al'];
+    if (!supportedLocales.includes(clinic.default_language)) {
+      return;
+    }
+
+    setLocale(clinic.default_language);
+  }, [clinic?.default_language, setLocale]);
 
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {
     const clinicDomain = getClinicDomain();

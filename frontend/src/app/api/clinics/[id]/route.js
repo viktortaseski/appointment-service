@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export async function GET(request, { params }) {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, created_at FROM clinics WHERE id = $1',
+      'SELECT id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics WHERE id = $1',
       [params.id]
     );
 
