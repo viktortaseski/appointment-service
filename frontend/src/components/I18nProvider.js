@@ -749,20 +749,33 @@ function interpolate(template, values) {
 }
 
 export function I18nProvider({ children }) {
-  const [locale, setLocale] = useState('en');
+  const [locale, setLocaleState] = useState('en');
+  const [localeSource, setLocaleSource] = useState('init');
+
+  const setLocale = useCallback((nextLocale, source = 'user') => {
+    if (!translations[nextLocale]) {
+      return;
+    }
+
+    setLocaleState(nextLocale);
+    setLocaleSource(source);
+  }, []);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('locale');
     if (stored && translations[stored]) {
-      setLocale(stored);
+      setLocale(stored, 'stored');
     }
-  }, []);
+  }, [setLocale]);
 
   useEffect(() => {
-    window.localStorage.setItem('locale', locale);
     const htmlLang = locale === 'al' ? 'sq' : locale;
     document.documentElement.lang = htmlLang;
-  }, [locale]);
+    if (localeSource === 'init') {
+      return;
+    }
+    window.localStorage.setItem('locale', locale);
+  }, [locale, localeSource]);
 
   const t = useCallback(
     (key, values = {}) => {

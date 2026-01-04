@@ -436,7 +436,7 @@ function AdminPageContent() {
           const stored = window.localStorage.getItem('locale');
           const supportedLocales = ['en', 'mk', 'al'];
           if (!stored && supportedLocales.includes(preferredLocale)) {
-            setLocale(preferredLocale);
+            setLocale(preferredLocale, 'auto');
           }
         }
         setAppointments((appointmentsData.appointments || []).map(normalizeAppointment));

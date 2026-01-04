@@ -330,7 +330,7 @@ function BookingPageContent() {
       return;
     }
 
-    setLocale(clinic.default_language);
+    setLocale(clinic.default_language, 'auto');
   }, [clinic?.default_language, setLocale]);
 
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {

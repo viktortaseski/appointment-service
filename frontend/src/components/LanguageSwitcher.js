@@ -18,7 +18,7 @@ export default function LanguageSwitcher({ className = '' }) {
           <button
             type="button"
             className={locale === lang.code ? 'active' : ''}
-            onClick={() => setLocale(lang.code)}
+            onClick={() => setLocale(lang.code, 'user')}
           >
             {lang.label}
           </button>
