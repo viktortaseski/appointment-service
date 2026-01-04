@@ -12,7 +12,13 @@ function getHostname(source) {
     return null;
   }
 
-  return rawHost.split(',')[0].trim().replace(/:\d+$/, '');
+  const normalized = rawHost
+    .split(',')[0]
+    .trim()
+    .replace(/:\d+$/, '')
+    .toLowerCase();
+
+  return normalized.startsWith('www.') ? normalized.slice(4) : normalized;
 }
 
 export async function resolveClinic(source) {
