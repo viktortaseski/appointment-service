@@ -4,6 +4,7 @@ import { useI18n } from './I18nProvider';
 
 export default function SiteFooter({ clinic }) {
   const { t } = useI18n();
+  const mapQuery = clinic?.address ? encodeURIComponent(clinic.address) : '';
   const contactItems = [
     clinic?.phone
       ? { label: t('footer_phone'), value: clinic.phone, href: `tel:${clinic.phone}` }
@@ -11,7 +12,13 @@ export default function SiteFooter({ clinic }) {
     clinic?.email
       ? { label: t('footer_email'), value: clinic.email, href: `mailto:${clinic.email}` }
       : null,
-    clinic?.address ? { label: t('footer_address'), value: clinic.address } : null,
+    clinic?.address
+      ? {
+          label: t('footer_address'),
+          value: clinic.address,
+          href: `https://www.google.com/maps/search/?api=1&query=${mapQuery}`,
+        }
+      : null,
   ].filter(Boolean);
 
   return (
