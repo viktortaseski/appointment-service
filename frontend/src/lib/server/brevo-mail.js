@@ -17,6 +17,10 @@ export async function sendBrevoEmail({
       name: senderName || 'Dentra',
       email: 'appointments@dentra.mk',
     },
+    replyTo: {
+      name: senderName || 'Dentra',
+      email: 'appointments@dentra.mk',
+    },
     to: [{ email: to }],
   };
 
