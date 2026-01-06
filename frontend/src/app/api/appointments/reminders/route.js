@@ -1,0 +1,159 @@
+import { NextResponse } from 'next/server';
+
+import { normalizeDateKey, normalizeTime } from '@/lib/server/availability';
+import { createCancelToken } from '@/lib/server/appointment-cancel';
+import { sendBrevoEmail } from '@/lib/server/brevo-mail';
+import { pool } from '@/lib/server/db';
+import { getHeader } from '@/lib/server/headers';
+
+export const runtime = 'nodejs';
+
+function getBaseUrl(headers) {
+  const forwardedProto = getHeader(headers, 'x-forwarded-proto');
+  const forwardedHost = getHeader(headers, 'x-forwarded-host');
+  const host = forwardedHost || getHeader(headers, 'host');
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  }
+
+  const proto = forwardedProto ? forwardedProto.split(',')[0].trim() : 'https';
+  return `${proto}://${host.split(',')[0].trim()}`;
+}
+
+function getFirstName(value) {
+  if (!value) {
+    return '';
+  }
+
+  return value.trim().split(/\s+/)[0] || '';
+}
+
+function parseNumber(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function getTokenFromRequest(request) {
+  const authHeader = getHeader(request, 'authorization') || '';
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return getHeader(request, 'x-cron-secret') || null;
+}
+
+export async function GET(request) {
+  const expectedSecret = process.env.CRON_SECRET;
+  if (!expectedSecret) {
+    return NextResponse.json(
+      { error: 'CRON_SECRET not configured.' },
+      { status: 500 }
+    );
+  }
+
+  const providedToken = getTokenFromRequest(request);
+  if (providedToken !== expectedSecret) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
+
+  const offsetMinutes = parseNumber(
+    process.env.APPOINTMENT_REMINDER_OFFSET_MINUTES,
+    120
+  );
+  const windowMinutes = parseNumber(
+    process.env.APPOINTMENT_REMINDER_WINDOW_MINUTES,
+    15
+  );
+  const timezone = process.env.APPOINTMENT_TIMEZONE || 'Europe/Skopje';
+
+  const result = await pool.query(
+    `SELECT a.id,
+            a.date,
+            a.time,
+            a.patient_name,
+            a.patient_email,
+            a.clinic_id,
+            c.name AS clinic_name,
+            c.logo AS clinic_logo,
+            c.domain AS clinic_domain,
+            d.name AS doctor_name
+     FROM appointments a
+     JOIN clinics c ON c.id = a.clinic_id
+     JOIN doctors d ON d.id = a.doctor_id
+     WHERE a.completed = false
+       AND a.patient_email IS NOT NULL
+       AND a.patient_email <> ''
+       AND a.reminder_sent_at IS NULL
+       AND (a.date + a.time) AT TIME ZONE $1
+           BETWEEN (NOW() + ($2 || ' minutes')::interval - ($3 || ' minutes')::interval)
+               AND (NOW() + ($2 || ' minutes')::interval + ($3 || ' minutes')::interval)
+     ORDER BY a.date, a.time`,
+    [timezone, offsetMinutes, windowMinutes]
+  );
+
+  if (result.rowCount === 0) {
+    return NextResponse.json({ sent: 0 });
+  }
+
+  const baseUrl = getBaseUrl(request.headers);
+  const templateId = parseNumber(
+    process.env.BREVO_APPOINTMENT_REMINDER_TEMPLATE_ID,
+    parseNumber(process.env.BREVO_APPOINTMENT_TEMPLATE_ID, 0)
+  );
+
+  const sentAppointmentIds = [];
+
+  for (const row of result.rows) {
+    const appointmentDate = normalizeDateKey(row.date);
+    const appointmentTime = normalizeTime(row.time);
+    const cancelToken = createCancelToken({
+      appointmentId: row.id,
+      clinicId: row.clinic_id,
+      patientEmail: row.patient_email,
+    });
+    const cancelUrl = cancelToken
+      ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(cancelToken)}`
+      : '';
+
+    try {
+      await sendBrevoEmail({
+        to: row.patient_email,
+        subject: `Reminder: appointment at ${row.clinic_name}`,
+        text: `Reminder: your appointment at ${row.clinic_name} is on ${appointmentDate} at ${appointmentTime}.`,
+        senderName: row.clinic_name,
+        templateId: templateId > 0 ? templateId : null,
+        params: {
+          FIRSTNAME: getFirstName(row.patient_name || ''),
+          clinic_name: row.clinic_name,
+          clinic_id: row.clinic_id,
+          clinic_logo: row.clinic_logo || '',
+          doctor_name: row.doctor_name || '',
+          date: appointmentDate,
+          time: appointmentTime,
+          cancel_token: cancelToken || '',
+          cancel_url: cancelUrl,
+        },
+      });
+
+      sentAppointmentIds.push(row.id);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Reminder email failed:', {
+        appointmentId: row.id,
+        message: error?.message || error,
+      });
+    }
+  }
+
+  if (sentAppointmentIds.length > 0) {
+    await pool.query(
+      'UPDATE appointments SET reminder_sent_at = NOW() WHERE id = ANY($1::uuid[])',
+      [sentAppointmentIds]
+    );
+  }
+
+  return NextResponse.json({
+    sent: sentAppointmentIds.length,
+  });
+}
