@@ -112,6 +112,7 @@ async function sendAppointmentEmail({
   to,
   clinicName,
   clinicId,
+  clinicDomain,
   clinicLogo,
   date,
   time,
@@ -127,11 +128,14 @@ async function sendAppointmentEmail({
     clinicId,
     patientEmail: to,
   });
-  const cancelUrl = token && baseUrl
-    ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(token)}`
+  const resolvedBaseUrl = clinicDomain
+    ? `https://${clinicDomain}`
+    : baseUrl;
+  const cancelUrl = token && resolvedBaseUrl
+    ? `${resolvedBaseUrl}/api/appointments/cancel?token=${encodeURIComponent(token)}`
     : null;
-  const rescheduleUrl = token && baseUrl
-    ? `${baseUrl}/api/appointments/reschedule?token=${encodeURIComponent(token)}`
+  const rescheduleUrl = token && resolvedBaseUrl
+    ? `${resolvedBaseUrl}/api/appointments/reschedule?token=${encodeURIComponent(token)}`
     : null;
   const templateId = Number(process.env.BREVO_APPOINTMENT_TEMPLATE_ID);
   const cancelToken = token || '';
@@ -390,6 +394,7 @@ export async function POST(request) {
             to: patientEmail,
             clinicName: clinic.name,
             clinicId: clinic.id,
+            clinicDomain: clinic.domain,
             clinicLogo: clinic.logo,
             date,
             time: normalizedTime,

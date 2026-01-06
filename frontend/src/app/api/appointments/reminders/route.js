@@ -96,7 +96,6 @@ export async function GET(request) {
     return NextResponse.json({ sent: 0 });
   }
 
-  const baseUrl = getBaseUrl(request.headers);
   const templateId = parseNumber(
     process.env.BREVO_APPOINTMENT_REMINDER_TEMPLATE_ID,
     parseNumber(process.env.BREVO_APPOINTMENT_TEMPLATE_ID, 0)
@@ -112,6 +111,9 @@ export async function GET(request) {
       clinicId: row.clinic_id,
       patientEmail: row.patient_email,
     });
+    const baseUrl = row.clinic_domain
+      ? `https://${row.clinic_domain}`
+      : getBaseUrl(request.headers);
     const cancelUrl = cancelToken
       ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(cancelToken)}`
       : '';

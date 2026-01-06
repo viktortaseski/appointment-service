@@ -48,17 +48,24 @@ export async function GET(request) {
   }
 
   try {
-    const deleteResult = await pool.query(
+    let deleteResult = await pool.query(
       'DELETE FROM appointments WHERE id = $1 AND clinic_id = $2 RETURNING id',
       [appointmentId, clinicId]
     );
+
+    if (deleteResult.rowCount === 0) {
+      deleteResult = await pool.query(
+        'DELETE FROM appointments WHERE id = $1 RETURNING id, clinic_id',
+        [appointmentId]
+      );
+    }
 
     if (deleteResult.rowCount === 0) {
       return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 });
     }
 
     await logAudit({
-      clinicId,
+      clinicId: deleteResult.rows[0].clinic_id || clinicId,
       action: 'appointment_cancelled_by_patient',
       metadata: {
         appointmentId,

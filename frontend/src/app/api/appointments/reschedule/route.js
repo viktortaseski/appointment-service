@@ -7,7 +7,7 @@ import { verifyCancelToken } from '@/lib/server/appointment-cancel';
 export const runtime = 'nodejs';
 
 export async function GET(request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
 
   if (!token) {
@@ -24,7 +24,15 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Invalid token.' }, { status: 400 });
   }
 
+  let clinicDomain = null;
+
   try {
+    const clinicResult = await pool.query(
+      'SELECT domain FROM clinics WHERE id = $1',
+      [clinicId]
+    );
+    clinicDomain = clinicResult.rows[0]?.domain || null;
+
     await pool.query(
       'DELETE FROM appointments WHERE id = $1 AND clinic_id = $2',
       [appointmentId, clinicId]
@@ -42,5 +50,8 @@ export async function GET(request) {
     console.error('Appointment reschedule failed:', err);
   }
 
-  return NextResponse.redirect(new URL('/?reschedule=1', origin));
+  const redirectUrl = clinicDomain
+    ? `https://${clinicDomain}/?reschedule=1`
+    : new URL('/?reschedule=1', request.url);
+  return NextResponse.redirect(redirectUrl);
 }
