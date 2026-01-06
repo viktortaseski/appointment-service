@@ -130,6 +130,9 @@ async function sendAppointmentEmail({
   const cancelUrl = token && baseUrl
     ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(token)}`
     : null;
+  const rescheduleUrl = token && baseUrl
+    ? `${baseUrl}/api/appointments/reschedule?token=${encodeURIComponent(token)}`
+    : null;
   const templateId = Number(process.env.BREVO_APPOINTMENT_TEMPLATE_ID);
   const cancelToken = token || '';
 
@@ -153,6 +156,7 @@ async function sendAppointmentEmail({
         date,
         time,
         cancel_token: cancelToken,
+        reschedule_url: rescheduleUrl || '',
       },
     });
 

@@ -115,6 +115,9 @@ export async function GET(request) {
     const cancelUrl = cancelToken
       ? `${baseUrl}/api/appointments/cancel?token=${encodeURIComponent(cancelToken)}`
       : '';
+    const rescheduleUrl = cancelToken
+      ? `${baseUrl}/api/appointments/reschedule?token=${encodeURIComponent(cancelToken)}`
+      : '';
 
     try {
       await sendBrevoEmail({
@@ -133,6 +136,7 @@ export async function GET(request) {
           time: appointmentTime,
           cancel_token: cancelToken || '',
           cancel_url: cancelUrl,
+          reschedule_url: rescheduleUrl,
         },
       });
 
