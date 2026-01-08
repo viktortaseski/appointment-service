@@ -60,7 +60,7 @@ export default function BookingForm({
         <h2>{t('reserve_title')}</h2>
         <p>{t('reserve_subtitle')}</p>
       </div>
-      <div className="field" id="booking-date" style={{ margin: "20px 0px" }}>
+      <div className="field" style={{ margin: "20px 0px" }}>
         <div className="field-heading">
           <label>{t('choose_doctor_label')}</label>
         </div>
@@ -95,7 +95,7 @@ export default function BookingForm({
           <span className="field-error">{formErrors.doctor}</span>
         )}
       </div>
-      <div className="field" style={{ margin: "20px 0px" }}>
+      <div className="field" id="booking-date" style={{ margin: "20px 0px" }}>
         <div className="field-heading">
           <label>{t('choose_date_label')}</label>
           <span className="field-hint">{t('date_hint')}</span>
