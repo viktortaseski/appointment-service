@@ -24,6 +24,7 @@ export default function DoctorsSection({
 }) {
   const { t } = useI18n();
   const clinicName = clinic?.name || t('brand_title_fallback');
+  const doctorSkeletons = Array.from({ length: 4 });
 
   return (
     <section className="section" id="doctors">
@@ -36,7 +37,30 @@ export default function DoctorsSection({
           </p>
         </div>
       </div>
-      {status.loading && <p className="status">{t('loading_doctors')}</p>}
+      {status.loading && (
+        <>
+          <div className="card-grid skeleton-grid" aria-hidden="true">
+            {doctorSkeletons.map((_, index) => (
+              <div key={`doctor-skeleton-${index}`} className="card skeleton-card">
+                <div className="doctor-card-profile">
+                  <div className="doctor-card-avatar skeleton" />
+                  <div className="skeleton-stack">
+                    <div className="skeleton-line skeleton medium" />
+                    <div className="skeleton-line skeleton short" />
+                    <div className="skeleton-line skeleton" />
+                  </div>
+                </div>
+                <div className="skeleton-stack">
+                  <div className="skeleton-line skeleton short" />
+                  <div className="skeleton-line skeleton medium" />
+                </div>
+                <div className="skeleton-line skeleton pill" />
+              </div>
+            ))}
+          </div>
+          <span className="sr-only">{t('loading_doctors')}</span>
+        </>
+      )}
       {!status.loading && status.error && (
         <p className="status error">
           {status.error}. {t('doctors_load_error')}

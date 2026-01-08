@@ -44,6 +44,8 @@ export default function BookingForm({
   submitError,
 }) {
   const { t } = useI18n();
+  const doctorSkeletons = Array.from({ length: 4 });
+  const timeSkeletons = Array.from({ length: 10 });
   const dayLabels = [
     t('weekday_sun'),
     t('weekday_mon'),
@@ -64,33 +66,46 @@ export default function BookingForm({
         <div className="field-heading">
           <label>{t('choose_doctor_label')}</label>
         </div>
-        {doctorsStatus?.loading && (
-          <p className="inline-hint">{t('loading_doctors')}</p>
-        )}
-        {!doctorsStatus?.loading && doctors.length === 0 && (
+        {doctorsStatus?.loading ? (
+          <>
+            <div className="doctor-list skeleton-grid" aria-hidden="true">
+              {doctorSkeletons.map((_, index) => (
+                <div key={`doctor-skeleton-${index}`} className="doctor-card skeleton-card">
+                  <div className="doctor-avatar skeleton" />
+                  <div className="skeleton-stack">
+                    <div className="skeleton-line skeleton" />
+                    <div className="skeleton-line short skeleton" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <span className="sr-only">{t('loading_doctors')}</span>
+          </>
+        ) : doctors.length === 0 ? (
           <p className="inline-hint">{t('no_doctors')}</p>
+        ) : (
+          <div className="doctor-list">
+            {doctors.map((doctor) => (
+              <button
+                type="button"
+                key={doctor.id}
+                className={`doctor-card${selectedDoctor === doctor.id ? ' selected' : ''}${doctor.is_disabled ? ' disabled' : ''}`}
+                onClick={() => onSelectDoctor(doctor.id)}
+                disabled={doctor.is_disabled}
+              >
+                <div className="doctor-avatar">
+                  {doctor.avatar ? (
+                    <img src={doctor.avatar} alt={doctor.name} />
+                  ) : (
+                    <span>{getInitials(doctor.name)}</span>
+                  )}
+                </div>
+                <p className="doctor-card-name">{doctor.name}</p>
+                <p className="doctor-card-specialty">{doctor.specialty}</p>
+              </button>
+            ))}
+          </div>
         )}
-        <div className="doctor-list">
-          {doctors.map((doctor) => (
-            <button
-              type="button"
-              key={doctor.id}
-              className={`doctor-card${selectedDoctor === doctor.id ? ' selected' : ''}${doctor.is_disabled ? ' disabled' : ''}`}
-              onClick={() => onSelectDoctor(doctor.id)}
-              disabled={doctor.is_disabled}
-            >
-              <div className="doctor-avatar">
-                {doctor.avatar ? (
-                  <img src={doctor.avatar} alt={doctor.name} />
-                ) : (
-                  <span>{getInitials(doctor.name)}</span>
-                )}
-              </div>
-              <p className="doctor-card-name">{doctor.name}</p>
-              <p className="doctor-card-specialty">{doctor.specialty}</p>
-            </button>
-          ))}
-        </div>
         {formErrors.doctor && (
           <span className="field-error">{formErrors.doctor}</span>
         )}
@@ -160,7 +175,14 @@ export default function BookingForm({
           <p className="inline-hint">{t('select_doctor_hint')}</p>
         )}
         {availability.loading && selectedDoctor && (
-          <p className="inline-hint">{t('loading_times')}</p>
+          <>
+            <div className="time-grid skeleton-grid" aria-hidden="true">
+              {timeSkeletons.map((_, index) => (
+                <div key={`time-skeleton-${index}`} className="slot-skeleton skeleton" />
+              ))}
+            </div>
+            <span className="sr-only">{t('loading_times')}</span>
+          </>
         )}
         {availability.error && (
           <p className="inline-hint error">{availability.error}</p>

@@ -576,6 +576,86 @@ select.error {
   background: rgba(255, 239, 239, 0.8);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(32, 27, 22, 0.08);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--stroke);
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+  animation: none;
+  opacity: 1;
+}
+
+.skeleton-grid {
+  pointer-events: none;
+}
+
+.skeleton-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.skeleton-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-line {
+  height: 12px;
+  width: 100%;
+  border-radius: 999px;
+  display: block;
+}
+
+.skeleton-line.medium {
+  width: 80%;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-line.pill {
+  height: 36px;
+  width: 70%;
+  border-radius: 999px;
+  margin-top: 12px;
+}
+
+.slot-skeleton {
+  height: 44px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  display: block;
+}
+
 .clinic-status {
   max-width: 520px;
 }
@@ -1320,6 +1400,15 @@ select.error {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }
 
