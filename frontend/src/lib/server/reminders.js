@@ -154,11 +154,7 @@ export async function runAppointmentReminders(request) {
         });
 
         await client.query(
-          `UPDATE appointment_reminders
-           SET sent = true,
-               sent_at = NOW(),
-               updated_at = NOW()
-           WHERE id = $1 AND sent = false`,
+          'DELETE FROM appointment_reminders WHERE id = $1',
           [row.reminder_id]
         );
 
