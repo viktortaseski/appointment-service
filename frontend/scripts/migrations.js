@@ -50,6 +50,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- DROP TABLES (clean migration)
 -- =========================================================
 DROP VIEW IF EXISTS appointments_with_doctors;
+DROP TABLE IF EXISTS appointment_reminders CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
 DROP TABLE IF EXISTS patients CASCADE;
 DROP TABLE IF EXISTS doctor_unavailability CASCADE;
@@ -183,6 +184,27 @@ COMMENT ON TABLE appointments IS 'Patient appointment bookings';
 COMMENT ON COLUMN appointments.completed IS 'Indicates if appointment was attended';
 
 -- =========================================================
+-- APPOINTMENT REMINDERS
+-- =========================================================
+CREATE TABLE appointment_reminders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+  scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  sent BOOLEAN DEFAULT FALSE,
+  sent_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT unique_appointment_reminder
+    UNIQUE (appointment_id)
+);
+
+COMMENT ON TABLE appointment_reminders IS 'Reminder schedule per appointment';
+COMMENT ON COLUMN appointment_reminders.scheduled_at IS 'When the reminder should be sent (UTC)';
+COMMENT ON COLUMN appointment_reminders.sent IS 'Whether reminder has been sent';
+
+-- =========================================================
 -- INDEXES
 -- =========================================================
 CREATE INDEX idx_doctors_clinic_id ON doctors(clinic_id);
@@ -195,6 +217,8 @@ CREATE INDEX idx_appointments_doctor_id ON appointments(doctor_id);
 CREATE INDEX idx_appointments_date ON appointments(date);
 CREATE INDEX idx_appointments_completed ON appointments(completed);
 CREATE INDEX idx_appointments_patient_email ON appointments(patient_email);
+CREATE INDEX idx_appointment_reminders_sent ON appointment_reminders(sent);
+CREATE INDEX idx_appointment_reminders_scheduled_at ON appointment_reminders(scheduled_at);
 
 CREATE UNIQUE INDEX idx_patients_email_unique
   ON patients(email)

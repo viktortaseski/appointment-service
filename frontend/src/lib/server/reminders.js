@@ -40,11 +40,7 @@ export function getReminderToken(request) {
 }
 
 function getReminderConfig() {
-  const offsetMinutes = parseNumber(process.env.APPOINTMENT_REMINDER_OFFSET_MINUTES, 120);
-  const intervalMinutes = parseNumber(
-    process.env.APPOINTMENT_REMINDER_INTERVAL_MINUTES,
-    parseNumber(process.env.APPOINTMENT_REMINDER_WINDOW_MINUTES, 15)
-  );
+  const offsetMinutes = parseNumber(process.env.APPOINTMENT_REMINDER_OFFSET_MINUTES, 125);
   const timezone = process.env.APPOINTMENT_TIMEZONE || 'Europe/Skopje';
   const templateId = parseNumber(
     process.env.BREVO_APPOINTMENT_REMINDER_TEMPLATE_ID,
@@ -53,18 +49,39 @@ function getReminderConfig() {
 
   return {
     offsetMinutes,
-    intervalMinutes,
     timezone,
     templateId,
   };
 }
 
-export async function runAppointmentReminders(request) {
-  const { offsetMinutes, intervalMinutes, timezone, templateId } = getReminderConfig();
+export async function upsertAppointmentReminder({
+  appointmentId,
+  clinicId,
+  date,
+  time,
+  client = pool,
+}) {
+  const { offsetMinutes, timezone } = getReminderConfig();
 
-  if (!Number.isFinite(intervalMinutes) || intervalMinutes <= 0) {
-    throw new Error('Invalid reminder interval.');
-  }
+  await client.query(
+    `INSERT INTO appointment_reminders (appointment_id, clinic_id, scheduled_at)
+     VALUES (
+       $1,
+       $2,
+       ((($3::date + $4::time) AT TIME ZONE $5) - ($6 * interval '1 minute'))
+     )
+     ON CONFLICT (appointment_id)
+     DO UPDATE SET
+       scheduled_at = EXCLUDED.scheduled_at,
+       sent = FALSE,
+       sent_at = NULL,
+       updated_at = NOW()`,
+    [appointmentId, clinicId, date, time, timezone, offsetMinutes]
+  );
+}
+
+export async function runAppointmentReminders(request) {
+  const { templateId } = getReminderConfig();
 
   const client = await pool.connect();
   const sentAppointmentIds = [];
@@ -73,17 +90,8 @@ export async function runAppointmentReminders(request) {
     await client.query('BEGIN');
 
     const result = await client.query(
-      `WITH window AS (
-         SELECT
-           (date_trunc('hour', local_now)
-             + (floor(date_part('minute', local_now) / $3) * $3) * interval '1 minute'
-             + ($2 * interval '1 minute')) AT TIME ZONE $1 AS window_start,
-           (date_trunc('hour', local_now)
-             + (floor(date_part('minute', local_now) / $3) * $3) * interval '1 minute'
-             + (($2 + $3) * interval '1 minute')) AT TIME ZONE $1 AS window_end
-         FROM (SELECT NOW() AT TIME ZONE $1 AS local_now) AS base
-       )
-       SELECT a.id,
+      `SELECT r.id AS reminder_id,
+              r.appointment_id,
               a.date,
               a.time,
               a.patient_name,
@@ -93,26 +101,24 @@ export async function runAppointmentReminders(request) {
               c.logo AS clinic_logo,
               c.domain AS clinic_domain,
               d.name AS doctor_name
-       FROM appointments a
+       FROM appointment_reminders r
+       JOIN appointments a ON a.id = r.appointment_id
        JOIN clinics c ON c.id = a.clinic_id
        JOIN doctors d ON d.id = a.doctor_id
-       CROSS JOIN window w
-       WHERE a.completed = false
+       WHERE r.sent = false
+         AND r.scheduled_at <= NOW()
+         AND a.completed = false
          AND a.patient_email IS NOT NULL
          AND a.patient_email <> ''
-         AND a.reminder_sent_at IS NULL
-         AND (a.date + a.time) AT TIME ZONE $1 >= w.window_start
-         AND (a.date + a.time) AT TIME ZONE $1 < w.window_end
-       ORDER BY a.date, a.time
-       FOR UPDATE OF a SKIP LOCKED`,
-      [timezone, offsetMinutes, intervalMinutes]
+       ORDER BY r.scheduled_at ASC
+       FOR UPDATE OF r SKIP LOCKED`
     );
 
     for (const row of result.rows) {
       const appointmentDate = normalizeDateKey(row.date);
       const appointmentTime = normalizeTime(row.time);
       const cancelToken = createCancelToken({
-        appointmentId: row.id,
+        appointmentId: row.appointment_id,
         clinicId: row.clinic_id,
         patientEmail: row.patient_email,
       });
@@ -148,11 +154,20 @@ export async function runAppointmentReminders(request) {
         });
 
         await client.query(
-          'UPDATE appointments SET reminder_sent_at = NOW() WHERE id = $1 AND reminder_sent_at IS NULL',
-          [row.id]
+          `UPDATE appointment_reminders
+           SET sent = true,
+               sent_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $1 AND sent = false`,
+          [row.reminder_id]
         );
 
-        sentAppointmentIds.push(row.id);
+        await client.query(
+          'UPDATE appointments SET reminder_sent_at = NOW() WHERE id = $1 AND reminder_sent_at IS NULL',
+          [row.appointment_id]
+        );
+
+        sentAppointmentIds.push(row.appointment_id);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Reminder email failed:', {

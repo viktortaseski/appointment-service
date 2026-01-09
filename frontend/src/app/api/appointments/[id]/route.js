@@ -4,6 +4,7 @@ import { resolveClinic } from '@/lib/server/clinic-resolver';
 import { pool } from '@/lib/server/db';
 import { requireAuth } from '@/lib/server/auth';
 import { logAudit } from '@/lib/server/audit';
+import { upsertAppointmentReminder } from '@/lib/server/reminders';
 import {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -211,6 +212,13 @@ export async function PUT(request, { params }) {
     if (updateResult.rowCount === 0) {
       return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 });
     }
+
+    await upsertAppointmentReminder({
+      appointmentId: params.id,
+      clinicId: clinic.id,
+      date,
+      time: normalizedTime,
+    });
 
     await upsertPatientRecord({
       name: patientName,

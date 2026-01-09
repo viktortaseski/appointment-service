@@ -7,6 +7,7 @@ import { checkRateLimit } from '@/lib/server/rate-limit';
 import { debugLog } from '@/lib/server/debug';
 import { createCancelToken } from '@/lib/server/appointment-cancel';
 import { getHeader } from '@/lib/server/headers';
+import { upsertAppointmentReminder } from '@/lib/server/reminders';
 import {
   buildTimeSlotsFromClinic,
   computeBlockedTimes,
@@ -375,6 +376,13 @@ export async function POST(request) {
         notes || null,
       ]
     );
+
+    await upsertAppointmentReminder({
+      appointmentId: insertResult.rows[0].id,
+      clinicId: clinic.id,
+      date,
+      time: normalizedTime,
+    });
 
     const appointmentResult = await pool.query(
       'SELECT * FROM appointments_with_doctors WHERE id = $1',
