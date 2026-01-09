@@ -73,7 +73,17 @@ export async function runAppointmentReminders(request) {
     await client.query('BEGIN');
 
     const result = await client.query(
-      `SELECT a.id,
+      `WITH window AS (
+         SELECT
+           (date_trunc('hour', local_now)
+             + (floor(date_part('minute', local_now) / $3) * $3) * interval '1 minute'
+             + ($2 * interval '1 minute')) AT TIME ZONE $1 AS window_start,
+           (date_trunc('hour', local_now)
+             + (floor(date_part('minute', local_now) / $3) * $3) * interval '1 minute'
+             + (($2 + $3) * interval '1 minute')) AT TIME ZONE $1 AS window_end
+         FROM (SELECT NOW() AT TIME ZONE $1 AS local_now) AS base
+       )
+       SELECT a.id,
               a.date,
               a.time,
               a.patient_name,
@@ -86,14 +96,13 @@ export async function runAppointmentReminders(request) {
        FROM appointments a
        JOIN clinics c ON c.id = a.clinic_id
        JOIN doctors d ON d.id = a.doctor_id
+       CROSS JOIN window w
        WHERE a.completed = false
          AND a.patient_email IS NOT NULL
          AND a.patient_email <> ''
          AND a.reminder_sent_at IS NULL
-         AND (a.date + a.time) AT TIME ZONE $1
-             >= (NOW() + ($2 * interval '1 minute'))
-         AND (a.date + a.time) AT TIME ZONE $1
-             < (NOW() + (($2 + $3) * interval '1 minute'))
+         AND (a.date + a.time) AT TIME ZONE $1 >= w.window_start
+         AND (a.date + a.time) AT TIME ZONE $1 < w.window_end
        ORDER BY a.date, a.time
        FOR UPDATE OF a SKIP LOCKED`,
       [timezone, offsetMinutes, intervalMinutes]
