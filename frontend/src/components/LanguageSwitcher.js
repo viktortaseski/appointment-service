@@ -6,6 +6,7 @@ const languages = [
   { code: 'en', label: 'EN' },
   { code: 'mk', label: 'MK' },
   { code: 'al', label: 'AL' },
+  { code: 'sl', label: 'SL' },
 ];
 
 export default function LanguageSwitcher({ className = '' }) {

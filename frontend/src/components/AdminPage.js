@@ -434,7 +434,7 @@ function AdminPageContent() {
         const preferredLocale = resolvedClinic?.default_language;
         if (preferredLocale) {
           const stored = window.localStorage.getItem('locale');
-          const supportedLocales = ['en', 'mk', 'al'];
+          const supportedLocales = ['en', 'mk', 'al', 'sl'];
           if (!stored && supportedLocales.includes(preferredLocale)) {
             setLocale(preferredLocale, 'auto');
           }

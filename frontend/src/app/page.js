@@ -325,7 +325,7 @@ function BookingPageContent() {
       return;
     }
 
-    const supportedLocales = ['en', 'mk', 'al'];
+    const supportedLocales = ['en', 'mk', 'al', 'sl'];
     if (!supportedLocales.includes(clinic.default_language)) {
       return;
     }
