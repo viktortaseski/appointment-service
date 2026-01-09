@@ -4,7 +4,7 @@ import { getReminderToken, runAppointmentReminders } from '@/lib/server/reminder
 
 export const runtime = 'nodejs';
 
-export async function GET(request) {
+export async function POST(request) {
   const expectedSecret = process.env.CRON_SECRET;
   if (!expectedSecret) {
     return NextResponse.json(

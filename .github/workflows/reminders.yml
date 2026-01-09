@@ -1,0 +1,20 @@
+name: Appointment Reminders
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder job
+        run: |
+          curl -sS --fail-with-body \
+            -X POST \
+            -H "Authorization: Bearer $REMINDER_CRON_SECRET" \
+            "$REMINDER_ENDPOINT_URL"
+        env:
+          REMINDER_CRON_SECRET: ${{ secrets.REMINDER_CRON_SECRET }}
+          REMINDER_ENDPOINT_URL: ${{ secrets.REMINDER_ENDPOINT_URL }}
