@@ -223,8 +223,6 @@ function AdminPageContent() {
   const [appointmentsView, setAppointmentsView] = useState('list');
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [selectedAppointmentIds, setSelectedAppointmentIds] = useState(() => new Set());
-  const [bulkHistory, setBulkHistory] = useState([]);
-  const [bulkHistoryIndex, setBulkHistoryIndex] = useState(-1);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formState, setFormState] = useState({
@@ -343,8 +341,6 @@ function AdminPageContent() {
   const someFilteredSelected =
     filteredAppointments.some((appointment) => selectedAppointmentIds.has(appointment.id)) &&
     !allFilteredSelected;
-  const canUndoBulk = bulkHistoryIndex >= 0;
-  const canRedoBulk = bulkHistoryIndex < bulkHistory.length - 1;
 
   const appointmentsByDate = useMemo(() => {
     const map = new Map();
@@ -831,58 +827,6 @@ function AdminPageContent() {
     setSelectedAppointmentIds(new Set());
   }
 
-  async function applyCompletionChanges(changes, direction) {
-    const updates = changes
-      .map((change) => {
-        const appointment = appointments.find((item) => item.id === change.id);
-        if (!appointment) {
-          return null;
-        }
-        const target = direction === 'undo' ? change.from : change.to;
-        if (appointment.completed === target) {
-          return null;
-        }
-        return setAppointmentCompleted(appointment, target);
-      })
-      .filter(Boolean);
-
-    if (updates.length === 0) {
-      return;
-    }
-
-    const results = await Promise.allSettled(updates);
-    const failures = results.filter((result) => result.status === 'rejected');
-    if (failures.length > 0) {
-      window.alert(t('admin_update_error'));
-    }
-  }
-
-  async function handleBulkUndo() {
-    if (!canUndoBulk) {
-      return;
-    }
-
-    const entry = bulkHistory[bulkHistoryIndex];
-    if (entry?.type === 'completion') {
-      await applyCompletionChanges(entry.changes, 'undo');
-    }
-    setBulkHistoryIndex((prev) => prev - 1);
-    setSelectedAppointmentIds(new Set());
-  }
-
-  async function handleBulkRedo() {
-    if (!canRedoBulk) {
-      return;
-    }
-
-    const entry = bulkHistory[bulkHistoryIndex + 1];
-    if (entry?.type === 'completion') {
-      await applyCompletionChanges(entry.changes, 'redo');
-    }
-    setBulkHistoryIndex((prev) => prev + 1);
-    setSelectedAppointmentIds(new Set());
-  }
-
   async function handleBulkMarkDone() {
     const selected = filteredAppointments.filter((appointment) =>
       selectedAppointmentIds.has(appointment.id)
@@ -894,12 +838,6 @@ function AdminPageContent() {
       return;
     }
 
-    const changes = pending.map((appointment) => ({
-      id: appointment.id,
-      from: appointment.completed,
-      to: true,
-    }));
-
     const results = await Promise.allSettled(
       pending.map((appointment) => setAppointmentCompleted(appointment, true))
     );
@@ -908,12 +846,6 @@ function AdminPageContent() {
     if (failures.length > 0) {
       window.alert(t('admin_update_error'));
     }
-
-    setBulkHistory((prev) => {
-      const trimmed = prev.slice(0, bulkHistoryIndex + 1);
-      return [...trimmed, { type: 'completion', changes }];
-    });
-    setBulkHistoryIndex((prev) => prev + 1);
 
     setSelectedAppointmentIds(new Set());
   }
@@ -959,8 +891,6 @@ function AdminPageContent() {
       window.alert(t('admin_delete_error'));
     }
 
-    setBulkHistory([]);
-    setBulkHistoryIndex(-1);
     setSelectedAppointmentIds(new Set());
   }
 
@@ -1723,9 +1653,8 @@ function AdminPageContent() {
                         <button
                           type="button"
                           key={slot.value}
-                          className={`slot-button time-slot${
-                            formState.time === slot.value ? ' selected' : ''
-                          }${isTaken || isBlocked ? ' taken' : ''}`}
+                          className={`slot-button time-slot${formState.time === slot.value ? ' selected' : ''
+                            }${isTaken || isBlocked ? ' taken' : ''}`}
                           onClick={() => handleFormChange('time', slot.value)}
                           disabled={isDisabled}
                         >
@@ -1851,28 +1780,8 @@ function AdminPageContent() {
                       {t('admin_clear_selection')}
                     </button>
                   </div>
-                  <div className="bulk-actions-history">
-                    <button
-                      type="button"
-                      className="icon-pill"
-                      onClick={handleBulkUndo}
-                      disabled={!canUndoBulk}
-                    >
-                      <img src="/icons/undo.svg" alt="" />
-                      {t('admin_bulk_undo')}
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-pill"
-                      onClick={handleBulkRedo}
-                      disabled={!canRedoBulk}
-                    >
-                      <img src="/icons/redo.svg" alt="" />
-                      {t('admin_bulk_redo')}
-                    </button>
-                  </div>
                 </div>
-                <div className="actions-grid bulk-actions-grid">
+                <div className="bulk-actions-grid">
                   <button
                     type="button"
                     className="icon-pill"
@@ -2087,9 +1996,8 @@ function AdminPageContent() {
                                 <button
                                   key={appointment.id}
                                   type="button"
-                                  className={`admin-calendar-event${
-                                    appointment.completed ? ' completed' : ''
-                                  }`}
+                                  className={`admin-calendar-event${appointment.completed ? ' completed' : ''
+                                    }`}
                                   onClick={() => setSelectedAppointmentId(appointment.id)}
                                 >
                                   <span className="admin-calendar-time">
