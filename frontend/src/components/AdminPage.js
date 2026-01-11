@@ -220,6 +220,8 @@ function AdminPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [doctorFilter, setDoctorFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [appointmentsView, setAppointmentsView] = useState('list');
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formState, setFormState] = useState({
@@ -233,6 +235,9 @@ function AdminPageContent() {
   });
   const [formError, setFormError] = useState('');
   const [monthCursor, setMonthCursor] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const [calendarCursor, setCalendarCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
@@ -328,6 +333,25 @@ function AdminPageContent() {
       });
   }, [appointments, scopeFilter, searchQuery, doctorFilter, dateFilter, todayKey, weekEnd]);
 
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map();
+    filteredAppointments.forEach((appointment) => {
+      if (!map.has(appointment.dateKey)) {
+        map.set(appointment.dateKey, []);
+      }
+      map.get(appointment.dateKey).push(appointment);
+    });
+    map.forEach((items) => items.sort((a, b) => a.time.localeCompare(b.time)));
+    return map;
+  }, [filteredAppointments]);
+
+  const selectedAppointment = useMemo(() => {
+    if (!selectedAppointmentId) {
+      return null;
+    }
+    return appointments.find((appointment) => appointment.id === selectedAppointmentId) || null;
+  }, [appointments, selectedAppointmentId]);
+
   const filteredPatients = useMemo(() => {
     if (!patientSearch) {
       return patients;
@@ -360,6 +384,27 @@ function AdminPageContent() {
     monthCursor.getFullYear() === today.getFullYear() &&
     monthCursor.getMonth() === today.getMonth();
 
+  const calendarGrid = useMemo(
+    () =>
+      buildMonthGrid(calendarCursor).map((slot) =>
+        slot ? { ...slot, isPast: slot.key < todayKey } : slot
+      ),
+    [calendarCursor, todayKey]
+  );
+
+  const calendarLabel = useMemo(
+    () =>
+      calendarCursor.toLocaleDateString(localeTag, {
+        month: 'long',
+        year: 'numeric',
+      }),
+    [calendarCursor, localeTag]
+  );
+
+  const isCalendarPrevDisabled =
+    calendarCursor.getFullYear() === today.getFullYear() &&
+    calendarCursor.getMonth() === today.getMonth();
+
   const bookedTimes = useMemo(() => {
     if (!formState.date || !formState.doctorId) {
       return [];
@@ -374,6 +419,26 @@ function AdminPageContent() {
       )
       .map((appointment) => appointment.time);
   }, [appointments, formState.date, formState.doctorId, editingId]);
+
+  useEffect(() => {
+    if (appointmentsView !== 'calendar') {
+      setSelectedAppointmentId(null);
+    }
+  }, [appointmentsView]);
+
+  useEffect(() => {
+    if (!selectedAppointmentId) {
+      return;
+    }
+
+    const isVisible = filteredAppointments.some(
+      (appointment) => appointment.id === selectedAppointmentId
+    );
+
+    if (!isVisible) {
+      setSelectedAppointmentId(null);
+    }
+  }, [filteredAppointments, selectedAppointmentId]);
 
   useEffect(() => {
     const storedToken = window.localStorage.getItem('adminToken') || '';
@@ -1287,19 +1352,37 @@ function AdminPageContent() {
                 <p className="eyebrow">{t('admin_appointment_management')}</p>
                 <h2>{t('admin_manage_visits')}</h2>
               </div>
-              <button
-                className="cta"
-                type="button"
-                onClick={() => {
-                  if (!showForm) {
-                    resetForm(formState.doctorId);
-                  }
-                  setShowForm((prev) => !prev);
-                  setEditingId(null);
-                }}
-              >
-                + {t('admin_new_appointment')}
-              </button>
+              <div className="admin-section-actions">
+                <div className="view-toggle">
+                  <button
+                    type="button"
+                    className={appointmentsView === 'list' ? 'active' : ''}
+                    onClick={() => setAppointmentsView('list')}
+                  >
+                    {t('admin_view_list')}
+                  </button>
+                  <button
+                    type="button"
+                    className={appointmentsView === 'calendar' ? 'active' : ''}
+                    onClick={() => setAppointmentsView('calendar')}
+                  >
+                    {t('admin_view_calendar')}
+                  </button>
+                </div>
+                <button
+                  className="cta"
+                  type="button"
+                  onClick={() => {
+                    if (!showForm) {
+                      resetForm(formState.doctorId);
+                    }
+                    setShowForm((prev) => !prev);
+                    setEditingId(null);
+                  }}
+                >
+                  + {t('admin_new_appointment')}
+                </button>
+              </div>
             </div>
 
             {showForm && (
@@ -1533,75 +1616,253 @@ function AdminPageContent() {
               </div>
             </div>
 
-            <div className="card appointment-table">
-              <div className="table-head">
-                <span>{t('admin_table_patient')}</span>
-                <span>{t('admin_table_doctor')}</span>
-                <span>{t('admin_table_date')}</span>
-                <span>{t('admin_table_contact')}</span>
-                <span>{t('admin_table_actions')}</span>
+            {appointmentsView === 'list' ? (
+              <div className="card appointment-table">
+                <div className="table-head">
+                  <span>{t('admin_table_patient')}</span>
+                  <span>{t('admin_table_doctor')}</span>
+                  <span>{t('admin_table_date')}</span>
+                  <span>{t('admin_table_contact')}</span>
+                  <span>{t('admin_table_actions')}</span>
+                </div>
+                {loading && (
+                  <div className="table-row empty">
+                    <p className="row-title">{t('admin_loading_appointments')}</p>
+                  </div>
+                )}
+                {!loading && loadError && (
+                  <div className="table-row empty">
+                    <p className="row-title">{loadError}</p>
+                  </div>
+                )}
+                {!loading && !loadError && filteredAppointments.length === 0 && (
+                  <div className="table-row empty">
+                    <p className="row-title">{t('admin_no_matches')}</p>
+                  </div>
+                )}
+                {!loading && !loadError &&
+                  filteredAppointments.map((appointment) => (
+                    <div
+                      key={appointment.id}
+                      className={`table-row${appointment.completed ? ' completed' : ''}`}
+                    >
+                      <div>
+                        <p className="row-title">
+                          {appointment.patient}
+                          {appointment.completed && (
+                            <span className="badge">{t('admin_badge_completed')}</span>
+                          )}
+                        </p>
+                        <p className="row-subtitle">
+                          {appointment.reason || t('appointment_default_reason')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="row-title">{appointment.doctor}</p>
+                        <p className="row-subtitle">{appointment.specialty}</p>
+                      </div>
+                      <div>
+                        <p className="row-title">
+                          {formatDisplayDate(appointment.dateKey, localeTag)}
+                        </p>
+                        <p className="row-subtitle">{appointment.time}</p>
+                      </div>
+                      <div>
+                        <p className="row-title">{appointment.email || '—'}</p>
+                        <p className="row-subtitle">{appointment.phone || '—'}</p>
+                      </div>
+                      <div className="actions-grid">
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_toggle')}
+                          onClick={() => handleToggleCompleted(appointment)}
+                        >
+                          <img src="/icons/check.svg" alt="" />
+                          {appointment.completed ? t('admin_undo') : t('admin_done')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_email')}
+                          onClick={() => handleEmail(appointment)}
+                        >
+                          <img src="/icons/mail.svg" alt="" />
+                          {t('admin_action_email_label')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_edit')}
+                          onClick={() => handleEdit(appointment)}
+                        >
+                          <img src="/icons/edit.svg" alt="" />
+                          {t('admin_action_edit_label')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill danger"
+                          aria-label={t('admin_action_delete')}
+                          onClick={() => handleDelete(appointment)}
+                        >
+                          <img src="/icons/trash.svg" alt="" />
+                          {t('admin_action_delete_label')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
               </div>
-              {loading && (
-                <div className="table-row empty">
-                  <p className="row-title">{t('admin_loading_appointments')}</p>
+            ) : (
+              <>
+                <div className="card appointment-calendar">
+                  <div className="calendar-header">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() =>
+                        setCalendarCursor(
+                          (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+                        )
+                      }
+                      disabled={isCalendarPrevDisabled}
+                      aria-label={t('prev_month')}
+                    >
+                      {'<'}
+                    </button>
+                    <span className="calendar-title">{calendarLabel}</span>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() =>
+                        setCalendarCursor(
+                          (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+                        )
+                      }
+                      aria-label={t('next_month')}
+                    >
+                      {'>'}
+                    </button>
+                  </div>
+                  {loading && <p className="status">{t('admin_loading_appointments')}</p>}
+                  {!loading && loadError && <p className="status error">{loadError}</p>}
+                  {!loading && !loadError && filteredAppointments.length === 0 && (
+                    <p className="status">{t('admin_no_matches')}</p>
+                  )}
+                  <div className="calendar-grid calendar-weekdays">
+                    {weekdayLabels.map((label) => (
+                      <span key={label} className="weekday">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="admin-calendar-grid">
+                    {calendarGrid.map((slot, index) => {
+                      if (!slot) {
+                        return (
+                          <div key={`blank-${index}`} className="admin-calendar-blank" />
+                        );
+                      }
+
+                      const dayAppointments = appointmentsByDate.get(slot.key) || [];
+                      const isToday = slot.key === todayKey;
+
+                      return (
+                        <div
+                          key={slot.key}
+                          className={`admin-calendar-day${isToday ? ' today' : ''}${slot.isPast ? ' past' : ''}`}
+                        >
+                          <div className="admin-calendar-date">
+                            <span>{slot.day}</span>
+                          </div>
+                          <div className="admin-calendar-events">
+                            {dayAppointments.length === 0 ? (
+                              <span className="admin-calendar-empty">—</span>
+                            ) : (
+                              dayAppointments.map((appointment) => (
+                                <button
+                                  key={appointment.id}
+                                  type="button"
+                                  className={`admin-calendar-event${
+                                    appointment.completed ? ' completed' : ''
+                                  }`}
+                                  onClick={() => setSelectedAppointmentId(appointment.id)}
+                                >
+                                  <span className="admin-calendar-time">
+                                    {appointment.time}
+                                  </span>
+                                  <span className="admin-calendar-patient">
+                                    {appointment.patient}
+                                  </span>
+                                  <span className="admin-calendar-doctor">
+                                    {appointment.doctor}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
-              {!loading && loadError && (
-                <div className="table-row empty">
-                  <p className="row-title">{loadError}</p>
-                </div>
-              )}
-              {!loading && !loadError && filteredAppointments.length === 0 && (
-                <div className="table-row empty">
-                  <p className="row-title">{t('admin_no_matches')}</p>
-                </div>
-              )}
-              {!loading && !loadError &&
-                filteredAppointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className={`table-row${appointment.completed ? ' completed' : ''}`}
-                  >
-                    <div>
-                      <p className="row-title">
-                        {appointment.patient}
-                        {appointment.completed && (
-                          <span className="badge">{t('admin_badge_completed')}</span>
-                        )}
-                      </p>
-                      <p className="row-subtitle">
-                        {appointment.reason || t('appointment_default_reason')}
-                      </p>
+                {selectedAppointment && (
+                  <div className="card appointment-detail-card">
+                    <div className="appointment-detail-header">
+                      <div>
+                        <p className="eyebrow">{t('admin_appointment_details')}</p>
+                        <p className="row-title">
+                          {selectedAppointment.patient}
+                          {selectedAppointment.completed && (
+                            <span className="badge">{t('admin_badge_completed')}</span>
+                          )}
+                        </p>
+                        <p className="row-subtitle">
+                          {selectedAppointment.doctor} · {selectedAppointment.specialty}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => setSelectedAppointmentId(null)}
+                      >
+                        {t('admin_close')}
+                      </button>
                     </div>
-                    <div>
-                      <p className="row-title">{appointment.doctor}</p>
-                      <p className="row-subtitle">{appointment.specialty}</p>
-                    </div>
-                    <div>
-                      <p className="row-title">
-                        {formatDisplayDate(appointment.dateKey, localeTag)}
-                      </p>
-                      <p className="row-subtitle">{appointment.time}</p>
-                    </div>
-                    <div>
-                      <p className="row-title">{appointment.email || '—'}</p>
-                      <p className="row-subtitle">{appointment.phone || '—'}</p>
+                    <div className="appointment-detail-grid">
+                      <div>
+                        <p className="detail-label">{t('admin_table_date')}</p>
+                        <p className="detail-value">
+                          {formatDisplayDate(selectedAppointment.dateKey, localeTag)}
+                        </p>
+                        <p className="detail-subvalue">{selectedAppointment.time}</p>
+                      </div>
+                      <div>
+                        <p className="detail-label">{t('admin_table_contact')}</p>
+                        <p className="detail-value">{selectedAppointment.email || '—'}</p>
+                        <p className="detail-subvalue">{selectedAppointment.phone || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="detail-label">{t('admin_notes_label')}</p>
+                        <p className="detail-value">
+                          {selectedAppointment.reason || '—'}
+                        </p>
+                      </div>
                     </div>
                     <div className="actions-grid">
                       <button
                         type="button"
                         className="icon-pill"
                         aria-label={t('admin_action_toggle')}
-                        onClick={() => handleToggleCompleted(appointment)}
+                        onClick={() => handleToggleCompleted(selectedAppointment)}
                       >
                         <img src="/icons/check.svg" alt="" />
-                        {appointment.completed ? t('admin_undo') : t('admin_done')}
+                        {selectedAppointment.completed ? t('admin_undo') : t('admin_done')}
                       </button>
                       <button
                         type="button"
                         className="icon-pill"
                         aria-label={t('admin_action_email')}
-                        onClick={() => handleEmail(appointment)}
+                        onClick={() => handleEmail(selectedAppointment)}
                       >
                         <img src="/icons/mail.svg" alt="" />
                         {t('admin_action_email_label')}
@@ -1610,7 +1871,10 @@ function AdminPageContent() {
                         type="button"
                         className="icon-pill"
                         aria-label={t('admin_action_edit')}
-                        onClick={() => handleEdit(appointment)}
+                        onClick={() => {
+                          handleEdit(selectedAppointment);
+                          setSelectedAppointmentId(null);
+                        }}
                       >
                         <img src="/icons/edit.svg" alt="" />
                         {t('admin_action_edit_label')}
@@ -1619,15 +1883,19 @@ function AdminPageContent() {
                         type="button"
                         className="icon-pill danger"
                         aria-label={t('admin_action_delete')}
-                        onClick={() => handleDelete(appointment)}
+                        onClick={() => {
+                          handleDelete(selectedAppointment);
+                          setSelectedAppointmentId(null);
+                        }}
                       >
                         <img src="/icons/trash.svg" alt="" />
                         {t('admin_action_delete_label')}
                       </button>
                     </div>
                   </div>
-                ))}
-            </div>
+                )}
+              </>
+            )}
           </section>
         </>
       )}
