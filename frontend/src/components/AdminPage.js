@@ -1806,91 +1806,105 @@ function AdminPageContent() {
                   </div>
                 </div>
                 {selectedAppointment && (
-                  <div className="card appointment-detail-card">
-                    <div className="appointment-detail-header">
-                      <div>
-                        <p className="eyebrow">{t('admin_appointment_details')}</p>
-                        <p className="row-title">
-                          {selectedAppointment.patient}
-                          {selectedAppointment.completed && (
-                            <span className="badge">{t('admin_badge_completed')}</span>
-                          )}
-                        </p>
-                        <p className="row-subtitle">
-                          {selectedAppointment.doctor} · {selectedAppointment.specialty}
-                        </p>
+                  <div
+                    className="notice-overlay admin-modal-overlay"
+                    onClick={(event) => {
+                      if (event.target === event.currentTarget) {
+                        setSelectedAppointmentId(null);
+                      }
+                    }}
+                  >
+                    <div
+                      className="card admin-modal-card"
+                      role="dialog"
+                      aria-modal="true"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="appointment-detail-header">
+                        <div>
+                          <p className="eyebrow">{t('admin_appointment_details')}</p>
+                          <p className="row-title">
+                            {selectedAppointment.patient}
+                            {selectedAppointment.completed && (
+                              <span className="badge">{t('admin_badge_completed')}</span>
+                            )}
+                          </p>
+                          <p className="row-subtitle">
+                            {selectedAppointment.doctor} · {selectedAppointment.specialty}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => setSelectedAppointmentId(null)}
+                        >
+                          {t('admin_close')}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="ghost"
-                        onClick={() => setSelectedAppointmentId(null)}
-                      >
-                        {t('admin_close')}
-                      </button>
-                    </div>
-                    <div className="appointment-detail-grid">
-                      <div>
-                        <p className="detail-label">{t('admin_table_date')}</p>
-                        <p className="detail-value">
-                          {formatDisplayDate(selectedAppointment.dateKey, localeTag)}
-                        </p>
-                        <p className="detail-subvalue">{selectedAppointment.time}</p>
+                      <div className="appointment-detail-grid">
+                        <div>
+                          <p className="detail-label">{t('admin_table_date')}</p>
+                          <p className="detail-value">
+                            {formatDisplayDate(selectedAppointment.dateKey, localeTag)}
+                          </p>
+                          <p className="detail-subvalue">{selectedAppointment.time}</p>
+                        </div>
+                        <div>
+                          <p className="detail-label">{t('admin_table_contact')}</p>
+                          <p className="detail-value">{selectedAppointment.email || '—'}</p>
+                          <p className="detail-subvalue">{selectedAppointment.phone || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="detail-label">{t('admin_notes_label')}</p>
+                          <p className="detail-value">
+                            {selectedAppointment.reason || '—'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="detail-label">{t('admin_table_contact')}</p>
-                        <p className="detail-value">{selectedAppointment.email || '—'}</p>
-                        <p className="detail-subvalue">{selectedAppointment.phone || '—'}</p>
+                      <div className="actions-grid">
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_toggle')}
+                          onClick={() => handleToggleCompleted(selectedAppointment)}
+                        >
+                          <img src="/icons/check.svg" alt="" />
+                          {selectedAppointment.completed ? t('admin_undo') : t('admin_done')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_email')}
+                          onClick={() => handleEmail(selectedAppointment)}
+                        >
+                          <img src="/icons/mail.svg" alt="" />
+                          {t('admin_action_email_label')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label={t('admin_action_edit')}
+                          onClick={() => {
+                            handleEdit(selectedAppointment);
+                            setSelectedAppointmentId(null);
+                          }}
+                        >
+                          <img src="/icons/edit.svg" alt="" />
+                          {t('admin_action_edit_label')}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-pill danger"
+                          aria-label={t('admin_action_delete')}
+                          onClick={() => {
+                            handleDelete(selectedAppointment);
+                            setSelectedAppointmentId(null);
+                          }}
+                        >
+                          <img src="/icons/trash.svg" alt="" />
+                          {t('admin_action_delete_label')}
+                        </button>
                       </div>
-                      <div>
-                        <p className="detail-label">{t('admin_notes_label')}</p>
-                        <p className="detail-value">
-                          {selectedAppointment.reason || '—'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="actions-grid">
-                      <button
-                        type="button"
-                        className="icon-pill"
-                        aria-label={t('admin_action_toggle')}
-                        onClick={() => handleToggleCompleted(selectedAppointment)}
-                      >
-                        <img src="/icons/check.svg" alt="" />
-                        {selectedAppointment.completed ? t('admin_undo') : t('admin_done')}
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-pill"
-                        aria-label={t('admin_action_email')}
-                        onClick={() => handleEmail(selectedAppointment)}
-                      >
-                        <img src="/icons/mail.svg" alt="" />
-                        {t('admin_action_email_label')}
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-pill"
-                        aria-label={t('admin_action_edit')}
-                        onClick={() => {
-                          handleEdit(selectedAppointment);
-                          setSelectedAppointmentId(null);
-                        }}
-                      >
-                        <img src="/icons/edit.svg" alt="" />
-                        {t('admin_action_edit_label')}
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-pill danger"
-                        aria-label={t('admin_action_delete')}
-                        onClick={() => {
-                          handleDelete(selectedAppointment);
-                          setSelectedAppointmentId(null);
-                        }}
-                      >
-                        <img src="/icons/trash.svg" alt="" />
-                        {t('admin_action_delete_label')}
-                      </button>
                     </div>
                   </div>
                 )}

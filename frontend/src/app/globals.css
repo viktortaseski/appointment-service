@@ -1423,6 +1423,14 @@ select.error {
   gap: 16px;
 }
 
+.admin-modal-overlay {
+  align-items: center;
+}
+
+.admin-modal-card {
+  width: min(720px, 100%);
+}
+
 .appointment-detail-header {
   display: flex;
   align-items: flex-start;

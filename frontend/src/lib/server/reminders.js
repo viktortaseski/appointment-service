@@ -89,6 +89,10 @@ export async function runAppointmentReminders(request) {
   try {
     await client.query('BEGIN');
 
+    await client.query(
+      "DELETE FROM appointments WHERE date < (CURRENT_DATE - INTERVAL '1 day')"
+    );
+
     const result = await client.query(
       `SELECT r.id AS reminder_id,
               r.appointment_id,

@@ -9,6 +9,7 @@ import Topbar from '../components/Topbar';
 import { useI18n } from '../components/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const AVAILABILITY_POLL_MS = 30000;     // 30s Refresh rate for real time updates
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -284,13 +285,13 @@ function BookingPageContent() {
         const rawClinic = data.clinic || null;
         const normalizedClinic = rawClinic
           ? {
-              ...rawClinic,
-              opens_at: rawClinic.opens_at ?? rawClinic.opensAt,
-              closes_at: rawClinic.closes_at ?? rawClinic.closesAt,
-              slot_minutes: rawClinic.slot_minutes ?? rawClinic.slotMinutes,
-              default_language:
-                rawClinic.default_language ?? rawClinic.defaultLanguage ?? null,
-            }
+            ...rawClinic,
+            opens_at: rawClinic.opens_at ?? rawClinic.opensAt,
+            closes_at: rawClinic.closes_at ?? rawClinic.closesAt,
+            slot_minutes: rawClinic.slot_minutes ?? rawClinic.slotMinutes,
+            default_language:
+              rawClinic.default_language ?? rawClinic.defaultLanguage ?? null,
+          }
           : null;
 
         setClinic(normalizedClinic);
@@ -367,6 +368,8 @@ function BookingPageContent() {
 
   useEffect(() => {
     let isActive = true;
+    let refreshTimer = null;
+    let isFetching = false;
 
     if (!selectedDate || !selectedDoctor) {
       setAvailability({ loading: false, error: null, takenTimes: [] });
@@ -375,8 +378,16 @@ function BookingPageContent() {
       };
     }
 
-    async function loadAvailability() {
-      setAvailability({ loading: true, error: null, takenTimes: [] });
+    async function loadAvailability({ silent = false } = {}) {
+      if (isFetching) {
+        return;
+      }
+
+      isFetching = true;
+
+      if (!silent) {
+        setAvailability({ loading: true, error: null, takenTimes: [] });
+      }
 
       try {
         const taken = await fetchAvailability(selectedDate, selectedDoctor);
@@ -395,18 +406,37 @@ function BookingPageContent() {
           return;
         }
 
-        setAvailability({
+        setAvailability((prev) => ({
           loading: false,
           error: error?.message || t('availability_error'),
-          takenTimes: [],
-        });
+          takenTimes: silent ? prev.takenTimes : [],
+        }));
+      } finally {
+        isFetching = false;
       }
     }
 
-    loadAvailability();
+    loadAvailability({ silent: false });
+    refreshTimer = setInterval(() => {
+      loadAvailability({ silent: true });
+    }, AVAILABILITY_POLL_MS);
+
+    const handleFocus = () => {
+      loadAvailability({ silent: true });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
 
     return () => {
       isActive = false;
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
     };
   }, [selectedDate, selectedDoctor, fetchAvailability]);
 
