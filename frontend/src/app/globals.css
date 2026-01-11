@@ -1314,7 +1314,7 @@ select.error {
 }
 
 .bulk-actions-grid {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .table-select {
