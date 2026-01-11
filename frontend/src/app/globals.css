@@ -1292,6 +1292,41 @@ select.error {
   overflow: hidden;
 }
 
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.bulk-actions-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bulk-actions-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bulk-actions-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.table-select {
+  display: flex;
+  align-items: center;
+}
+
+.table-select input {
+  width: 16px;
+  height: 16px;
+}
+
 .admin-section-actions {
   display: flex;
   align-items: center;
@@ -1466,7 +1501,7 @@ select.error {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 1.2fr 1.1fr 0.9fr 1.2fr 0.9fr;
+  grid-template-columns: 0.2fr 1.2fr 1.1fr 0.9fr 1.2fr 0.9fr;
   gap: 16px;
   align-items: center;
   padding: 16px 22px;
@@ -1492,6 +1527,10 @@ select.error {
 
 .table-row.completed {
   background: rgba(226, 250, 236, 0.85);
+}
+
+.table-row.selected {
+  box-shadow: inset 0 0 0 2px rgba(255, 122, 69, 0.35);
 }
 
 .row-title {
@@ -1635,6 +1674,10 @@ select.error {
   .table-row {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .bulk-actions {
+    align-items: flex-start;
   }
 
   .admin-section-actions {

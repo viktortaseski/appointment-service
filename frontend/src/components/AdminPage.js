@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import LanguageSwitcher from './LanguageSwitcher';
 import { useI18n } from './I18nProvider';
@@ -222,6 +222,7 @@ function AdminPageContent() {
   const [dateFilter, setDateFilter] = useState('');
   const [appointmentsView, setAppointmentsView] = useState('list');
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [selectedAppointmentIds, setSelectedAppointmentIds] = useState(() => new Set());
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formState, setFormState] = useState({
@@ -237,6 +238,7 @@ function AdminPageContent() {
   const [monthCursor, setMonthCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
+  const selectAllRef = useRef(null);
   const [calendarCursor, setCalendarCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
@@ -333,6 +335,13 @@ function AdminPageContent() {
       });
   }, [appointments, scopeFilter, searchQuery, doctorFilter, dateFilter, todayKey, weekEnd]);
 
+  const allFilteredSelected =
+    filteredAppointments.length > 0 &&
+    filteredAppointments.every((appointment) => selectedAppointmentIds.has(appointment.id));
+  const someFilteredSelected =
+    filteredAppointments.some((appointment) => selectedAppointmentIds.has(appointment.id)) &&
+    !allFilteredSelected;
+
   const appointmentsByDate = useMemo(() => {
     const map = new Map();
     filteredAppointments.forEach((appointment) => {
@@ -425,6 +434,37 @@ function AdminPageContent() {
       setSelectedAppointmentId(null);
     }
   }, [appointmentsView]);
+
+  useEffect(() => {
+    if (appointmentsView !== 'list' && selectedAppointmentIds.size > 0) {
+      setSelectedAppointmentIds(new Set());
+    }
+  }, [appointmentsView, selectedAppointmentIds]);
+
+  useEffect(() => {
+    if (!selectAllRef.current) {
+      return;
+    }
+
+    selectAllRef.current.indeterminate = someFilteredSelected;
+  }, [someFilteredSelected]);
+
+  useEffect(() => {
+    setSelectedAppointmentIds((prev) => {
+      if (prev.size === 0) {
+        return prev;
+      }
+
+      const availableIds = new Set(filteredAppointments.map((item) => item.id));
+      const next = new Set([...prev].filter((id) => availableIds.has(id)));
+
+      if (next.size === prev.size) {
+        return prev;
+      }
+
+      return next;
+    });
+  }, [filteredAppointments]);
 
   useEffect(() => {
     if (!selectedAppointmentId) {
@@ -736,6 +776,52 @@ function AdminPageContent() {
     }
 
     window.location.href = `mailto:${appointment.email}`;
+  }
+
+  function toggleAppointmentSelection(appointmentId) {
+    setSelectedAppointmentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(appointmentId)) {
+        next.delete(appointmentId);
+      } else {
+        next.add(appointmentId);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAllAppointments() {
+    if (allFilteredSelected) {
+      setSelectedAppointmentIds(new Set());
+      return;
+    }
+
+    setSelectedAppointmentIds(new Set(filteredAppointments.map((appointment) => appointment.id)));
+  }
+
+  function handleClearSelection() {
+    setSelectedAppointmentIds(new Set());
+  }
+
+  function handleBulkCancelEmail() {
+    const selected = filteredAppointments.filter((appointment) =>
+      selectedAppointmentIds.has(appointment.id)
+    );
+    const recipients = Array.from(
+      new Set(selected.map((appointment) => appointment.email).filter(Boolean))
+    );
+
+    if (recipients.length === 0) {
+      window.alert(t('admin_bulk_email_missing'));
+      return;
+    }
+
+    const clinicLabel = clinicName || t('brand_title_fallback');
+    const subject = t('admin_bulk_cancel_subject', { clinic: clinicLabel });
+    const body = t('admin_bulk_cancel_body', { clinic: clinicLabel });
+    const mailto = `mailto:?bcc=${encodeURIComponent(recipients.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    setSelectedAppointmentIds(new Set());
   }
 
   function handleEdit(appointment) {
@@ -1616,9 +1702,57 @@ function AdminPageContent() {
               </div>
             </div>
 
+            {appointmentsView === 'list' && (
+              <div className="card bulk-actions">
+                <div className="bulk-actions-info">
+                  <p className="row-title">
+                    {t('admin_bulk_selected', { count: selectedAppointmentIds.size })}
+                  </p>
+                  <div className="bulk-actions-controls">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={handleSelectAllAppointments}
+                      disabled={filteredAppointments.length === 0}
+                    >
+                      {t('admin_select_all')}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={handleClearSelection}
+                      disabled={selectedAppointmentIds.size === 0}
+                    >
+                      {t('admin_clear_selection')}
+                    </button>
+                  </div>
+                </div>
+                <div className="actions-grid bulk-actions-grid">
+                  <button
+                    type="button"
+                    className="icon-pill danger"
+                    onClick={handleBulkCancelEmail}
+                    disabled={selectedAppointmentIds.size === 0}
+                  >
+                    <img src="/icons/mail.svg" alt="" />
+                    {t('admin_bulk_email_cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {appointmentsView === 'list' ? (
               <div className="card appointment-table">
                 <div className="table-head">
+                  <span className="table-select">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={handleSelectAllAppointments}
+                      aria-label={t('admin_select_all')}
+                    />
+                  </span>
                   <span>{t('admin_table_patient')}</span>
                   <span>{t('admin_table_doctor')}</span>
                   <span>{t('admin_table_date')}</span>
@@ -1644,8 +1778,16 @@ function AdminPageContent() {
                   filteredAppointments.map((appointment) => (
                     <div
                       key={appointment.id}
-                      className={`table-row${appointment.completed ? ' completed' : ''}`}
+                      className={`table-row${appointment.completed ? ' completed' : ''}${selectedAppointmentIds.has(appointment.id) ? ' selected' : ''}`}
                     >
+                      <div className="table-select">
+                        <input
+                          type="checkbox"
+                          checked={selectedAppointmentIds.has(appointment.id)}
+                          onChange={() => toggleAppointmentSelection(appointment.id)}
+                          aria-label={t('admin_select_appointment')}
+                        />
+                      </div>
                       <div>
                         <p className="row-title">
                           {appointment.patient}
