@@ -1298,6 +1298,9 @@ select.error {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  border-radius: 999px;
+  padding: 16px 22px;
+  box-shadow: 0 18px 32px rgba(32, 27, 22, 0.12);
 }
 
 .bulk-actions-info {
@@ -1313,8 +1316,45 @@ select.error {
   flex-wrap: wrap;
 }
 
+.bulk-actions-history {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .bulk-actions-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bulk-actions .ghost {
+  border-color: rgba(32, 27, 22, 0.12);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+}
+
+.bulk-actions .ghost:disabled {
+  opacity: 0.5;
+}
+
+.bulk-actions .icon-pill {
+  border-radius: 999px;
+  padding: 10px 18px;
+  min-height: 44px;
+  justify-content: center;
+  border-color: rgba(32, 27, 22, 0.16);
+  box-shadow: none;
+}
+
+.bulk-actions .icon-pill img {
+  width: 16px;
+  height: 16px;
+}
+
+.bulk-actions .icon-pill.danger {
+  border-color: rgba(255, 122, 69, 0.45);
+  color: #c5522d;
 }
 
 .table-select {
