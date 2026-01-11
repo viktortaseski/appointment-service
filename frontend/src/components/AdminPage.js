@@ -741,29 +741,35 @@ function AdminPageContent() {
     }
   }
 
+  async function setAppointmentCompleted(appointment, completed) {
+    const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+        'x-clinic-domain': getClinicDomain(),
+      },
+      body: JSON.stringify({ completed }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || t('admin_update_error'));
+    }
+
+    const data = await response.json();
+    const updated = normalizeAppointment(data.appointment);
+
+    setAppointments((prev) =>
+      prev.map((item) => (item.id === appointment.id ? updated : item))
+    );
+
+    return updated;
+  }
+
   async function handleToggleCompleted(appointment) {
     try {
-      const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-          'x-clinic-domain': getClinicDomain(),
-        },
-        body: JSON.stringify({ completed: !appointment.completed }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t('admin_update_error'));
-      }
-
-      const data = await response.json();
-      const updated = normalizeAppointment(data.appointment);
-
-      setAppointments((prev) =>
-        prev.map((item) => (item.id === appointment.id ? updated : item))
-      );
+      await setAppointmentCompleted(appointment, !appointment.completed);
     } catch (error) {
       window.alert(error?.message || t('admin_update_error'));
     }
@@ -803,7 +809,7 @@ function AdminPageContent() {
     setSelectedAppointmentIds(new Set());
   }
 
-  function handleBulkCancelEmail() {
+  function handleBulkEmail() {
     const selected = filteredAppointments.filter((appointment) =>
       selectedAppointmentIds.has(appointment.id)
     );
@@ -816,11 +822,75 @@ function AdminPageContent() {
       return;
     }
 
-    const clinicLabel = clinicName || t('brand_title_fallback');
-    const subject = t('admin_bulk_cancel_subject', { clinic: clinicLabel });
-    const body = t('admin_bulk_cancel_body', { clinic: clinicLabel });
-    const mailto = `mailto:?bcc=${encodeURIComponent(recipients.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailto = `mailto:?bcc=${encodeURIComponent(recipients.join(','))}`;
     window.location.href = mailto;
+    setSelectedAppointmentIds(new Set());
+  }
+
+  async function handleBulkMarkDone() {
+    const selected = filteredAppointments.filter((appointment) =>
+      selectedAppointmentIds.has(appointment.id)
+    );
+    const pending = selected.filter((appointment) => !appointment.completed);
+
+    if (pending.length === 0) {
+      setSelectedAppointmentIds(new Set());
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      pending.map((appointment) => setAppointmentCompleted(appointment, true))
+    );
+
+    const failures = results.filter((result) => result.status === 'rejected');
+    if (failures.length > 0) {
+      window.alert(t('admin_update_error'));
+    }
+
+    setSelectedAppointmentIds(new Set());
+  }
+
+  async function deleteAppointment(appointment) {
+    const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'x-clinic-domain': getClinicDomain(),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || t('admin_delete_error'));
+    }
+
+    setAppointments((prev) =>
+      prev.filter((item) => item.id !== appointment.id)
+    );
+  }
+
+  async function handleBulkDelete() {
+    if (selectedAppointmentIds.size === 0) {
+      return;
+    }
+
+    if (!window.confirm(t('admin_bulk_delete_confirm'))) {
+      return;
+    }
+
+    const selected = filteredAppointments.filter((appointment) =>
+      selectedAppointmentIds.has(appointment.id)
+    );
+
+    const results = await Promise.allSettled(
+      selected.map((appointment) => deleteAppointment(appointment))
+    );
+
+    const failures = results.filter((result) => result.status === 'rejected');
+    if (failures.length > 0) {
+      window.alert(t('admin_delete_error'));
+    }
+
     setSelectedAppointmentIds(new Set());
   }
 
@@ -847,22 +917,7 @@ function AdminPageContent() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          'x-clinic-domain': getClinicDomain(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t('admin_delete_error'));
-      }
-
-      setAppointments((prev) =>
-        prev.filter((item) => item.id !== appointment.id)
-      );
+      await deleteAppointment(appointment);
     } catch (error) {
       window.alert(error?.message || t('admin_delete_error'));
     }
@@ -1730,12 +1785,30 @@ function AdminPageContent() {
                 <div className="actions-grid bulk-actions-grid">
                   <button
                     type="button"
-                    className="icon-pill danger"
-                    onClick={handleBulkCancelEmail}
+                    className="icon-pill"
+                    onClick={handleBulkEmail}
                     disabled={selectedAppointmentIds.size === 0}
                   >
                     <img src="/icons/mail.svg" alt="" />
-                    {t('admin_bulk_email_cancel')}
+                    {t('admin_bulk_email')}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-pill"
+                    onClick={handleBulkMarkDone}
+                    disabled={selectedAppointmentIds.size === 0}
+                  >
+                    <img src="/icons/check.svg" alt="" />
+                    {t('admin_bulk_done')}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-pill danger"
+                    onClick={handleBulkDelete}
+                    disabled={selectedAppointmentIds.size === 0}
+                  >
+                    <img src="/icons/trash.svg" alt="" />
+                    {t('admin_bulk_delete')}
                   </button>
                 </div>
               </div>
