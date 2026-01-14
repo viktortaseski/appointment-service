@@ -24,8 +24,8 @@ export async function PATCH(request) {
     opens_at: opensAt,
     closes_at: closesAt,
     slot_minutes: slotMinutes,
-    theme_confirm_bg: themeConfirmBg,
-    theme_confirm_border: themeConfirmBorder,
+    theme_primary: themePrimary,
+    theme_secondary: themeSecondary,
   } = body || {};
 
   const updates = [];
@@ -58,26 +58,26 @@ export async function PATCH(request) {
     updates.push(`slot_minutes = $${values.length}`);
   }
 
-  if (themeConfirmBg !== undefined) {
-    if (themeConfirmBg !== null && typeof themeConfirmBg !== 'string') {
+  if (themePrimary !== undefined) {
+    if (themePrimary !== null && typeof themePrimary !== 'string') {
       return NextResponse.json(
-        { error: 'theme_confirm_bg must be a string or null.' },
+        { error: 'theme_primary must be a string or null.' },
         { status: 400 }
       );
     }
-    values.push(themeConfirmBg);
-    updates.push(`theme_confirm_bg = $${values.length}`);
+    values.push(themePrimary);
+    updates.push(`theme_primary = $${values.length}`);
   }
 
-  if (themeConfirmBorder !== undefined) {
-    if (themeConfirmBorder !== null && typeof themeConfirmBorder !== 'string') {
+  if (themeSecondary !== undefined) {
+    if (themeSecondary !== null && typeof themeSecondary !== 'string') {
       return NextResponse.json(
-        { error: 'theme_confirm_border must be a string or null.' },
+        { error: 'theme_secondary must be a string or null.' },
         { status: 400 }
       );
     }
-    values.push(themeConfirmBorder);
-    updates.push(`theme_confirm_border = $${values.length}`);
+    values.push(themeSecondary);
+    updates.push(`theme_secondary = $${values.length}`);
   }
 
   if (updates.length === 0) {
@@ -90,7 +90,7 @@ export async function PATCH(request) {
     `UPDATE clinics
      SET ${updates.join(', ')}
      WHERE id = $${values.length}
-     RETURNING id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, default_language`,
+     RETURNING id, name, domain, logo, phone, email, address, theme_primary, theme_secondary, is_disabled, opens_at, closes_at, slot_minutes, default_language`,
     values
   );
 

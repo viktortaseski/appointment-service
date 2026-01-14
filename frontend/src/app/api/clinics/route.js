@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics ORDER BY name'
+      'SELECT id, name, domain, logo, phone, email, address, theme_primary, theme_secondary, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics ORDER BY name'
     );
     return NextResponse.json({ clinics: result.rows });
   } catch (err) {
@@ -26,6 +26,8 @@ export async function POST(request) {
     phone,
     email,
     address,
+    theme_primary: themePrimary,
+    theme_secondary: themeSecondary,
     is_disabled: isDisabled,
     opens_at: opensAt,
     closes_at: closesAt,
@@ -41,9 +43,9 @@ export async function POST(request) {
       slotMinutes === undefined || slotMinutes === null ? null : Number(slotMinutes);
 
     const result = await pool.query(
-      `INSERT INTO clinics (name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, created_at`,
+      `INSERT INTO clinics (name, domain, logo, phone, email, address, theme_primary, theme_secondary, is_disabled, opens_at, closes_at, slot_minutes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING id, name, domain, logo, phone, email, address, theme_primary, theme_secondary, is_disabled, opens_at, closes_at, slot_minutes, created_at`,
       [
         name,
         domain,
@@ -51,6 +53,8 @@ export async function POST(request) {
         phone || null,
         email || null,
         address || null,
+        themePrimary || null,
+        themeSecondary || null,
         typeof isDisabled === 'boolean' ? isDisabled : false,
         opensAt || null,
         closesAt || null,

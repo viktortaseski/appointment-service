@@ -10,6 +10,111 @@ import { useI18n } from '../components/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const AVAILABILITY_POLL_MS = 30000;     // 30s Refresh rate for real time updates
+const THEME_DEFAULTS = {
+  primary: '#ff7a45',
+  secondary: '#f7f3ea',
+  textDark: '#201b16',
+  textLight: '#f7f3ea',
+  white: '#ffffff',
+};
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeHex(value, fallback) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return fallback;
+}
+
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  const red = parseInt(normalized.slice(0, 2), 16);
+  const green = parseInt(normalized.slice(2, 4), 16);
+  const blue = parseInt(normalized.slice(4, 6), 16);
+  return { red, green, blue };
+}
+
+function rgbToHex({ red, green, blue }) {
+  const toHex = (value) => value.toString(16).padStart(2, '0');
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+}
+
+function mixRgb(a, b, weight) {
+  const w = clamp(weight, 0, 1);
+  return {
+    red: Math.round(a.red * w + b.red * (1 - w)),
+    green: Math.round(a.green * w + b.green * (1 - w)),
+    blue: Math.round(a.blue * w + b.blue * (1 - w)),
+  };
+}
+
+function rgbToRgbaString(rgb, alpha) {
+  const safeAlpha = Math.round(clamp(alpha, 0, 1) * 100) / 100;
+  return `rgba(${rgb.red}, ${rgb.green}, ${rgb.blue}, ${safeAlpha})`;
+}
+
+function relativeLuminance({ red, green, blue }) {
+  const toLinear = (value) => {
+    const channel = value / 255;
+    return channel <= 0.03928
+      ? channel / 12.92
+      : Math.pow((channel + 0.055) / 1.055, 2.4);
+  };
+
+  const r = toLinear(red);
+  const g = toLinear(green);
+  const b = toLinear(blue);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function buildTheme(primaryHex, secondaryHex) {
+  const primary = normalizeHex(primaryHex, THEME_DEFAULTS.primary);
+  const secondary = normalizeHex(secondaryHex, THEME_DEFAULTS.secondary);
+  const primaryRgb = hexToRgb(primary);
+  const secondaryRgb = hexToRgb(secondary);
+  const whiteRgb = hexToRgb(THEME_DEFAULTS.white);
+
+  const bg = secondary;
+  const bg2 = rgbToHex(mixRgb(secondaryRgb, primaryRgb, 0.9));
+  const accent = primary;
+  const accentDark = rgbToHex(mixRgb(primaryRgb, { red: 0, green: 0, blue: 0 }, 0.8));
+
+  const luminance = relativeLuminance(secondaryRgb);
+  const text = luminance > 0.6 ? THEME_DEFAULTS.textDark : THEME_DEFAULTS.textLight;
+  const textRgb = hexToRgb(text);
+  const muted = rgbToHex(mixRgb(textRgb, secondaryRgb, 0.65));
+  const surface = rgbToHex(mixRgb(secondaryRgb, whiteRgb, 0.2));
+
+  const stroke = rgbToRgbaString(textRgb, 0.12);
+  const shadow = `0 28px 60px ${rgbToRgbaString(textRgb, 0.12)}`;
+  const confirmBg = rgbToRgbaString(mixRgb(secondaryRgb, primaryRgb, 0.85), 0.9);
+  const confirmBorder = rgbToRgbaString(mixRgb(secondaryRgb, primaryRgb, 0.7), 0.6);
+  const confirmShadow = `0 20px 40px ${rgbToRgbaString(primaryRgb, 0.25)}`;
+
+  return {
+    '--bg': bg,
+    '--bg-2': bg2,
+    '--text': text,
+    '--muted': muted,
+    '--accent': accent,
+    '--accent-dark': accentDark,
+    '--surface': surface,
+    '--stroke': stroke,
+    '--shadow': shadow,
+    '--confirm-bg': confirmBg,
+    '--confirm-border': confirmBorder,
+    '--confirm-shadow': confirmShadow,
+  };
+}
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -340,19 +445,15 @@ function BookingPageContent() {
     }
 
     const root = document.documentElement;
-    const themeVars = [
-      ['--confirm-bg', clinic?.theme_confirm_bg],
-      ['--confirm-border', clinic?.theme_confirm_border],
-    ];
+    const theme = buildTheme(clinic?.theme_primary, clinic?.theme_secondary);
 
-    themeVars.forEach(([key, value]) => {
-      if (typeof value === 'string' && value.trim()) {
-        root.style.setProperty(key, value.trim());
-      } else {
-        root.style.removeProperty(key);
-      }
+    Object.entries(theme).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
     });
-  }, [clinic?.theme_confirm_bg, clinic?.theme_confirm_border]);
+  }, [
+    clinic?.theme_primary,
+    clinic?.theme_secondary,
+  ]);
 
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {
     const clinicDomain = getClinicDomain();

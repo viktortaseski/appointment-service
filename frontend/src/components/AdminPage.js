@@ -134,6 +134,24 @@ function buildTimeSlots(startTime, endTime, intervalMinutes) {
   return slots;
 }
 
+const THEME_DEFAULTS = {
+  primary: '#ff7a45',
+  secondary: '#f7f3ea',
+};
+
+function normalizeHex(value, fallback) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return fallback;
+}
+
 function getClinicDomain() {
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_CLINIC_DOMAIN || '';
@@ -166,8 +184,8 @@ function AdminPageContent() {
     slotMinutes: 30,
   });
   const [clinicTheme, setClinicTheme] = useState({
-    confirmBg: '',
-    confirmBorder: '',
+    primary: THEME_DEFAULTS.primary,
+    secondary: THEME_DEFAULTS.secondary,
   });
   const [settingsPanel, setSettingsPanel] = useState('clinic');
   const [scheduleStatus, setScheduleStatus] = useState({ status: '', error: '' });
@@ -264,6 +282,8 @@ function AdminPageContent() {
     end: scheduleEndLabel,
     interval: clinicSchedule.slotMinutes || 30,
   });
+  const primaryThemeLabel = t('admin_theme_primary_label');
+  const secondaryThemeLabel = t('admin_theme_secondary_label');
   const weekdayLabels = useMemo(
     () => [
       t('weekday_sun'),
@@ -542,8 +562,11 @@ function AdminPageContent() {
           slotMinutes: resolvedClinic?.slot_minutes || 30,
         });
         setClinicTheme({
-          confirmBg: resolvedClinic?.theme_confirm_bg || '',
-          confirmBorder: resolvedClinic?.theme_confirm_border || '',
+          primary: normalizeHex(resolvedClinic?.theme_primary, THEME_DEFAULTS.primary),
+          secondary: normalizeHex(
+            resolvedClinic?.theme_secondary,
+            THEME_DEFAULTS.secondary
+          ),
         });
         const preferredLocale = resolvedClinic?.default_language;
         if (preferredLocale) {
@@ -1280,8 +1303,10 @@ function AdminPageContent() {
     event.preventDefault();
     setThemeStatus({ status: '', error: '' });
 
-    const confirmBg = clinicTheme.confirmBg.trim();
-    const confirmBorder = clinicTheme.confirmBorder.trim();
+    const themePayload = {
+      theme_primary: clinicTheme.primary || null,
+      theme_secondary: clinicTheme.secondary || null,
+    };
 
     try {
       const response = await fetch(`${API_BASE}/clinic`, {
@@ -1291,10 +1316,7 @@ function AdminPageContent() {
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
-        body: JSON.stringify({
-          theme_confirm_bg: confirmBg || null,
-          theme_confirm_border: confirmBorder || null,
-        }),
+        body: JSON.stringify(themePayload),
       });
 
       const data = await response.json();
@@ -1304,8 +1326,11 @@ function AdminPageContent() {
       }
 
       setClinicTheme({
-        confirmBg: data.clinic?.theme_confirm_bg || '',
-        confirmBorder: data.clinic?.theme_confirm_border || '',
+        primary: normalizeHex(data.clinic?.theme_primary, THEME_DEFAULTS.primary),
+        secondary: normalizeHex(
+          data.clinic?.theme_secondary,
+          THEME_DEFAULTS.secondary
+        ),
       });
       setThemeStatus({ status: t('admin_theme_success'), error: '' });
     } catch (error) {
@@ -2346,36 +2371,46 @@ function AdminPageContent() {
                 <form className="availability-form" onSubmit={handleThemeSubmit}>
                   <div className="filter-grid">
                     <div className="field">
-                      <label htmlFor="confirmBg">{t('admin_theme_confirm_bg_label')}</label>
-                      <input
-                        id="confirmBg"
-                        type="text"
-                        value={clinicTheme.confirmBg}
-                        onChange={(event) =>
-                          setClinicTheme((prev) => ({
-                            ...prev,
-                            confirmBg: event.target.value,
-                          }))
-                        }
-                        placeholder={t('admin_theme_confirm_bg_placeholder')}
-                      />
+                      <label htmlFor="themePrimary">{primaryThemeLabel}</label>
+                      <div className="theme-color-row">
+                        <input
+                          id="themePrimary"
+                          type="color"
+                          className="theme-color-input"
+                          value={clinicTheme.primary}
+                          onChange={(event) =>
+                            setClinicTheme((prev) => ({
+                              ...prev,
+                              primary: normalizeHex(
+                                event.target.value,
+                                THEME_DEFAULTS.primary
+                              ),
+                            }))
+                          }
+                        />
+                        <span className="theme-color-value">{clinicTheme.primary}</span>
+                      </div>
                     </div>
                     <div className="field">
-                      <label htmlFor="confirmBorder">
-                        {t('admin_theme_confirm_border_label')}
-                      </label>
-                      <input
-                        id="confirmBorder"
-                        type="text"
-                        value={clinicTheme.confirmBorder}
-                        onChange={(event) =>
-                          setClinicTheme((prev) => ({
-                            ...prev,
-                            confirmBorder: event.target.value,
-                          }))
-                        }
-                        placeholder={t('admin_theme_confirm_border_placeholder')}
-                      />
+                      <label htmlFor="themeSecondary">{secondaryThemeLabel}</label>
+                      <div className="theme-color-row">
+                        <input
+                          id="themeSecondary"
+                          type="color"
+                          className="theme-color-input"
+                          value={clinicTheme.secondary}
+                          onChange={(event) =>
+                            setClinicTheme((prev) => ({
+                              ...prev,
+                              secondary: normalizeHex(
+                                event.target.value,
+                                THEME_DEFAULTS.secondary
+                              ),
+                            }))
+                          }
+                        />
+                        <span className="theme-color-value">{clinicTheme.secondary}</span>
+                      </div>
                     </div>
                   </div>
                   <p className="inline-hint">{t('admin_theme_hint')}</p>

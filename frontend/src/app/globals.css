@@ -1087,6 +1087,26 @@ select.error {
   gap: 12px;
 }
 
+.theme-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-color-input {
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: #fff;
+}
+
+.theme-color-value {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .availability-list {
   margin-top: 18px;
   display: flex;
