@@ -700,9 +700,25 @@ select.error {
   gap: 20px;
 }
 
+#doctors .card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: stretch;
+}
+
 .doctor-name {
   margin: 0 0 4px;
   font-weight: 600;
+}
+
+.card.doctor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card.doctor .ghost {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .doctor-card-profile {
@@ -1760,7 +1776,7 @@ select.error {
 
 @media (max-width: 720px) {
   .doctor-card-profile {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
   }
 
