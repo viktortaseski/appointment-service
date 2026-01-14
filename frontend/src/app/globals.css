@@ -27,26 +27,6 @@ body {
   min-height: 100vh;
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  inset: -20% -10% auto auto;
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 183, 125, 0.7), transparent 70%);
-  z-index: -1;
-  filter: blur(0);
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: auto auto -20% -10%;
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle at 40% 40%, rgba(255, 122, 69, 0.35), transparent 65%);
-  z-index: -1;
-}
 
 a {
   color: inherit;
@@ -1105,6 +1085,12 @@ select.error {
 .theme-color-value {
   font-size: 13px;
   color: var(--muted);
+}
+
+.theme-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .availability-list {

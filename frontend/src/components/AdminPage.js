@@ -1338,6 +1338,14 @@ function AdminPageContent() {
     }
   }
 
+  function handleThemeReset() {
+    setThemeStatus({ status: '', error: '' });
+    setClinicTheme({
+      primary: THEME_DEFAULTS.primary,
+      secondary: THEME_DEFAULTS.secondary,
+    });
+  }
+
   function handleDoctorSelect(doctorId) {
     if (!doctorId) {
       setDoctorForm({
@@ -2414,9 +2422,14 @@ function AdminPageContent() {
                     </div>
                   </div>
                   <p className="inline-hint">{t('admin_theme_hint')}</p>
-                  <button type="submit" className="cta">
-                    {t('admin_theme_save')}
-                  </button>
+                  <div className="theme-actions">
+                    <button type="button" className="ghost" onClick={handleThemeReset}>
+                      {t('admin_theme_reset')}
+                    </button>
+                    <button type="submit" className="cta">
+                      {t('admin_theme_save')}
+                    </button>
+                  </div>
                   {themeStatus.status && (
                     <p className="status success">{themeStatus.status}</p>
                   )}
