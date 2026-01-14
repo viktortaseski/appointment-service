@@ -165,8 +165,13 @@ function AdminPageContent() {
     closesAt: '16:00',
     slotMinutes: 30,
   });
+  const [clinicTheme, setClinicTheme] = useState({
+    confirmBg: '',
+    confirmBorder: '',
+  });
   const [settingsPanel, setSettingsPanel] = useState('clinic');
   const [scheduleStatus, setScheduleStatus] = useState({ status: '', error: '' });
+  const [themeStatus, setThemeStatus] = useState({ status: '', error: '' });
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -535,6 +540,10 @@ function AdminPageContent() {
           opensAt: resolvedClinic?.opens_at || '09:00',
           closesAt: resolvedClinic?.closes_at || '16:00',
           slotMinutes: resolvedClinic?.slot_minutes || 30,
+        });
+        setClinicTheme({
+          confirmBg: resolvedClinic?.theme_confirm_bg || '',
+          confirmBorder: resolvedClinic?.theme_confirm_border || '',
         });
         const preferredLocale = resolvedClinic?.default_language;
         if (preferredLocale) {
@@ -1264,6 +1273,43 @@ function AdminPageContent() {
       setScheduleStatus({ status: t('admin_schedule_success'), error: '' });
     } catch (error) {
       setScheduleStatus({ status: '', error: error?.message || t('admin_schedule_error') });
+    }
+  }
+
+  async function handleThemeSubmit(event) {
+    event.preventDefault();
+    setThemeStatus({ status: '', error: '' });
+
+    const confirmBg = clinicTheme.confirmBg.trim();
+    const confirmBorder = clinicTheme.confirmBorder.trim();
+
+    try {
+      const response = await fetch(`${API_BASE}/clinic`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({
+          theme_confirm_bg: confirmBg || null,
+          theme_confirm_border: confirmBorder || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_theme_error'));
+      }
+
+      setClinicTheme({
+        confirmBg: data.clinic?.theme_confirm_bg || '',
+        confirmBorder: data.clinic?.theme_confirm_border || '',
+      });
+      setThemeStatus({ status: t('admin_theme_success'), error: '' });
+    } catch (error) {
+      setThemeStatus({ status: '', error: error?.message || t('admin_theme_error') });
     }
   }
 
@@ -2286,6 +2332,61 @@ function AdminPageContent() {
                   )}
                   {scheduleStatus.error && (
                     <p className="status error">{scheduleStatus.error}</p>
+                  )}
+                </form>
+              </div>
+
+              <div className="card clinic-theme-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_theme_title')}</p>
+                    <p className="row-subtitle">{t('admin_theme_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleThemeSubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="confirmBg">{t('admin_theme_confirm_bg_label')}</label>
+                      <input
+                        id="confirmBg"
+                        type="text"
+                        value={clinicTheme.confirmBg}
+                        onChange={(event) =>
+                          setClinicTheme((prev) => ({
+                            ...prev,
+                            confirmBg: event.target.value,
+                          }))
+                        }
+                        placeholder={t('admin_theme_confirm_bg_placeholder')}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="confirmBorder">
+                        {t('admin_theme_confirm_border_label')}
+                      </label>
+                      <input
+                        id="confirmBorder"
+                        type="text"
+                        value={clinicTheme.confirmBorder}
+                        onChange={(event) =>
+                          setClinicTheme((prev) => ({
+                            ...prev,
+                            confirmBorder: event.target.value,
+                          }))
+                        }
+                        placeholder={t('admin_theme_confirm_border_placeholder')}
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{t('admin_theme_hint')}</p>
+                  <button type="submit" className="cta">
+                    {t('admin_theme_save')}
+                  </button>
+                  {themeStatus.status && (
+                    <p className="status success">{themeStatus.status}</p>
+                  )}
+                  {themeStatus.error && (
+                    <p className="status error">{themeStatus.error}</p>
                   )}
                 </form>
               </div>

@@ -10,6 +10,9 @@
   --surface: #ffffff;
   --stroke: rgba(32, 27, 22, 0.12);
   --shadow: 0 28px 60px rgba(32, 27, 22, 0.12);
+  --confirm-bg: rgba(255, 245, 230, 0.9);
+  --confirm-border: rgba(255, 183, 125, 0.6);
+  --confirm-shadow: 0 20px 40px rgba(255, 183, 125, 0.25);
 }
 
 * {
@@ -876,9 +879,9 @@ select.error {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  background: rgba(255, 245, 230, 0.9);
-  border: 1px solid rgba(255, 183, 125, 0.6);
-  box-shadow: 0 20px 40px rgba(255, 183, 125, 0.25);
+  background: var(--confirm-bg);
+  border: 1px solid var(--confirm-border);
+  box-shadow: var(--confirm-shadow);
 }
 
 .prompt-banner {

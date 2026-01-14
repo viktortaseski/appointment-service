@@ -68,6 +68,8 @@ CREATE TABLE clinics (
   phone VARCHAR(50),
   email VARCHAR(255),
   address TEXT,
+  theme_confirm_bg TEXT,
+  theme_confirm_border TEXT,
   is_disabled BOOLEAN DEFAULT FALSE,
   default_language VARCHAR(5) DEFAULT 'en',
   opens_at TIME DEFAULT '09:00',
@@ -82,6 +84,8 @@ COMMENT ON COLUMN clinics.logo IS 'Public logo image URL';
 COMMENT ON COLUMN clinics.phone IS 'Primary clinic phone number';
 COMMENT ON COLUMN clinics.email IS 'Primary clinic email';
 COMMENT ON COLUMN clinics.address IS 'Clinic address';
+COMMENT ON COLUMN clinics.theme_confirm_bg IS 'Confirmation banner background color (CSS value)';
+COMMENT ON COLUMN clinics.theme_confirm_border IS 'Confirmation banner border color (CSS value)';
 COMMENT ON COLUMN clinics.is_disabled IS 'Disable online appointments';
 COMMENT ON COLUMN clinics.default_language IS 'Default locale key for clinic experiences';
 COMMENT ON COLUMN clinics.opens_at IS 'Clinic opening time';

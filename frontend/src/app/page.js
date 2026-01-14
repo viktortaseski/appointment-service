@@ -334,6 +334,26 @@ function BookingPageContent() {
     setLocale(clinic.default_language, 'auto');
   }, [clinic?.default_language, setLocale]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    const themeVars = [
+      ['--confirm-bg', clinic?.theme_confirm_bg],
+      ['--confirm-border', clinic?.theme_confirm_border],
+    ];
+
+    themeVars.forEach(([key, value]) => {
+      if (typeof value === 'string' && value.trim()) {
+        root.style.setProperty(key, value.trim());
+      } else {
+        root.style.removeProperty(key);
+      }
+    });
+  }, [clinic?.theme_confirm_bg, clinic?.theme_confirm_border]);
+
   const fetchAvailability = useCallback(async (dateKey, doctorId) => {
     const clinicDomain = getClinicDomain();
     const [appointmentsResponse, unavailableResponse] = await Promise.all([

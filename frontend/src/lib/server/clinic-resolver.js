@@ -35,7 +35,7 @@ export async function resolveClinic(source) {
   debugLog('clinic-resolver: lookup', { hostname });
 
   const result = await pool.query(
-    'SELECT id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics WHERE domain = $1 LIMIT 1',
+    'SELECT id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics WHERE domain = $1 LIMIT 1',
     [hostname]
   );
 

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics ORDER BY name'
+      'SELECT id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics ORDER BY name'
     );
     return NextResponse.json({ clinics: result.rows });
   } catch (err) {
@@ -43,7 +43,7 @@ export async function POST(request) {
     const result = await pool.query(
       `INSERT INTO clinics (name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, created_at`,
+       RETURNING id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, created_at`,
       [
         name,
         domain,

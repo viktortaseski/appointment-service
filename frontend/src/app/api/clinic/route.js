@@ -24,6 +24,8 @@ export async function PATCH(request) {
     opens_at: opensAt,
     closes_at: closesAt,
     slot_minutes: slotMinutes,
+    theme_confirm_bg: themeConfirmBg,
+    theme_confirm_border: themeConfirmBorder,
   } = body || {};
 
   const updates = [];
@@ -56,6 +58,28 @@ export async function PATCH(request) {
     updates.push(`slot_minutes = $${values.length}`);
   }
 
+  if (themeConfirmBg !== undefined) {
+    if (themeConfirmBg !== null && typeof themeConfirmBg !== 'string') {
+      return NextResponse.json(
+        { error: 'theme_confirm_bg must be a string or null.' },
+        { status: 400 }
+      );
+    }
+    values.push(themeConfirmBg);
+    updates.push(`theme_confirm_bg = $${values.length}`);
+  }
+
+  if (themeConfirmBorder !== undefined) {
+    if (themeConfirmBorder !== null && typeof themeConfirmBorder !== 'string') {
+      return NextResponse.json(
+        { error: 'theme_confirm_border must be a string or null.' },
+        { status: 400 }
+      );
+    }
+    values.push(themeConfirmBorder);
+    updates.push(`theme_confirm_border = $${values.length}`);
+  }
+
   if (updates.length === 0) {
     return NextResponse.json({ error: 'No clinic settings provided.' }, { status: 400 });
   }
@@ -66,7 +90,7 @@ export async function PATCH(request) {
     `UPDATE clinics
      SET ${updates.join(', ')}
      WHERE id = $${values.length}
-     RETURNING id, name, domain, logo, phone, email, address, is_disabled, opens_at, closes_at, slot_minutes, default_language`,
+     RETURNING id, name, domain, logo, phone, email, address, theme_confirm_bg, theme_confirm_border, is_disabled, opens_at, closes_at, slot_minutes, default_language`,
     values
   );
 
