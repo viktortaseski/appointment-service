@@ -2475,173 +2475,6 @@ function AdminPageContent() {
                 </form>
               </div>
 
-              <div className="card availability-card">
-                <div className="upload-header">
-                  <div>
-                    <p className="row-title">{t('admin_availability_title')}</p>
-                    <p className="row-subtitle">{t('admin_availability_subtitle')}</p>
-                  </div>
-                </div>
-                <form className="availability-form" onSubmit={handleAvailabilitySubmit}>
-                  <div className="filter-grid">
-                    <div className="field">
-                      <label htmlFor="availabilityDoctor">{t('admin_doctor_label')}</label>
-                      <select
-                        id="availabilityDoctor"
-                        value={availabilityForm.doctorId}
-                        onChange={(event) =>
-                          setAvailabilityForm((prev) => ({
-                            ...prev,
-                            doctorId: event.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">{t('admin_select_doctor')}</option>
-                        {doctorOptions.map((doctor) => (
-                          <option key={doctor.id} value={doctor.id}>
-                            {doctor.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="availabilityStartDate">
-                        {t('admin_availability_start_date')}
-                      </label>
-                      <input
-                        id="availabilityStartDate"
-                        type="date"
-                        value={availabilityForm.startDate}
-                        onChange={(event) =>
-                          setAvailabilityForm((prev) => ({
-                            ...prev,
-                            startDate: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="availabilityEndDate">
-                        {t('admin_availability_end_date')}
-                      </label>
-                      <input
-                        id="availabilityEndDate"
-                        type="date"
-                        value={availabilityForm.endDate}
-                        onChange={(event) =>
-                          setAvailabilityForm((prev) => ({
-                            ...prev,
-                            endDate: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="filter-grid">
-                    <div className="field">
-                      <label htmlFor="availabilityStartTime">
-                        {t('admin_availability_start_time')}
-                      </label>
-                      <input
-                        id="availabilityStartTime"
-                        type="time"
-                        value={availabilityForm.startTime}
-                        onChange={(event) =>
-                          setAvailabilityForm((prev) => ({
-                            ...prev,
-                            startTime: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="availabilityEndTime">
-                        {t('admin_availability_end_time')}
-                      </label>
-                      <input
-                        id="availabilityEndTime"
-                        type="time"
-                        value={availabilityForm.endTime}
-                        onChange={(event) =>
-                          setAvailabilityForm((prev) => ({
-                            ...prev,
-                            endTime: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <p className="inline-hint">{t('admin_availability_hint')}</p>
-                  <button type="submit" className="cta">
-                    {t('admin_availability_add')}
-                  </button>
-                  {availabilityStatus.status && (
-                    <p className="status success">{availabilityStatus.status}</p>
-                  )}
-                  {availabilityStatus.error && (
-                    <p className="status error">{availabilityStatus.error}</p>
-                  )}
-                </form>
-                {availabilityRecords.length > 0 && (
-                  <div className="availability-list">
-                    {availabilityRecords.map((record) => {
-                      const startDate = record.start_date
-                        ? new Date(record.start_date)
-                        : null;
-                      const endDate = record.end_date
-                        ? new Date(record.end_date)
-                        : null;
-                      const dateLabel = startDate && endDate
-                        ? startDate.toLocaleDateString(localeTag, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }) === endDate.toLocaleDateString(localeTag, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                          ? startDate.toLocaleDateString(localeTag, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
-                          : `${startDate.toLocaleDateString(localeTag, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })} - ${endDate.toLocaleDateString(localeTag, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}`
-                        : '';
-                      const timeLabel = record.start_time && record.end_time
-                        ? `${record.start_time.slice(0, 5)} - ${record.end_time.slice(0, 5)}`
-                        : t('admin_availability_all_day');
-
-                      return (
-                        <div key={record.id} className="availability-item">
-                          <div>
-                            <p className="row-title">{record.doctor_name || t('doctor_label')}</p>
-                            <p className="row-subtitle">
-                              {dateLabel}{dateLabel ? ' · ' : ''}{timeLabel}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            className="ghost"
-                            onClick={() => handleAvailabilityDelete(record.id)}
-                          >
-                            {t('admin_availability_remove')}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
               <div className="card upload-card">
                 <div className="upload-header">
                   <div>
@@ -2849,6 +2682,173 @@ function AdminPageContent() {
                     <p className="status error">{doctorFormStatus.error}</p>
                   )}
                 </form>
+              </div>
+
+              <div className="card availability-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_availability_title')}</p>
+                    <p className="row-subtitle">{t('admin_availability_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleAvailabilitySubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="availabilityDoctor">{t('admin_doctor_label')}</label>
+                      <select
+                        id="availabilityDoctor"
+                        value={availabilityForm.doctorId}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            doctorId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">{t('admin_select_doctor')}</option>
+                        {doctorOptions.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityStartDate">
+                        {t('admin_availability_start_date')}
+                      </label>
+                      <input
+                        id="availabilityStartDate"
+                        type="date"
+                        value={availabilityForm.startDate}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            startDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityEndDate">
+                        {t('admin_availability_end_date')}
+                      </label>
+                      <input
+                        id="availabilityEndDate"
+                        type="date"
+                        value={availabilityForm.endDate}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            endDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="availabilityStartTime">
+                        {t('admin_availability_start_time')}
+                      </label>
+                      <input
+                        id="availabilityStartTime"
+                        type="time"
+                        value={availabilityForm.startTime}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            startTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="availabilityEndTime">
+                        {t('admin_availability_end_time')}
+                      </label>
+                      <input
+                        id="availabilityEndTime"
+                        type="time"
+                        value={availabilityForm.endTime}
+                        onChange={(event) =>
+                          setAvailabilityForm((prev) => ({
+                            ...prev,
+                            endTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{t('admin_availability_hint')}</p>
+                  <button type="submit" className="cta">
+                    {t('admin_availability_add')}
+                  </button>
+                  {availabilityStatus.status && (
+                    <p className="status success">{availabilityStatus.status}</p>
+                  )}
+                  {availabilityStatus.error && (
+                    <p className="status error">{availabilityStatus.error}</p>
+                  )}
+                </form>
+                {availabilityRecords.length > 0 && (
+                  <div className="availability-list">
+                    {availabilityRecords.map((record) => {
+                      const startDate = record.start_date
+                        ? new Date(record.start_date)
+                        : null;
+                      const endDate = record.end_date
+                        ? new Date(record.end_date)
+                        : null;
+                      const dateLabel = startDate && endDate
+                        ? startDate.toLocaleDateString(localeTag, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        }) === endDate.toLocaleDateString(localeTag, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                          ? startDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                          : `${startDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })} - ${endDate.toLocaleDateString(localeTag, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}`
+                        : '';
+                      const timeLabel = record.start_time && record.end_time
+                        ? `${record.start_time.slice(0, 5)} - ${record.end_time.slice(0, 5)}`
+                        : t('admin_availability_all_day');
+
+                      return (
+                        <div key={record.id} className="availability-item">
+                          <div>
+                            <p className="row-title">{record.doctor_name || t('doctor_label')}</p>
+                            <p className="row-subtitle">
+                              {dateLabel}{dateLabel ? ' · ' : ''}{timeLabel}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => handleAvailabilityDelete(record.id)}
+                          >
+                            {t('admin_availability_remove')}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="card upload-card">
