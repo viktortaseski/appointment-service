@@ -315,23 +315,29 @@ function BookingPageContent() {
       }),
     [monthCursor, localeTag]
   );
-  const timeSlots = useMemo(
-    () => buildTimeSlots(clinic?.opens_at, clinic?.closes_at, clinic?.slot_minutes),
-    [clinic?.opens_at, clinic?.closes_at, clinic?.slot_minutes]
+  const selectedDoctorInfo = useMemo(
+    () => doctors.find((doctor) => doctor.id === selectedDoctor) || null,
+    [doctors, selectedDoctor]
   );
-  const scheduleStart = clinic?.opens_at || '09:00';
-  const scheduleEnd = clinic?.closes_at || '16:00';
+  const scheduleStart = selectedDoctorInfo?.opens_at || clinic?.opens_at || '09:00';
+  const scheduleEnd = selectedDoctorInfo?.closes_at || clinic?.closes_at || '16:00';
+  const timeSlots = useMemo(
+    () => buildTimeSlots(scheduleStart, scheduleEnd, clinic?.slot_minutes),
+    [scheduleStart, scheduleEnd, clinic?.slot_minutes]
+  );
   const scheduleInterval = clinic?.slot_minutes || 30;
   const scheduleStartLabel = formatTimeDisplay(scheduleStart, localeTag);
   const scheduleEndLabel = formatTimeDisplay(scheduleEnd, localeTag);
+  const clinicStartLabel = formatTimeDisplay(clinic?.opens_at || '09:00', localeTag);
+  const clinicEndLabel = formatTimeDisplay(clinic?.closes_at || '16:00', localeTag);
   const scheduleTimeHint = t('time_hint', {
     start: scheduleStartLabel,
     end: scheduleEndLabel,
     interval: scheduleInterval,
   });
   const availabilityLabel = t('availability_label', {
-    start: scheduleStartLabel,
-    end: scheduleEndLabel,
+    start: clinicStartLabel,
+    end: clinicEndLabel,
   });
   const normalizedTakenTimes = useMemo(
     () => availability.takenTimes.map(normalizeTime).filter(Boolean),

@@ -16,7 +16,7 @@ export async function GET(request) {
 
   try {
     const result = await pool.query(
-      `SELECT id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at
+      `SELECT id, clinic_id, name, username, specialty, opens_at, closes_at, description, avatar, is_disabled, created_at, updated_at
        FROM doctors
        WHERE clinic_id = $1
        ORDER BY name`,
@@ -50,7 +50,16 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const { name, specialty, avatar, description, username, password } = body || {};
+  const {
+    name,
+    specialty,
+    avatar,
+    description,
+    username,
+    password,
+    opens_at: opensAt,
+    closes_at: closesAt,
+  } = body || {};
 
   if (!name || !specialty) {
     return NextResponse.json({ error: 'name and specialty are required.' }, { status: 400 });
@@ -60,14 +69,16 @@ export async function POST(request) {
     const passwordHash = password ? await bcrypt.hash(password, 10) : null;
 
     const result = await pool.query(
-      `INSERT INTO doctors (clinic_id, name, username, specialty, description, avatar, password_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at`,
+      `INSERT INTO doctors (clinic_id, name, username, specialty, opens_at, closes_at, description, avatar, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, clinic_id, name, username, specialty, opens_at, closes_at, description, avatar, is_disabled, created_at, updated_at`,
       [
         clinic.id,
         name,
         username || null,
         specialty,
+        opensAt || null,
+        closesAt || null,
         description || null,
         avatar || null,
         passwordHash,

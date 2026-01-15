@@ -65,6 +65,14 @@ export function buildTimeSlotsFromClinic(clinic) {
   );
 }
 
+export function buildTimeSlotsFromDoctor(doctor, clinic) {
+  return buildTimeSlotsFromTimes(
+    doctor?.opens_at || clinic?.opens_at,
+    doctor?.closes_at || clinic?.closes_at,
+    clinic?.slot_minutes
+  );
+}
+
 export const DEFAULT_TIME_SLOTS = buildTimeSlotsFromTimes();
 
 export function normalizeDateKey(value) {

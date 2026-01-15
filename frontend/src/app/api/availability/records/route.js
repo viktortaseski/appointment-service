@@ -85,13 +85,6 @@ export async function POST(request) {
     );
   }
 
-  if (startTime && startDate !== endDate) {
-    return NextResponse.json(
-      { error: 'Time ranges must use the same start and end date.' },
-      { status: 400 }
-    );
-  }
-
   if (startTime && endTime && startTime >= endTime) {
     return NextResponse.json({ error: 'start_time must be before end_time.' }, { status: 400 });
   }

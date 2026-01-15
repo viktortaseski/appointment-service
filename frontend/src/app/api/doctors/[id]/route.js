@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
 
   try {
     const result = await pool.query(
-      `SELECT id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at
+      `SELECT id, clinic_id, name, username, specialty, opens_at, closes_at, description, avatar, is_disabled, created_at, updated_at
        FROM doctors
        WHERE clinic_id = $1 AND id = $2`,
       [clinic.id, params.id]
@@ -56,6 +56,8 @@ export async function PATCH(request, { params }) {
     specialty,
     description,
     password,
+    opens_at: opensAt,
+    closes_at: closesAt,
     is_disabled: isDisabled,
   } = body || {};
 
@@ -88,6 +90,28 @@ export async function PATCH(request, { params }) {
     updates.push(`description = $${values.length}`);
   }
 
+  if (opensAt !== undefined) {
+    if (opensAt !== null && typeof opensAt !== 'string') {
+      return NextResponse.json(
+        { error: 'opens_at must be a string or null.' },
+        { status: 400 }
+      );
+    }
+    values.push(opensAt ? opensAt.trim() : null);
+    updates.push(`opens_at = $${values.length}`);
+  }
+
+  if (closesAt !== undefined) {
+    if (closesAt !== null && typeof closesAt !== 'string') {
+      return NextResponse.json(
+        { error: 'closes_at must be a string or null.' },
+        { status: 400 }
+      );
+    }
+    values.push(closesAt ? closesAt.trim() : null);
+    updates.push(`closes_at = $${values.length}`);
+  }
+
   if (password !== undefined) {
     const trimmed = password ? password.trim() : '';
     if (trimmed) {
@@ -117,7 +141,7 @@ export async function PATCH(request, { params }) {
       `UPDATE doctors
        SET ${updates.join(', ')}
        WHERE clinic_id = $${values.length - 1} AND id = $${values.length}
-       RETURNING id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at`,
+       RETURNING id, clinic_id, name, username, specialty, opens_at, closes_at, description, avatar, is_disabled, created_at, updated_at`,
       values
     );
 

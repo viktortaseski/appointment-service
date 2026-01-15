@@ -101,6 +101,8 @@ CREATE TABLE doctors (
   name VARCHAR(255) NOT NULL,
   username VARCHAR(255),
   specialty VARCHAR(255) NOT NULL,
+  opens_at TIME,
+  closes_at TIME,
   description TEXT,
   avatar TEXT,
   is_disabled BOOLEAN DEFAULT FALSE,
@@ -111,6 +113,8 @@ CREATE TABLE doctors (
 
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
+COMMENT ON COLUMN doctors.opens_at IS 'Doctor working day start time';
+COMMENT ON COLUMN doctors.closes_at IS 'Doctor working day end time';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
 COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appointments';
 COMMENT ON COLUMN doctors.password_hash IS 'Hashed doctor password';

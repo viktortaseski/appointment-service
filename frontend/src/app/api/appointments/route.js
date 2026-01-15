@@ -9,7 +9,7 @@ import { createCancelToken } from '@/lib/server/appointment-cancel';
 import { getHeader } from '@/lib/server/headers';
 import { upsertAppointmentReminder } from '@/lib/server/reminders';
 import {
-  buildTimeSlotsFromClinic,
+  buildTimeSlotsFromDoctor,
   computeBlockedTimes,
   normalizeTime,
 } from '@/lib/server/availability';
@@ -239,7 +239,11 @@ export async function GET(request) {
         [clinic.id, doctorId]
       );
 
-      const slots = buildTimeSlotsFromClinic(clinic);
+      const doctorResult = await pool.query(
+        'SELECT opens_at, closes_at FROM doctors WHERE clinic_id = $1 AND id = $2',
+        [clinic.id, doctorId]
+      );
+      const slots = buildTimeSlotsFromDoctor(doctorResult.rows[0], clinic);
       unavailableTimes = computeBlockedTimes(date, unavailableResult.rows, slots);
     }
 
@@ -312,7 +316,7 @@ export async function POST(request) {
     }
 
     const doctorCheck = await pool.query(
-      'SELECT id, is_disabled FROM doctors WHERE id = $1 AND clinic_id = $2',
+      'SELECT id, is_disabled, opens_at, closes_at FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, clinic.id]
     );
 
@@ -333,7 +337,7 @@ export async function POST(request) {
     }
 
     const normalizedTime = normalizeTime(time);
-    const allowedTimes = buildTimeSlotsFromClinic(clinic);
+    const allowedTimes = buildTimeSlotsFromDoctor(doctorCheck.rows[0], clinic);
 
     if (!normalizedTime || !allowedTimes.includes(normalizedTime)) {
       debugLog('appointments: POST time outside hours', {
@@ -341,7 +345,7 @@ export async function POST(request) {
         allowedCount: allowedTimes.length,
       });
       return NextResponse.json(
-        { error: 'Selected time is outside clinic hours.' },
+        { error: 'Selected time is outside doctor hours.' },
         { status: 400 }
       );
     }

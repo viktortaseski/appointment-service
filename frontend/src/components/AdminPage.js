@@ -223,6 +223,8 @@ function AdminPageContent() {
     name: '',
     username: '',
     specialty: '',
+    opensAt: '',
+    closesAt: '',
     description: '',
     password: '',
     isDisabled: false,
@@ -266,20 +268,33 @@ function AdminPageContent() {
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
-  const timeSlots = useMemo(
-    () =>
-      buildTimeSlots(
-        clinicSchedule.opensAt,
-        clinicSchedule.closesAt,
-        clinicSchedule.slotMinutes
-      ),
-    [clinicSchedule]
+  const selectedDoctorSchedule = useMemo(
+    () => doctors.find((doctor) => doctor.id === formState.doctorId) || null,
+    [doctors, formState.doctorId]
   );
+  const timeSlots = useMemo(() => {
+    const startTime = selectedDoctorSchedule?.opens_at || clinicSchedule.opensAt;
+    const endTime = selectedDoctorSchedule?.closes_at || clinicSchedule.closesAt;
+    return buildTimeSlots(startTime, endTime, clinicSchedule.slotMinutes);
+  }, [clinicSchedule, selectedDoctorSchedule]);
   const scheduleStartLabel = formatTimeDisplay(clinicSchedule.opensAt, localeTag);
   const scheduleEndLabel = formatTimeDisplay(clinicSchedule.closesAt, localeTag);
   const scheduleTimeHint = t('admin_time_hint', {
     start: scheduleStartLabel,
     end: scheduleEndLabel,
+    interval: clinicSchedule.slotMinutes || 30,
+  });
+  const appointmentStartLabel = formatTimeDisplay(
+    selectedDoctorSchedule?.opens_at || clinicSchedule.opensAt,
+    localeTag
+  );
+  const appointmentEndLabel = formatTimeDisplay(
+    selectedDoctorSchedule?.closes_at || clinicSchedule.closesAt,
+    localeTag
+  );
+  const appointmentTimeHint = t('admin_time_hint', {
+    start: appointmentStartLabel,
+    end: appointmentEndLabel,
     interval: clinicSchedule.slotMinutes || 30,
   });
   const primaryThemeLabel = t('admin_theme_primary_label');
@@ -611,6 +626,8 @@ function AdminPageContent() {
         name: '',
         username: '',
         specialty: '',
+        opensAt: '',
+        closesAt: '',
         description: '',
         password: '',
         isDisabled: false,
@@ -623,6 +640,8 @@ function AdminPageContent() {
       name: selected.name || '',
       username: selected.username || '',
       specialty: selected.specialty || '',
+      opensAt: selected.opens_at || '',
+      closesAt: selected.closes_at || '',
       description: selected.description || '',
       isDisabled: Boolean(selected.is_disabled),
     }));
@@ -1140,14 +1159,6 @@ function AdminPageContent() {
       return;
     }
 
-    if (
-      availabilityForm.startTime &&
-      availabilityForm.startDate !== availabilityForm.endDate
-    ) {
-      setAvailabilityStatus({ status: '', error: t('admin_availability_time_date_match') });
-      return;
-    }
-
     try {
       const response = await fetch(`${API_BASE}/availability/records`, {
         method: 'POST',
@@ -1353,6 +1364,8 @@ function AdminPageContent() {
         name: '',
         username: '',
         specialty: '',
+        opensAt: '',
+        closesAt: '',
         description: '',
         password: '',
         isDisabled: false,
@@ -1383,10 +1396,31 @@ function AdminPageContent() {
       return;
     }
 
+    const opensAt = doctorForm.opensAt.trim();
+    const closesAt = doctorForm.closesAt.trim();
+    const hasCustomHours = Boolean(opensAt || closesAt);
+
+    if (hasCustomHours && (!opensAt || !closesAt)) {
+      setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_required') });
+      return;
+    }
+
+    if (hasCustomHours) {
+      const startMinutes = parseTimeToMinutes(opensAt);
+      const endMinutes = parseTimeToMinutes(closesAt);
+
+      if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+        setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
+        return;
+      }
+    }
+
     const payload = {
       name: doctorForm.name.trim(),
       username: doctorForm.username.trim() || null,
       specialty: doctorForm.specialty.trim(),
+      opens_at: hasCustomHours ? opensAt : null,
+      closes_at: hasCustomHours ? closesAt : null,
       description: doctorForm.description.trim() || null,
       is_disabled: doctorForm.isDisabled,
     };
@@ -1420,6 +1454,8 @@ function AdminPageContent() {
       setDoctorForm((prev) => ({
         ...prev,
         password: '',
+        opensAt: data.doctor?.opens_at || '',
+        closesAt: data.doctor?.closes_at || '',
         isDisabled: Boolean(data.doctor?.is_disabled),
       }));
       setDoctorFormStatus({ status: t('admin_doctor_update_success'), error: '' });
@@ -1710,7 +1746,7 @@ function AdminPageContent() {
                 <div className="field">
                   <div className="field-heading">
                     <label>{t('admin_choose_time')}</label>
-                    <span className="field-hint">{scheduleTimeHint}</span>
+                    <span className="field-hint">{appointmentTimeHint}</span>
                   </div>
                   {!formState.doctorId && (
                     <p className="inline-hint">{t('admin_select_doctor_hint')}</p>
@@ -2740,6 +2776,37 @@ function AdminPageContent() {
                       />
                     </div>
                   </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorOpen">{t('admin_doctor_open_label')}</label>
+                      <input
+                        id="doctorOpen"
+                        type="time"
+                        value={doctorForm.opensAt}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            opensAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorClose">{t('admin_doctor_close_label')}</label>
+                      <input
+                        id="doctorClose"
+                        type="time"
+                        value={doctorForm.closesAt}
+                        onChange={(event) =>
+                          setDoctorForm((prev) => ({
+                            ...prev,
+                            closesAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{t('admin_doctor_schedule_hint')}</p>
                   <div className="field">
                     <label htmlFor="doctorDescription">
                       {t('admin_doctor_description_label')}

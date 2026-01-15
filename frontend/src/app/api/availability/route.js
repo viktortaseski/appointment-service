@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { resolveClinic } from '@/lib/server/clinic-resolver';
 import { pool } from '@/lib/server/db';
 import {
-  buildTimeSlotsFromClinic,
+  buildTimeSlotsFromDoctor,
   computeBlockedTimes,
   normalizeDateKey,
 } from '@/lib/server/availability';
@@ -26,6 +26,11 @@ export async function GET(request) {
   }
 
   try {
+    const doctorResult = await pool.query(
+      'SELECT opens_at, closes_at FROM doctors WHERE clinic_id = $1 AND id = $2',
+      [clinic.id, doctorId]
+    );
+
     const result = await pool.query(
       `SELECT start_date, end_date, start_time, end_time
        FROM doctor_unavailability
@@ -33,7 +38,7 @@ export async function GET(request) {
       [clinic.id, doctorId]
     );
 
-    const slots = buildTimeSlotsFromClinic(clinic);
+    const slots = buildTimeSlotsFromDoctor(doctorResult.rows[0], clinic);
     const unavailableTimes = computeBlockedTimes(dateKey, result.rows, slots);
 
     return NextResponse.json({
