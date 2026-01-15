@@ -107,6 +107,7 @@ function buildTheme(primaryHex, secondaryHex) {
     '--muted': muted,
     '--accent': accent,
     '--accent-dark': accentDark,
+    '--accent-rgb': `${primaryRgb.red}, ${primaryRgb.green}, ${primaryRgb.blue}`,
     '--surface': surface,
     '--stroke': stroke,
     '--shadow': shadow,

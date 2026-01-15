@@ -7,6 +7,7 @@
   --muted: #5a4d41;
   --accent: #ff7a45;
   --accent-dark: #d86438;
+  --accent-rgb: 255, 122, 69;
   --surface: #ffffff;
   --stroke: rgba(32, 27, 22, 0.12);
   --shadow: 0 28px 60px rgba(32, 27, 22, 0.12);
@@ -137,12 +138,12 @@ select {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 12px 24px rgba(255, 122, 69, 0.35);
+  box-shadow: 0 12px 24px rgba(var(--accent-rgb), 0.35);
 }
 
 .cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 32px rgba(255, 122, 69, 0.35);
+  box-shadow: 0 18px 32px rgba(var(--accent-rgb), 0.35);
 }
 
 .ghost {
@@ -414,9 +415,9 @@ select.error {
 }
 
 .calendar-day.selected {
-  border-color: rgba(255, 122, 69, 0.7);
-  box-shadow: 0 12px 22px rgba(255, 122, 69, 0.2);
-  background: rgba(255, 122, 69, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.7);
+  box-shadow: 0 12px 22px rgba(var(--accent-rgb), 0.2);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .doctor-list {
@@ -441,8 +442,8 @@ select.error {
 }
 
 .doctor-card.selected {
-  border-color: rgba(125, 174, 255, 0.9);
-  box-shadow: 0 20px 36px rgba(125, 174, 255, 0.25);
+  border-color: rgba(var(--accent-rgb), 0.9);
+  box-shadow: 0 20px 36px rgba(var(--accent-rgb), 0.25);
 }
 
 .doctor-card.disabled,
@@ -518,9 +519,9 @@ select.error {
 }
 
 .slot-button.selected {
-  border-color: rgba(255, 122, 69, 0.7);
-  box-shadow: 0 12px 22px rgba(255, 122, 69, 0.2);
-  background: rgba(255, 122, 69, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.7);
+  box-shadow: 0 12px 22px rgba(var(--accent-rgb), 0.2);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .slot-button.taken {
@@ -991,8 +992,8 @@ select.error {
 
 .settings-tabs button.active {
   color: var(--text);
-  border-color: rgba(255, 122, 69, 0.4);
-  box-shadow: 0 10px 18px rgba(255, 122, 69, 0.18);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 10px 18px rgba(var(--accent-rgb), 0.18);
 }
 
 .clinic-toggle {
@@ -1169,8 +1170,8 @@ select.error {
 }
 
 .admin-nav button.active {
-  border-color: rgba(255, 122, 69, 0.6);
-  box-shadow: 0 12px 22px rgba(255, 122, 69, 0.25);
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 12px 22px rgba(var(--accent-rgb), 0.25);
   transform: translateY(-1px);
 }
 
@@ -1206,8 +1207,8 @@ select.error {
 
 .stat-card.accent,
 .stat-card.active {
-  border-color: rgba(255, 122, 69, 0.6);
-  box-shadow: 0 16px 28px rgba(255, 122, 69, 0.2);
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 16px 28px rgba(var(--accent-rgb), 0.2);
 }
 
 .stat-button {
@@ -1377,8 +1378,8 @@ select.error {
 }
 
 .bulk-actions .icon-pill.danger {
-  border-color: rgba(255, 122, 69, 0.45);
-  color: #c5522d;
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--accent-dark);
 }
 
 .table-select {
@@ -1449,8 +1450,8 @@ select.error {
 }
 
 .admin-calendar-day.today {
-  border-color: rgba(255, 122, 69, 0.5);
-  box-shadow: 0 10px 18px rgba(255, 122, 69, 0.15);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 10px 18px rgba(var(--accent-rgb), 0.15);
 }
 
 .admin-calendar-day.past {
@@ -1594,7 +1595,7 @@ select.error {
 }
 
 .table-row.selected {
-  box-shadow: inset 0 0 0 2px rgba(255, 122, 69, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(var(--accent-rgb), 0.35);
 }
 
 .row-title {
