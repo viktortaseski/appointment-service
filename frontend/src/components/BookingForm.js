@@ -149,21 +149,23 @@ export default function BookingForm({
                 return <div key={`blank-${index}`} className="calendar-blank" />;
               }
 
-              return (
-                <button
-                  type="button"
-                  key={slot.key}
-                  className={`calendar-day${selectedDate === slot.key ? ' selected' : ''
+                const isOff = Boolean(slot.isDoctorOff);
+
+                return (
+                  <button
+                    type="button"
+                    key={slot.key}
+                    className={`calendar-day${selectedDate === slot.key ? ' selected' : ''
                     }`}
-                  onClick={() => onSelectDate(slot.key)}
-                  disabled={slot.isPast}
-                >
-                  {slot.day}
-                </button>
-              );
-            })}
+                    onClick={() => onSelectDate(slot.key)}
+                    disabled={slot.isPast || isOff}
+                  >
+                    {slot.day}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
         {formErrors.date && <span className="field-error">{formErrors.date}</span>}
       </div>
       <div className="field" style={{ margin: "20px 0px" }}>

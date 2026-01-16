@@ -215,6 +215,11 @@ function getScheduleEntryForDate(scheduleRows, dateKey) {
   return scheduleRows.find((row) => Number(row.weekday) === weekday) || null;
 }
 
+function isDoctorOffForDate(scheduleRows, dateKey) {
+  const entry = getScheduleEntryForDate(scheduleRows, dateKey);
+  return Boolean(entry && (entry.is_off ?? entry.isOff));
+}
+
 const THEME_DEFAULTS = {
   primary: '#ff7a45',
   secondary: '#f7f3ea',
@@ -533,13 +538,23 @@ function AdminPageContent() {
     );
   }, [patients, patientSearch]);
 
-  const monthGrid = useMemo(
-    () =>
-      buildMonthGrid(monthCursor).map((slot) =>
-        slot ? { ...slot, isPast: slot.key < todayKey } : slot
-      ),
-    [monthCursor, todayKey]
-  );
+  const monthGrid = useMemo(() => {
+    return buildMonthGrid(monthCursor).map((slot) => {
+      if (!slot) {
+        return slot;
+      }
+
+      const isDoctorOff = selectedDoctorInfo
+        ? isDoctorOffForDate(selectedDoctorInfo.weekly_schedule, slot.key)
+        : false;
+
+      return {
+        ...slot,
+        isPast: slot.key < todayKey,
+        isDoctorOff,
+      };
+    });
+  }, [monthCursor, todayKey, selectedDoctorInfo]);
 
   const monthLabel = useMemo(
     () =>
@@ -2056,13 +2071,15 @@ function AdminPageContent() {
 
                         const isSelected = formState.date === slot.key;
 
+                        const isOff = Boolean(slot.isDoctorOff);
+
                         return (
                           <button
                             type="button"
                             key={slot.key}
                             className={`calendar-day${isSelected ? ' selected' : ''}`}
                             onClick={() => handleFormChange('date', slot.key)}
-                            disabled={slot.isPast}
+                            disabled={slot.isPast || isOff}
                           >
                             {slot.day}
                           </button>
