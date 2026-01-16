@@ -187,6 +187,34 @@ function buildTimeSlots(startTime, endTime, intervalMinutes) {
   return slots;
 }
 
+function getWeekdayIndex(dateKey) {
+  if (!dateKey) {
+    return null;
+  }
+
+  const normalized = String(dateKey).slice(0, 10);
+  const [year, month, day] = normalized.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  return utcDate.getUTCDay();
+}
+
+function getScheduleEntryForDate(scheduleRows, dateKey) {
+  if (!Array.isArray(scheduleRows) || !dateKey) {
+    return null;
+  }
+
+  const weekday = getWeekdayIndex(dateKey);
+  if (weekday === null) {
+    return null;
+  }
+
+  return scheduleRows.find((row) => Number(row.weekday) === weekday) || null;
+}
+
 function normalizeTime(value) {
   if (!value) {
     return null;
@@ -319,22 +347,41 @@ function BookingPageContent() {
     () => doctors.find((doctor) => doctor.id === selectedDoctor) || null,
     [doctors, selectedDoctor]
   );
-  const scheduleStart = selectedDoctorInfo?.opens_at || clinic?.opens_at || '09:00';
-  const scheduleEnd = selectedDoctorInfo?.closes_at || clinic?.closes_at || '16:00';
-  const timeSlots = useMemo(
-    () => buildTimeSlots(scheduleStart, scheduleEnd, clinic?.slot_minutes),
-    [scheduleStart, scheduleEnd, clinic?.slot_minutes]
+  const selectedDoctorSchedule = useMemo(
+    () => getScheduleEntryForDate(selectedDoctorInfo?.weekly_schedule, selectedDate),
+    [selectedDoctorInfo, selectedDate]
   );
+  const selectedScheduleOff = Boolean(
+    selectedDoctorSchedule?.is_off ?? selectedDoctorSchedule?.isOff
+  );
+  const scheduleStart =
+    selectedDoctorSchedule?.opens_at
+      || selectedDoctorSchedule?.opensAt
+      || clinic?.opens_at
+      || '09:00';
+  const scheduleEnd =
+    selectedDoctorSchedule?.closes_at
+      || selectedDoctorSchedule?.closesAt
+      || clinic?.closes_at
+      || '16:00';
+  const timeSlots = useMemo(() => {
+    if (selectedScheduleOff) {
+      return [];
+    }
+    return buildTimeSlots(scheduleStart, scheduleEnd, clinic?.slot_minutes);
+  }, [scheduleStart, scheduleEnd, clinic?.slot_minutes, selectedScheduleOff]);
   const scheduleInterval = clinic?.slot_minutes || 30;
   const scheduleStartLabel = formatTimeDisplay(scheduleStart, localeTag);
   const scheduleEndLabel = formatTimeDisplay(scheduleEnd, localeTag);
   const clinicStartLabel = formatTimeDisplay(clinic?.opens_at || '09:00', localeTag);
   const clinicEndLabel = formatTimeDisplay(clinic?.closes_at || '16:00', localeTag);
-  const scheduleTimeHint = t('time_hint', {
-    start: scheduleStartLabel,
-    end: scheduleEndLabel,
-    interval: scheduleInterval,
-  });
+  const scheduleTimeHint = selectedDoctor && selectedScheduleOff
+    ? t('time_off_hint')
+    : t('time_hint', {
+      start: scheduleStartLabel,
+      end: scheduleEndLabel,
+      interval: scheduleInterval,
+    });
   const availabilityLabel = t('availability_label', {
     start: clinicStartLabel,
     end: clinicEndLabel,

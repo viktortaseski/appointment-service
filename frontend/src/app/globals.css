@@ -1079,6 +1079,51 @@ select.error {
   gap: 12px;
 }
 
+.schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.weekly-schedule {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) repeat(2, minmax(120px, 1fr)) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.schedule-row.is-off {
+  opacity: 0.65;
+}
+
+.schedule-day {
+  font-weight: 600;
+}
+
+.schedule-off {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.schedule-off input {
+  accent-color: var(--accent);
+}
+
 .theme-color-row {
   display: flex;
   align-items: center;
@@ -1799,6 +1844,15 @@ select.error {
   .doctor-card-profile {
     flex-direction: row;
     align-items: flex-start;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .schedule-off {
+    justify-content: flex-start;
   }
 
   .view-toggle {

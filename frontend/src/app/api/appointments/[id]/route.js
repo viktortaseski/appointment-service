@@ -6,7 +6,7 @@ import { requireAuth } from '@/lib/server/auth';
 import { logAudit } from '@/lib/server/audit';
 import { upsertAppointmentReminder } from '@/lib/server/reminders';
 import {
-  buildTimeSlotsFromDoctor,
+  buildTimeSlotsForDate,
   computeBlockedTimes,
   normalizeTime,
 } from '@/lib/server/availability';
@@ -150,7 +150,7 @@ export async function PUT(request, { params }) {
     }
 
     const doctorCheck = await pool.query(
-      'SELECT id, is_disabled, opens_at, closes_at FROM doctors WHERE id = $1 AND clinic_id = $2',
+      'SELECT id, is_disabled FROM doctors WHERE id = $1 AND clinic_id = $2',
       [doctorId, clinic.id]
     );
 
@@ -169,7 +169,13 @@ export async function PUT(request, { params }) {
     }
 
     const normalizedTime = normalizeTime(time);
-    const allowedTimes = buildTimeSlotsFromDoctor(doctorCheck.rows[0], clinic);
+    const scheduleResult = await pool.query(
+      `SELECT weekday, opens_at, closes_at, is_off
+       FROM doctor_working_hours
+       WHERE clinic_id = $1 AND doctor_id = $2`,
+      [clinic.id, doctorId]
+    );
+    const allowedTimes = buildTimeSlotsForDate(scheduleResult.rows, clinic, date);
 
     if (!normalizedTime || !allowedTimes.includes(normalizedTime)) {
       return NextResponse.json(

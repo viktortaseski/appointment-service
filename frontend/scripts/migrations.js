@@ -53,6 +53,7 @@ DROP VIEW IF EXISTS appointments_with_doctors;
 DROP TABLE IF EXISTS appointment_reminders CASCADE;
 DROP TABLE IF EXISTS appointments CASCADE;
 DROP TABLE IF EXISTS patients CASCADE;
+DROP TABLE IF EXISTS doctor_working_hours CASCADE;
 DROP TABLE IF EXISTS doctor_unavailability CASCADE;
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS clinics CASCADE;
@@ -101,8 +102,6 @@ CREATE TABLE doctors (
   name VARCHAR(255) NOT NULL,
   username VARCHAR(255),
   specialty VARCHAR(255) NOT NULL,
-  opens_at TIME,
-  closes_at TIME,
   description TEXT,
   avatar TEXT,
   is_disabled BOOLEAN DEFAULT FALSE,
@@ -113,11 +112,31 @@ CREATE TABLE doctors (
 
 COMMENT ON TABLE doctors IS 'Doctors belonging to a specific clinic';
 COMMENT ON COLUMN doctors.username IS 'Clinic login username';
-COMMENT ON COLUMN doctors.opens_at IS 'Doctor working day start time';
-COMMENT ON COLUMN doctors.closes_at IS 'Doctor working day end time';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
 COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appointments';
 COMMENT ON COLUMN doctors.password_hash IS 'Hashed doctor password';
+
+-- =========================================================
+-- DOCTOR WORKING HOURS
+-- =========================================================
+CREATE TABLE doctor_working_hours (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+  doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+  weekday SMALLINT NOT NULL CHECK (weekday >= 0 AND weekday <= 6),
+  opens_at TIME,
+  closes_at TIME,
+  is_off BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (doctor_id, weekday)
+);
+
+COMMENT ON TABLE doctor_working_hours IS 'Doctor working hours per weekday';
+COMMENT ON COLUMN doctor_working_hours.weekday IS '0=Sunday ... 6=Saturday';
+COMMENT ON COLUMN doctor_working_hours.opens_at IS 'Day start time';
+COMMENT ON COLUMN doctor_working_hours.closes_at IS 'Day end time';
+COMMENT ON COLUMN doctor_working_hours.is_off IS 'Marks a non-working day';
 
 -- =========================================================
 -- DOCTOR UNAVAILABILITY
@@ -216,6 +235,8 @@ COMMENT ON COLUMN appointment_reminders.sent IS 'Whether reminder has been sent'
 -- INDEXES
 -- =========================================================
 CREATE INDEX idx_doctors_clinic_id ON doctors(clinic_id);
+CREATE INDEX idx_doctor_working_hours_clinic_id ON doctor_working_hours(clinic_id);
+CREATE INDEX idx_doctor_working_hours_doctor_id ON doctor_working_hours(doctor_id);
 CREATE INDEX idx_unavailability_clinic_id ON doctor_unavailability(clinic_id);
 CREATE INDEX idx_unavailability_doctor_id ON doctor_unavailability(doctor_id);
 CREATE INDEX idx_unavailability_start_date ON doctor_unavailability(start_date);
@@ -255,6 +276,11 @@ $$ LANGUAGE plpgsql;
 -- =========================================================
 CREATE TRIGGER update_doctors_updated_at
 BEFORE UPDATE ON doctors
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_doctor_working_hours_updated_at
+BEFORE UPDATE ON doctor_working_hours
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 

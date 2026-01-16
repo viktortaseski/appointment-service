@@ -73,6 +73,46 @@ export function buildTimeSlotsFromDoctor(doctor, clinic) {
   );
 }
 
+export function getWeekdayIndex(dateKey) {
+  if (!dateKey) {
+    return null;
+  }
+
+  const normalized = String(dateKey).slice(0, 10);
+  const [year, month, day] = normalized.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  return utcDate.getUTCDay();
+}
+
+export function buildTimeSlotsForDate(scheduleRows, clinic, dateKey) {
+  const weekday = getWeekdayIndex(dateKey);
+  if (weekday === null) {
+    return buildTimeSlotsFromClinic(clinic);
+  }
+
+  const schedule = Array.isArray(scheduleRows)
+    ? scheduleRows.find((row) => Number(row.weekday) === weekday)
+    : null;
+
+  if (!schedule) {
+    return buildTimeSlotsFromClinic(clinic);
+  }
+
+  if (schedule.is_off) {
+    return [];
+  }
+
+  return buildTimeSlotsFromTimes(
+    schedule.opens_at || clinic?.opens_at,
+    schedule.closes_at || clinic?.closes_at,
+    clinic?.slot_minutes
+  );
+}
+
 export const DEFAULT_TIME_SLOTS = buildTimeSlotsFromTimes();
 
 export function normalizeDateKey(value) {

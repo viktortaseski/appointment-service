@@ -134,6 +134,87 @@ function buildTimeSlots(startTime, endTime, intervalMinutes) {
   return slots;
 }
 
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function getWeekdayIndex(dateKey) {
+  if (!dateKey) {
+    return null;
+  }
+
+  const normalized = String(dateKey).slice(0, 10);
+  const [year, month, day] = normalized.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  return utcDate.getUTCDay();
+}
+
+function buildDefaultWeeklySchedule(clinicSchedule) {
+  const start = clinicSchedule?.opensAt || '09:00';
+  const end = clinicSchedule?.closesAt || '16:00';
+
+  return Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    opensAt: start,
+    closesAt: end,
+    isOff: false,
+  }));
+}
+
+function normalizeWeeklySchedule(scheduleRows, clinicSchedule) {
+  const defaults = buildDefaultWeeklySchedule(clinicSchedule);
+
+  if (!Array.isArray(scheduleRows) || scheduleRows.length === 0) {
+    return defaults;
+  }
+
+  const next = defaults.map((entry) => ({ ...entry }));
+
+  scheduleRows.forEach((row) => {
+    const weekday = Number(row.weekday);
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      return;
+    }
+
+    next[weekday] = {
+      weekday,
+      opensAt: normalizeTime(row.opens_at || row.opensAt || defaults[weekday].opensAt),
+      closesAt: normalizeTime(row.closes_at || row.closesAt || defaults[weekday].closesAt),
+      isOff: Boolean(row.is_off ?? row.isOff),
+    };
+  });
+
+  return next;
+}
+
+function serializeWeeklySchedule(schedule) {
+  if (!Array.isArray(schedule)) {
+    return [];
+  }
+
+  return schedule.map((entry) => ({
+    weekday: entry.weekday,
+    opens_at: entry.isOff ? null : entry.opensAt,
+    closes_at: entry.isOff ? null : entry.closesAt,
+    is_off: entry.isOff,
+  }));
+}
+
+function getScheduleEntryForDate(scheduleRows, dateKey) {
+  if (!Array.isArray(scheduleRows) || !dateKey) {
+    return null;
+  }
+
+  const weekday = getWeekdayIndex(dateKey);
+  if (weekday === null) {
+    return null;
+  }
+
+  return scheduleRows.find((row) => Number(row.weekday) === weekday) || null;
+}
+
 const THEME_DEFAULTS = {
   primary: '#ff7a45',
   secondary: '#f7f3ea',
@@ -223,8 +304,6 @@ function AdminPageContent() {
     name: '',
     username: '',
     specialty: '',
-    opensAt: '',
-    closesAt: '',
     description: '',
     password: '',
     isDisabled: false,
@@ -241,11 +320,15 @@ function AdminPageContent() {
     name: '',
     username: '',
     specialty: '',
-    opensAt: '',
-    closesAt: '',
     description: '',
     password: '',
   });
+  const [doctorSchedule, setDoctorSchedule] = useState(() =>
+    buildDefaultWeeklySchedule({ opensAt: '09:00', closesAt: '16:00' })
+  );
+  const [newDoctorSchedule, setNewDoctorSchedule] = useState(() =>
+    buildDefaultWeeklySchedule({ opensAt: '09:00', closesAt: '16:00' })
+  );
   const [newDoctorStatus, setNewDoctorStatus] = useState({
     status: '',
     error: '',
@@ -285,15 +368,40 @@ function AdminPageContent() {
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
-  const selectedDoctorSchedule = useMemo(
+  const selectedDoctorInfo = useMemo(
     () => doctors.find((doctor) => doctor.id === formState.doctorId) || null,
     [doctors, formState.doctorId]
   );
+  const selectedDoctorSchedule = useMemo(
+    () => getScheduleEntryForDate(selectedDoctorInfo?.weekly_schedule, formState.date),
+    [selectedDoctorInfo, formState.date]
+  );
+  const selectedScheduleOff = Boolean(
+    selectedDoctorSchedule?.is_off ?? selectedDoctorSchedule?.isOff
+  );
+  const selectedScheduleStart =
+    selectedDoctorSchedule?.opens_at
+      || selectedDoctorSchedule?.opensAt
+      || clinicSchedule.opensAt;
+  const selectedScheduleEnd =
+    selectedDoctorSchedule?.closes_at
+      || selectedDoctorSchedule?.closesAt
+      || clinicSchedule.closesAt;
   const timeSlots = useMemo(() => {
-    const startTime = selectedDoctorSchedule?.opens_at || clinicSchedule.opensAt;
-    const endTime = selectedDoctorSchedule?.closes_at || clinicSchedule.closesAt;
-    return buildTimeSlots(startTime, endTime, clinicSchedule.slotMinutes);
-  }, [clinicSchedule, selectedDoctorSchedule]);
+    if (selectedScheduleOff) {
+      return [];
+    }
+    return buildTimeSlots(
+      selectedScheduleStart,
+      selectedScheduleEnd,
+      clinicSchedule.slotMinutes
+    );
+  }, [
+    clinicSchedule.slotMinutes,
+    selectedScheduleEnd,
+    selectedScheduleOff,
+    selectedScheduleStart,
+  ]);
   const scheduleStartLabel = formatTimeDisplay(clinicSchedule.opensAt, localeTag);
   const scheduleEndLabel = formatTimeDisplay(clinicSchedule.closesAt, localeTag);
   const scheduleTimeHint = t('admin_time_hint', {
@@ -301,19 +409,15 @@ function AdminPageContent() {
     end: scheduleEndLabel,
     interval: clinicSchedule.slotMinutes || 30,
   });
-  const appointmentStartLabel = formatTimeDisplay(
-    selectedDoctorSchedule?.opens_at || clinicSchedule.opensAt,
-    localeTag
-  );
-  const appointmentEndLabel = formatTimeDisplay(
-    selectedDoctorSchedule?.closes_at || clinicSchedule.closesAt,
-    localeTag
-  );
-  const appointmentTimeHint = t('admin_time_hint', {
-    start: appointmentStartLabel,
-    end: appointmentEndLabel,
-    interval: clinicSchedule.slotMinutes || 30,
-  });
+  const appointmentStartLabel = formatTimeDisplay(selectedScheduleStart, localeTag);
+  const appointmentEndLabel = formatTimeDisplay(selectedScheduleEnd, localeTag);
+  const appointmentTimeHint = selectedScheduleOff
+    ? t('admin_time_off_hint')
+    : t('admin_time_hint', {
+      start: appointmentStartLabel,
+      end: appointmentEndLabel,
+      interval: clinicSchedule.slotMinutes || 30,
+    });
   const primaryThemeLabel = t('admin_theme_primary_label');
   const secondaryThemeLabel = t('admin_theme_secondary_label');
   const weekdayLabels = useMemo(
@@ -593,6 +697,12 @@ function AdminPageContent() {
           closesAt: resolvedClinic?.closes_at || '16:00',
           slotMinutes: resolvedClinic?.slot_minutes || 30,
         });
+        const scheduleDefaults = buildDefaultWeeklySchedule({
+          opensAt: resolvedClinic?.opens_at || '09:00',
+          closesAt: resolvedClinic?.closes_at || '16:00',
+        });
+        setDoctorSchedule(scheduleDefaults);
+        setNewDoctorSchedule(scheduleDefaults);
         setClinicTheme({
           primary: normalizeHex(resolvedClinic?.theme_primary, THEME_DEFAULTS.primary),
           secondary: normalizeHex(
@@ -643,12 +753,11 @@ function AdminPageContent() {
         name: '',
         username: '',
         specialty: '',
-        opensAt: '',
-        closesAt: '',
         description: '',
         password: '',
         isDisabled: false,
       });
+      setDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule));
       return;
     }
 
@@ -657,12 +766,11 @@ function AdminPageContent() {
       name: selected.name || '',
       username: selected.username || '',
       specialty: selected.specialty || '',
-      opensAt: selected.opens_at || '',
-      closesAt: selected.closes_at || '',
       description: selected.description || '',
       isDisabled: Boolean(selected.is_disabled),
     }));
-  }, [doctorForm.doctorId, doctorOptions]);
+    setDoctorSchedule(normalizeWeeklySchedule(selected.weekly_schedule, clinicSchedule));
+  }, [doctorForm.doctorId, doctorOptions, clinicSchedule]);
 
   useEffect(() => {
     let isActive = true;
@@ -1381,12 +1489,11 @@ function AdminPageContent() {
         name: '',
         username: '',
         specialty: '',
-        opensAt: '',
-        closesAt: '',
         description: '',
         password: '',
         isDisabled: false,
       });
+      setDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule));
       setDoctorFormStatus({ status: '', error: '' });
       setDoctorDeleteStatus({ status: '', error: '' });
       return;
@@ -1416,33 +1523,46 @@ function AdminPageContent() {
       return;
     }
 
-    const opensAt = doctorForm.opensAt.trim();
-    const closesAt = doctorForm.closesAt.trim();
-    const hasCustomHours = Boolean(opensAt || closesAt);
+    let scheduleIssue = '';
+    for (const entry of doctorSchedule) {
+      if (entry.isOff) {
+        continue;
+      }
 
-    if (hasCustomHours && (!opensAt || !closesAt)) {
-      setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_required') });
-      return;
-    }
+      const opensAt = entry.opensAt?.trim();
+      const closesAt = entry.closesAt?.trim();
 
-    if (hasCustomHours) {
+      if (!opensAt || !closesAt) {
+        scheduleIssue = 'required';
+        break;
+      }
+
       const startMinutes = parseTimeToMinutes(opensAt);
       const endMinutes = parseTimeToMinutes(closesAt);
 
       if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
-        setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
-        return;
+        scheduleIssue = 'invalid';
+        break;
       }
+    }
+
+    if (scheduleIssue === 'required') {
+      setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_required') });
+      return;
+    }
+
+    if (scheduleIssue === 'invalid') {
+      setDoctorFormStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
+      return;
     }
 
     const payload = {
       name: doctorForm.name.trim(),
       username: doctorForm.username.trim() || null,
       specialty: doctorForm.specialty.trim(),
-      opens_at: hasCustomHours ? opensAt : null,
-      closes_at: hasCustomHours ? closesAt : null,
       description: doctorForm.description.trim() || null,
       is_disabled: doctorForm.isDisabled,
+      weekly_schedule: serializeWeeklySchedule(doctorSchedule),
     };
 
     if (doctorForm.password.trim()) {
@@ -1466,18 +1586,21 @@ function AdminPageContent() {
         throw new Error(data.error || t('admin_doctor_update_error'));
       }
 
+      const updatedSchedule =
+        data.doctor?.weekly_schedule || serializeWeeklySchedule(doctorSchedule);
       setDoctors((prev) =>
         prev.map((doctor) =>
-          doctor.id === data.doctor?.id ? { ...doctor, ...data.doctor } : doctor
+          doctor.id === data.doctor?.id
+            ? { ...doctor, ...data.doctor, weekly_schedule: updatedSchedule }
+            : doctor
         )
       );
       setDoctorForm((prev) => ({
         ...prev,
         password: '',
-        opensAt: data.doctor?.opens_at || '',
-        closesAt: data.doctor?.closes_at || '',
         isDisabled: Boolean(data.doctor?.is_disabled),
       }));
+      setDoctorSchedule(normalizeWeeklySchedule(updatedSchedule, clinicSchedule));
       setDoctorFormStatus({ status: t('admin_doctor_update_success'), error: '' });
     } catch (error) {
       setDoctorFormStatus({
@@ -1563,12 +1686,11 @@ function AdminPageContent() {
         name: '',
         username: '',
         specialty: '',
-        opensAt: '',
-        closesAt: '',
         description: '',
         password: '',
         isDisabled: false,
       });
+      setDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule));
       setDoctorFormStatus({ status: '', error: '' });
       setDoctorDeleteStatus({ status: t('admin_doctor_delete_success'), error: '' });
     } catch (error) {
@@ -1588,32 +1710,45 @@ function AdminPageContent() {
       return;
     }
 
-    const opensAt = newDoctorForm.opensAt.trim();
-    const closesAt = newDoctorForm.closesAt.trim();
-    const hasCustomHours = Boolean(opensAt || closesAt);
+    let scheduleIssue = '';
+    for (const entry of newDoctorSchedule) {
+      if (entry.isOff) {
+        continue;
+      }
 
-    if (hasCustomHours && (!opensAt || !closesAt)) {
-      setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_required') });
-      return;
-    }
+      const opensAt = entry.opensAt?.trim();
+      const closesAt = entry.closesAt?.trim();
 
-    if (hasCustomHours) {
+      if (!opensAt || !closesAt) {
+        scheduleIssue = 'required';
+        break;
+      }
+
       const startMinutes = parseTimeToMinutes(opensAt);
       const endMinutes = parseTimeToMinutes(closesAt);
 
       if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
-        setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
-        return;
+        scheduleIssue = 'invalid';
+        break;
       }
+    }
+
+    if (scheduleIssue === 'required') {
+      setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_required') });
+      return;
+    }
+
+    if (scheduleIssue === 'invalid') {
+      setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
+      return;
     }
 
     const payload = {
       name: newDoctorForm.name.trim(),
       username: newDoctorForm.username.trim() || null,
       specialty: newDoctorForm.specialty.trim(),
-      opens_at: hasCustomHours ? opensAt : null,
-      closes_at: hasCustomHours ? closesAt : null,
       description: newDoctorForm.description.trim() || null,
+      weekly_schedule: serializeWeeklySchedule(newDoctorSchedule),
     };
 
     if (newDoctorForm.password.trim()) {
@@ -1637,16 +1772,20 @@ function AdminPageContent() {
         throw new Error(data.error || t('admin_doctor_create_error'));
       }
 
-      setDoctors((prev) => [...prev, data.doctor]);
+      const createdSchedule =
+        data.doctor?.weekly_schedule || serializeWeeklySchedule(newDoctorSchedule);
+      setDoctors((prev) => [
+        ...prev,
+        { ...data.doctor, weekly_schedule: createdSchedule },
+      ]);
       setNewDoctorForm({
         name: '',
         username: '',
         specialty: '',
-        opensAt: '',
-        closesAt: '',
         description: '',
         password: '',
       });
+      setNewDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule));
       setNewDoctorStatus({ status: t('admin_doctor_create_success'), error: '' });
     } catch (error) {
       setNewDoctorStatus({
@@ -2798,35 +2937,99 @@ function AdminPageContent() {
                       />
                     </div>
                   </div>
-                  <div className="filter-grid">
-                    <div className="field">
-                      <label htmlFor="doctorOpen">{t('admin_doctor_open_label')}</label>
-                      <input
-                        id="doctorOpen"
-                        type="time"
-                        value={doctorForm.opensAt}
-                        onChange={(event) =>
-                          setDoctorForm((prev) => ({
-                            ...prev,
-                            opensAt: event.target.value,
-                          }))
-                        }
-                      />
+                  <div className="schedule-header">
+                    <div>
+                      <p className="row-title">{t('admin_doctor_schedule_title')}</p>
+                      <p className="row-subtitle">{t('admin_doctor_schedule_subtitle')}</p>
                     </div>
-                    <div className="field">
-                      <label htmlFor="doctorClose">{t('admin_doctor_close_label')}</label>
-                      <input
-                        id="doctorClose"
-                        type="time"
-                        value={doctorForm.closesAt}
-                        onChange={(event) =>
-                          setDoctorForm((prev) => ({
-                            ...prev,
-                            closesAt: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() =>
+                        setDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule))
+                      }
+                    >
+                      {t('admin_doctor_use_clinic_hours')}
+                    </button>
+                  </div>
+                  <div className="weekly-schedule">
+                    {WEEKDAY_ORDER.map((weekday) => {
+                      const entry = doctorSchedule[weekday];
+                      const isOff = entry?.isOff;
+                      return (
+                        <div
+                          key={`doctor-schedule-${weekday}`}
+                          className={`schedule-row${isOff ? ' is-off' : ''}`}
+                        >
+                          <span className="schedule-day">{weekdayLabels[weekday]}</span>
+                          <div className="field">
+                            <label className="sr-only" htmlFor={`doctor-${weekday}-open`}>
+                              {t('admin_doctor_open_label')}
+                            </label>
+                            <input
+                              id={`doctor-${weekday}-open`}
+                              type="time"
+                              value={entry?.opensAt || ''}
+                              disabled={isOff}
+                              onChange={(event) =>
+                                setDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    opensAt: event.target.value,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="field">
+                            <label className="sr-only" htmlFor={`doctor-${weekday}-close`}>
+                              {t('admin_doctor_close_label')}
+                            </label>
+                            <input
+                              id={`doctor-${weekday}-close`}
+                              type="time"
+                              value={entry?.closesAt || ''}
+                              disabled={isOff}
+                              onChange={(event) =>
+                                setDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    closesAt: event.target.value,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                          </div>
+                          <label className="schedule-off">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(isOff)}
+                              onChange={(event) =>
+                                setDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    isOff: event.target.checked,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                            <span>{t('admin_doctor_day_off')}</span>
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                   <p className="inline-hint">{t('admin_doctor_schedule_hint')}</p>
                   <div className="field">
@@ -3190,39 +3393,99 @@ function AdminPageContent() {
                       />
                     </div>
                   </div>
-                  <div className="filter-grid">
-                    <div className="field">
-                      <label htmlFor="doctorCreateOpen">
-                        {t('admin_doctor_open_label')}
-                      </label>
-                      <input
-                        id="doctorCreateOpen"
-                        type="time"
-                        value={newDoctorForm.opensAt}
-                        onChange={(event) =>
-                          setNewDoctorForm((prev) => ({
-                            ...prev,
-                            opensAt: event.target.value,
-                          }))
-                        }
-                      />
+                  <div className="schedule-header">
+                    <div>
+                      <p className="row-title">{t('admin_doctor_schedule_title')}</p>
+                      <p className="row-subtitle">{t('admin_doctor_schedule_subtitle')}</p>
                     </div>
-                    <div className="field">
-                      <label htmlFor="doctorCreateClose">
-                        {t('admin_doctor_close_label')}
-                      </label>
-                      <input
-                        id="doctorCreateClose"
-                        type="time"
-                        value={newDoctorForm.closesAt}
-                        onChange={(event) =>
-                          setNewDoctorForm((prev) => ({
-                            ...prev,
-                            closesAt: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() =>
+                        setNewDoctorSchedule(buildDefaultWeeklySchedule(clinicSchedule))
+                      }
+                    >
+                      {t('admin_doctor_use_clinic_hours')}
+                    </button>
+                  </div>
+                  <div className="weekly-schedule">
+                    {WEEKDAY_ORDER.map((weekday) => {
+                      const entry = newDoctorSchedule[weekday];
+                      const isOff = entry?.isOff;
+                      return (
+                        <div
+                          key={`new-doctor-schedule-${weekday}`}
+                          className={`schedule-row${isOff ? ' is-off' : ''}`}
+                        >
+                          <span className="schedule-day">{weekdayLabels[weekday]}</span>
+                          <div className="field">
+                            <label className="sr-only" htmlFor={`doctor-create-${weekday}-open`}>
+                              {t('admin_doctor_open_label')}
+                            </label>
+                            <input
+                              id={`doctor-create-${weekday}-open`}
+                              type="time"
+                              value={entry?.opensAt || ''}
+                              disabled={isOff}
+                              onChange={(event) =>
+                                setNewDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    opensAt: event.target.value,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="field">
+                            <label className="sr-only" htmlFor={`doctor-create-${weekday}-close`}>
+                              {t('admin_doctor_close_label')}
+                            </label>
+                            <input
+                              id={`doctor-create-${weekday}-close`}
+                              type="time"
+                              value={entry?.closesAt || ''}
+                              disabled={isOff}
+                              onChange={(event) =>
+                                setNewDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    closesAt: event.target.value,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                          </div>
+                          <label className="schedule-off">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(isOff)}
+                              onChange={(event) =>
+                                setNewDoctorSchedule((prev) => {
+                                  const next = prev.length === 7
+                                    ? prev.map((item) => ({ ...item }))
+                                    : buildDefaultWeeklySchedule(clinicSchedule);
+                                  next[weekday] = {
+                                    ...next[weekday],
+                                    isOff: event.target.checked,
+                                  };
+                                  return next;
+                                })
+                              }
+                            />
+                            <span>{t('admin_doctor_day_off')}</span>
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                   <p className="inline-hint">{t('admin_doctor_schedule_hint')}</p>
                   <div className="field">
