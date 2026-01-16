@@ -566,6 +566,12 @@ select.error {
   background: rgba(255, 239, 239, 0.8);
 }
 
+.status.success {
+  color: #1f6b3b;
+  border-color: rgba(31, 107, 59, 0.25);
+  background: rgba(223, 245, 231, 0.9);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
