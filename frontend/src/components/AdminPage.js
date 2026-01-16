@@ -233,6 +233,19 @@ function AdminPageContent() {
     status: '',
     error: '',
   });
+  const [newDoctorForm, setNewDoctorForm] = useState({
+    name: '',
+    username: '',
+    specialty: '',
+    opensAt: '',
+    closesAt: '',
+    description: '',
+    password: '',
+  });
+  const [newDoctorStatus, setNewDoctorStatus] = useState({
+    status: '',
+    error: '',
+  });
   const [patients, setPatients] = useState([]);
   const [patientsStatus, setPatientsStatus] = useState({ loading: false, error: '' });
   const [patientSearch, setPatientSearch] = useState('');
@@ -1463,6 +1476,83 @@ function AdminPageContent() {
       setDoctorFormStatus({
         status: '',
         error: error?.message || t('admin_doctor_update_error'),
+      });
+    }
+  }
+
+  async function handleDoctorCreateSubmit(event) {
+    event.preventDefault();
+    setNewDoctorStatus({ status: '', error: '' });
+
+    if (!newDoctorForm.name.trim() || !newDoctorForm.specialty.trim()) {
+      setNewDoctorStatus({ status: '', error: t('admin_doctor_create_required') });
+      return;
+    }
+
+    const opensAt = newDoctorForm.opensAt.trim();
+    const closesAt = newDoctorForm.closesAt.trim();
+    const hasCustomHours = Boolean(opensAt || closesAt);
+
+    if (hasCustomHours && (!opensAt || !closesAt)) {
+      setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_required') });
+      return;
+    }
+
+    if (hasCustomHours) {
+      const startMinutes = parseTimeToMinutes(opensAt);
+      const endMinutes = parseTimeToMinutes(closesAt);
+
+      if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+        setNewDoctorStatus({ status: '', error: t('admin_doctor_schedule_invalid') });
+        return;
+      }
+    }
+
+    const payload = {
+      name: newDoctorForm.name.trim(),
+      username: newDoctorForm.username.trim() || null,
+      specialty: newDoctorForm.specialty.trim(),
+      opens_at: hasCustomHours ? opensAt : null,
+      closes_at: hasCustomHours ? closesAt : null,
+      description: newDoctorForm.description.trim() || null,
+    };
+
+    if (newDoctorForm.password.trim()) {
+      payload.password = newDoctorForm.password.trim();
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/doctors`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_doctor_create_error'));
+      }
+
+      setDoctors((prev) => [...prev, data.doctor]);
+      setNewDoctorForm({
+        name: '',
+        username: '',
+        specialty: '',
+        opensAt: '',
+        closesAt: '',
+        description: '',
+        password: '',
+      });
+      setNewDoctorStatus({ status: t('admin_doctor_create_success'), error: '' });
+    } catch (error) {
+      setNewDoctorStatus({
+        status: '',
+        error: error?.message || t('admin_doctor_create_error'),
       });
     }
   }
@@ -2913,6 +3003,140 @@ function AdminPageContent() {
                 </form>
                 {uploadState.error && <p className="status error">{uploadState.error}</p>}
                 {uploadState.status && <p className="status">{uploadState.status}</p>}
+              </div>
+
+              <div className="card doctor-create-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_doctor_create_title')}</p>
+                    <p className="row-subtitle">{t('admin_doctor_create_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleDoctorCreateSubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorCreateName">{t('admin_doctor_name_label')}</label>
+                      <input
+                        id="doctorCreateName"
+                        value={newDoctorForm.name}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorCreateUsername">
+                        {t('admin_doctor_username_label')}
+                      </label>
+                      <input
+                        id="doctorCreateUsername"
+                        value={newDoctorForm.username}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            username: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorCreateSpecialty">
+                        {t('admin_doctor_specialty_label')}
+                      </label>
+                      <input
+                        id="doctorCreateSpecialty"
+                        value={newDoctorForm.specialty}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            specialty: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorCreatePassword">
+                        {t('admin_doctor_password_label')}
+                      </label>
+                      <input
+                        id="doctorCreatePassword"
+                        type="password"
+                        value={newDoctorForm.password}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            password: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="doctorCreateOpen">
+                        {t('admin_doctor_open_label')}
+                      </label>
+                      <input
+                        id="doctorCreateOpen"
+                        type="time"
+                        value={newDoctorForm.opensAt}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            opensAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="doctorCreateClose">
+                        {t('admin_doctor_close_label')}
+                      </label>
+                      <input
+                        id="doctorCreateClose"
+                        type="time"
+                        value={newDoctorForm.closesAt}
+                        onChange={(event) =>
+                          setNewDoctorForm((prev) => ({
+                            ...prev,
+                            closesAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <p className="inline-hint">{t('admin_doctor_schedule_hint')}</p>
+                  <div className="field">
+                    <label htmlFor="doctorCreateDescription">
+                      {t('admin_doctor_description_label')}
+                    </label>
+                    <textarea
+                      id="doctorCreateDescription"
+                      rows={3}
+                      value={newDoctorForm.description}
+                      onChange={(event) =>
+                        setNewDoctorForm((prev) => ({
+                          ...prev,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <button type="submit" className="cta">
+                    {t('admin_doctor_create_button')}
+                  </button>
+                  {newDoctorStatus.status && (
+                    <p className="status success">{newDoctorStatus.status}</p>
+                  )}
+                  {newDoctorStatus.error && (
+                    <p className="status error">{newDoctorStatus.error}</p>
+                  )}
+                </form>
               </div>
             </>
           )}
