@@ -76,7 +76,7 @@ function buildMonthGrid(cursor) {
   const month = cursor.getMonth();
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startWeekday = firstDay.getDay();
+  const startWeekday = (firstDay.getDay() + 6) % 7;
   const slots = [];
 
   for (let i = 0; i < startWeekday; i += 1) {
@@ -434,6 +434,18 @@ function AdminPageContent() {
       t('weekday_thu'),
       t('weekday_fri'),
       t('weekday_sat'),
+    ],
+    [t]
+  );
+  const weekdayLabelsOrdered = useMemo(
+    () => [
+      t('weekday_mon'),
+      t('weekday_tue'),
+      t('weekday_wed'),
+      t('weekday_thu'),
+      t('weekday_fri'),
+      t('weekday_sat'),
+      t('weekday_sun'),
     ],
     [t]
   );
@@ -2057,7 +2069,7 @@ function AdminPageContent() {
                       </button>
                     </div>
                     <div className="calendar-grid calendar-weekdays">
-                      {weekdayLabels.map((label) => (
+                      {weekdayLabelsOrdered.map((label) => (
                         <span key={label} className="weekday">
                           {label}
                         </span>
@@ -2423,7 +2435,7 @@ function AdminPageContent() {
                     <p className="status">{t('admin_no_matches')}</p>
                   )}
                   <div className="calendar-grid calendar-weekdays">
-                    {weekdayLabels.map((label) => (
+                    {weekdayLabelsOrdered.map((label) => (
                       <span key={label} className="weekday">
                         {label}
                       </span>

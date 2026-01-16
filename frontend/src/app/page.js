@@ -129,7 +129,7 @@ function buildMonthGrid(cursor) {
   const month = cursor.getMonth();
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startWeekday = firstDay.getDay();
+  const startWeekday = (firstDay.getDay() + 6) % 7;
   const slots = [];
 
   for (let i = 0; i < startWeekday; i += 1) {

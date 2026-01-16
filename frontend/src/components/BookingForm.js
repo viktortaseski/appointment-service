@@ -47,13 +47,13 @@ export default function BookingForm({
   const doctorSkeletons = Array.from({ length: 4 });
   const timeSkeletons = Array.from({ length: 10 });
   const dayLabels = [
-    t('weekday_sun'),
     t('weekday_mon'),
     t('weekday_tue'),
     t('weekday_wed'),
     t('weekday_thu'),
     t('weekday_fri'),
     t('weekday_sat'),
+    t('weekday_sun'),
   ];
 
   return (
