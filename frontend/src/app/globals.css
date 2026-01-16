@@ -156,6 +156,11 @@ select {
   cursor: pointer;
 }
 
+.ghost.danger {
+  border-color: rgba(156, 43, 43, 0.4);
+  color: #9c2b2b;
+}
+
 .ghost:disabled {
   cursor: not-allowed;
   opacity: 0.6;

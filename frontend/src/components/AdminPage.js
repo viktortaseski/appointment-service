@@ -233,6 +233,10 @@ function AdminPageContent() {
     status: '',
     error: '',
   });
+  const [doctorDeleteStatus, setDoctorDeleteStatus] = useState({
+    status: '',
+    error: '',
+  });
   const [newDoctorForm, setNewDoctorForm] = useState({
     name: '',
     username: '',
@@ -1384,6 +1388,7 @@ function AdminPageContent() {
         isDisabled: false,
       });
       setDoctorFormStatus({ status: '', error: '' });
+      setDoctorDeleteStatus({ status: '', error: '' });
       return;
     }
 
@@ -1393,11 +1398,13 @@ function AdminPageContent() {
       password: '',
     }));
     setDoctorFormStatus({ status: '', error: '' });
+    setDoctorDeleteStatus({ status: '', error: '' });
   }
 
   async function handleDoctorUpdateSubmit(event) {
     event.preventDefault();
     setDoctorFormStatus({ status: '', error: '' });
+    setDoctorDeleteStatus({ status: '', error: '' });
 
     if (!doctorForm.doctorId) {
       setDoctorFormStatus({ status: '', error: t('admin_doctor_update_required') });
@@ -1476,6 +1483,98 @@ function AdminPageContent() {
       setDoctorFormStatus({
         status: '',
         error: error?.message || t('admin_doctor_update_error'),
+      });
+    }
+  }
+
+  async function handleDoctorDelete() {
+    setDoctorDeleteStatus({ status: '', error: '' });
+
+    if (!doctorForm.doctorId) {
+      setDoctorDeleteStatus({ status: '', error: t('admin_doctor_delete_required') });
+      return;
+    }
+
+    if (!window.confirm(t('admin_doctor_delete_confirm'))) {
+      return;
+    }
+
+    const deleteId = doctorForm.doctorId;
+
+    try {
+      const response = await fetch(`${API_BASE}/doctors/${deleteId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'x-clinic-domain': getClinicDomain(),
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_doctor_delete_error'));
+      }
+
+      setDoctors((prev) => prev.filter((doctor) => doctor.id !== deleteId));
+      setAppointments((prev) =>
+        prev.filter((appointment) => appointment.doctorId !== deleteId)
+      );
+      setAvailabilityRecords((prev) =>
+        prev.filter((record) => record.doctor_id !== deleteId)
+      );
+      setAvailabilityForm((prev) =>
+        prev.doctorId === deleteId ? { ...prev, doctorId: '' } : prev
+      );
+      setUploadState((prev) =>
+        prev.doctorId === deleteId
+          ? { ...prev, doctorId: '', file: null, preview: '', status: '', error: '' }
+          : prev
+      );
+      setFormState((prev) =>
+        prev.doctorId === deleteId ? { ...prev, doctorId: '', time: '' } : prev
+      );
+      setDoctorFilter((prev) => (prev === deleteId ? '' : prev));
+      setSelectedAppointmentId((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const selected = appointments.find((appointment) => appointment.id === prev);
+        if (selected && selected.doctorId === deleteId) {
+          return null;
+        }
+        return prev;
+      });
+      setSelectedAppointmentIds((prev) => {
+        if (!prev || prev.size === 0) {
+          return prev;
+        }
+        const next = new Set(prev);
+        appointments.forEach((appointment) => {
+          if (appointment.doctorId === deleteId) {
+            next.delete(appointment.id);
+          }
+        });
+        return next;
+      });
+
+      setDoctorForm({
+        doctorId: '',
+        name: '',
+        username: '',
+        specialty: '',
+        opensAt: '',
+        closesAt: '',
+        description: '',
+        password: '',
+        isDisabled: false,
+      });
+      setDoctorFormStatus({ status: '', error: '' });
+      setDoctorDeleteStatus({ status: t('admin_doctor_delete_success'), error: '' });
+    } catch (error) {
+      setDoctorDeleteStatus({
+        status: '',
+        error: error?.message || t('admin_doctor_delete_error'),
       });
     }
   }
@@ -2762,14 +2861,29 @@ function AdminPageContent() {
                     </div>
                     <span className="toggle-hint">{t('admin_doctor_disable_hint')}</span>
                   </label>
-                  <button type="submit" className="cta">
-                    {t('admin_doctor_update_button')}
-                  </button>
+                  <div className="actions-grid">
+                    <button type="submit" className="cta">
+                      {t('admin_doctor_update_button')}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost danger"
+                      onClick={handleDoctorDelete}
+                    >
+                      {t('admin_doctor_delete_button')}
+                    </button>
+                  </div>
                   {doctorFormStatus.status && (
                     <p className="status success">{doctorFormStatus.status}</p>
                   )}
                   {doctorFormStatus.error && (
                     <p className="status error">{doctorFormStatus.error}</p>
+                  )}
+                  {doctorDeleteStatus.status && (
+                    <p className="status success">{doctorDeleteStatus.status}</p>
+                  )}
+                  {doctorDeleteStatus.error && (
+                    <p className="status error">{doctorDeleteStatus.error}</p>
                   )}
                 </form>
               </div>

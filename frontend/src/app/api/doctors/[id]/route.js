@@ -168,3 +168,46 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Unable to update doctor.' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, { params }) {
+  const { clinic, error } = await resolveClinic(request.headers);
+  if (error) {
+    return NextResponse.json({ error }, { status: 404 });
+  }
+
+  const authResult = await requireAuth(request, clinic);
+  if (authResult.error) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  if (!authResult.auth || authResult.auth.clinicId !== clinic.id) {
+    return NextResponse.json({ error: 'Not authorized for this clinic.' }, { status: 403 });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM doctors WHERE clinic_id = $1 AND id = $2 RETURNING id, name',
+      [clinic.id, params.id]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Doctor not found.' }, { status: 404 });
+    }
+
+    await logAudit({
+      clinicId: clinic.id,
+      doctorId: authResult.auth.doctorId,
+      action: 'doctor_deleted',
+      metadata: {
+        deletedDoctorId: result.rows[0].id,
+        deletedDoctorName: result.rows[0].name,
+      },
+    });
+
+    return NextResponse.json({ doctor: result.rows[0] });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Doctor delete failed:', err);
+    return NextResponse.json({ error: 'Unable to delete doctor.' }, { status: 500 });
+  }
+}
