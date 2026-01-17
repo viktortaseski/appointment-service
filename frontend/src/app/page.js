@@ -300,6 +300,8 @@ function BookingPageContent() {
     () => [
       { code: 'MK', dial: '+389', label: 'MK +389', length: 8 },
       { code: 'AL', dial: '+355', label: 'AL +355', length: 9 },
+      { code: 'SI', dial: '+386', label: 'SI +386', length: 8 },
+      { code: 'IT', dial: '+39', label: 'IT +39', length: 10 },
       { code: 'US', dial: '+1', label: 'US +1', length: 10 },
       { code: 'UK', dial: '+44', label: 'UK +44', length: 10 },
       { code: 'DE', dial: '+49', label: 'DE +49', length: 10 },
