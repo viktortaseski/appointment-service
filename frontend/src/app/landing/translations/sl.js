@@ -22,6 +22,8 @@ export default {
   heroCardItem1: 'Takojsnje narocanje z zivo razpolozljivostjo polni ordinacije.',
   heroCardItem2: 'Eno nadzorno sredisce za zdravnike, urnike in tok pacientov.',
   heroCardItem3: 'Samodejni opomniki zmanjsajo izostanke in povecajo ponovne obiske.',
+  heroCardItem4: 'Ena izmed najbolj ugodnih moznosti na trgu.',
+  heroCardItem5: 'Hiter zacetek z minimalnim usposabljanjem osebja.',
   heroCardFooter: 'Prototip je na',
   aboutEyebrow: 'Kaj je Dentra?',
   aboutTitle: 'Platforma s polno storitvijo za zobozdravstvene termine.',

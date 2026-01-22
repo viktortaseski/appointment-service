@@ -22,6 +22,8 @@ export default {
   heroCardItem1: 'Rezervim i menjehershem me disponueshmeri live mban karriget plot.',
   heroCardItem2: 'Nje panel i vetem per mjeket, oraret dhe rrjedhen e pacienteve.',
   heroCardItem3: 'Kujtesat automatike ulin mungesat dhe rrisin kthimet.',
+  heroCardItem4: 'Nje nga opsionet me te perballueshme ne treg.',
+  heroCardItem5: 'Nisje e shpejte me trajnim minimal per stafin.',
   heroCardFooter: 'Prototipi eshte te',
   aboutEyebrow: 'Cfare eshte Dentra?',
   aboutTitle: 'Platforme me sherbim te plote per termine dentare.',

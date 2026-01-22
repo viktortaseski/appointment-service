@@ -22,6 +22,8 @@ export default {
   heroCardItem1: 'Instant booking with live availability keeps chairs full.',
   heroCardItem2: 'One dashboard for doctors, schedules, and patient flow.',
   heroCardItem3: 'Automated reminders reduce no-shows and boost return visits.',
+  heroCardItem4: 'One of the most affordable options on the market.',
+  heroCardItem5: 'Fast onboarding with minimal staff training required.',
   heroCardFooter: 'Prototype lives at',
   aboutEyebrow: 'What is Dentra?',
   aboutTitle: 'A full-service platform for dental bookings.',

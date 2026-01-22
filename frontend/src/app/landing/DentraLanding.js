@@ -193,6 +193,8 @@ export default function DentraLanding() {
               <li>{content.heroCardItem1}</li>
               <li>{content.heroCardItem2}</li>
               <li>{content.heroCardItem3}</li>
+              <li>{content.heroCardItem4}</li>
+              <li>{content.heroCardItem5}</li>
             </ul>
             <div className={styles.cardFooter}>
               <span>{content.heroCardFooter}</span>
