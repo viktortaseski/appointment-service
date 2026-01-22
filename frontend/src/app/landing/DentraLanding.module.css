@@ -136,6 +136,10 @@
   border-radius: 999px;
 }
 
+.mobileMenu {
+  display: none;
+}
+
 .headerActions {
   display: flex;
   align-items: center;
