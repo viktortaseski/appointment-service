@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './DentraLanding.module.css';
@@ -38,6 +38,7 @@ function normalizeLanguage(value) {
 
 export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
+  const headerRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -86,7 +87,10 @@ export default function DentraLanding() {
     const target = document.getElementById(targetId);
 
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const headerOffset = headerRef.current?.offsetHeight ?? 0;
+      const elementTop = target.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementTop - headerOffset - 16);
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
       target.focus({ preventScroll: true });
     } else {
       window.location.hash = targetId;
@@ -104,7 +108,7 @@ export default function DentraLanding() {
   return (
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
       <div className={styles.backdrop} aria-hidden="true" />
-      <header className={styles.header}>
+      <header className={styles.header} ref={headerRef}>
         <div className={styles.brand}>
           <span className={styles.logoMark} aria-hidden="true" />
           <div>
