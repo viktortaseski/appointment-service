@@ -215,7 +215,7 @@ export default function DentraLanding() {
               <p>{content.galleryCaption2}</p>
             </div>
           </div>
-          <div className={styles.heroCard}>
+          <div className={styles.heroCard} style={{ height: 'fit-content' }}>
             <p className={styles.cardTitle}>{content.heroCardTitle}</p>
             <ul className={styles.cardList}>
               <li>{content.heroCardItem1}</li>
