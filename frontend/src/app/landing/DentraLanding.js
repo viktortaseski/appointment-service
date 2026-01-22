@@ -291,13 +291,18 @@ export default function DentraLanding() {
           <h2 className={styles.sectionTitle}>{content.ctaTitle}</h2>
           <p className={styles.sectionBody}>{content.ctaBody}</p>
         </div>
-        <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+        <a className={styles.primaryButton} href="mailto:info@dentra.mk">
           {content.ctaButton}
         </a>
       </section>
 
       <footer className={styles.footer}>
         <p>(c) {new Date().getFullYear()} {content.footerSuffix}</p>
+        <p className={styles.footerContacts}>
+          {content.footerContactLabel}{' '}
+          <a href="mailto:info@dentra.mk">info@dentra.mk</a> ·{' '}
+          <a href="mailto:support@dentra.mk">support@dentra.mk</a>
+        </p>
       </footer>
     </main>
   );

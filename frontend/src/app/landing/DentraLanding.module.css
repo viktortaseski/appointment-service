@@ -235,7 +235,7 @@
 
 .heroMedia {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .heroImageWrap {
@@ -384,6 +384,7 @@
   border: 1px solid rgba(15, 45, 46, 0.08);
   box-shadow: 0 20px 40px rgba(15, 45, 46, 0.08);
   color: var(--muted);
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .highlightTitle {
@@ -408,6 +409,7 @@
   gap: 10px;
   position: relative;
   overflow: hidden;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .offeringTitle {
@@ -415,6 +417,19 @@
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--teal);
+}
+
+.highlightCard:hover,
+.offeringCard:hover {
+  background: #0f2d2e;
+  color: #f7f3ea;
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px rgba(15, 45, 46, 0.2);
+}
+
+.highlightCard:hover .highlightTitle,
+.offeringCard:hover .offeringTitle {
+  color: #ffffff;
 }
 
 .offeringCard::before {
@@ -498,10 +513,24 @@
   gap: 20px;
 }
 
+.ctaBand .primaryButton {
+  white-space: nowrap;
+}
+
 .footer {
   margin-top: 64px;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.footerContacts {
+  margin: 8px 0 0;
+}
+
+.footerContacts a {
+  color: var(--teal);
+  text-decoration: none;
+  font-weight: 600;
 }
 
 @media (prefers-reduced-motion: no-preference) {
