@@ -38,9 +38,12 @@ function normalizeLanguage(value) {
 
 export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
+  const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const headerRef = useRef(null);
   const sectionRefs = useRef([]);
+  const highlightGridRef = useRef(null);
+  const offeringsGridRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -70,6 +73,15 @@ export default function DentraLanding() {
     [content]
   );
 
+  const highlights = useMemo(
+    () => [
+      { title: content.highlight1Title, description: content.highlight1Body },
+      { title: content.highlight2Title, description: content.highlight2Body },
+      { title: content.highlight3Title, description: content.highlight3Body },
+    ],
+    [content]
+  );
+
   const steps = useMemo(
     () => [
       { title: content.step1Title, description: content.step1Body },
@@ -77,6 +89,16 @@ export default function DentraLanding() {
       { title: content.step3Title, description: content.step3Body },
     ],
     [content]
+  );
+
+  const highlightItems = useMemo(
+    () => (isMobile ? [...highlights, ...highlights, ...highlights] : highlights),
+    [highlights, isMobile]
+  );
+
+  const offeringItems = useMemo(
+    () => (isMobile ? [...offerings, ...offerings, ...offerings] : offerings),
+    [offerings, isMobile]
   );
 
   const handleNavClick = useCallback((event) => {
@@ -113,6 +135,18 @@ export default function DentraLanding() {
       return undefined;
     }
 
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const updateMatch = () => setIsMobile(mediaQuery.matches);
+    updateMatch();
+    mediaQuery.addEventListener('change', updateMatch);
+    return () => mediaQuery.removeEventListener('change', updateMatch);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -130,6 +164,58 @@ export default function DentraLanding() {
 
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      return undefined;
+    }
+
+    const setupInfiniteScroll = (container) => {
+      if (!container || container.scrollWidth <= container.clientWidth) {
+        return () => {};
+      }
+
+      const segment = container.scrollWidth / 3;
+      container.scrollLeft = segment;
+      let isAdjusting = false;
+
+      const handleScroll = () => {
+        if (isAdjusting) {
+          return;
+        }
+
+        const leftEdge = segment * 0.5;
+        const rightEdge = segment * 1.5;
+        const current = container.scrollLeft;
+
+        if (current <= leftEdge) {
+          isAdjusting = true;
+          container.scrollLeft = current + segment;
+          requestAnimationFrame(() => {
+            isAdjusting = false;
+          });
+        } else if (current >= rightEdge) {
+          isAdjusting = true;
+          container.scrollLeft = current - segment;
+          requestAnimationFrame(() => {
+            isAdjusting = false;
+          });
+        }
+      };
+
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    };
+
+    const cleanups = [
+      setupInfiniteScroll(highlightGridRef.current),
+      setupInfiniteScroll(offeringsGridRef.current),
+    ];
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [isMobile, highlightItems, offeringItems]);
 
   return (
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
@@ -293,19 +379,13 @@ export default function DentraLanding() {
           <h2 className={styles.sectionTitle}>{content.aboutTitle}</h2>
           <p className={styles.sectionBody}>{content.aboutBody}</p>
         </div>
-        <div className={styles.highlightGrid}>
-          <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>{content.highlight1Title}</p>
-            <p>{content.highlight1Body}</p>
-          </div>
-          <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>{content.highlight2Title}</p>
-            <p>{content.highlight2Body}</p>
-          </div>
-          <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>{content.highlight3Title}</p>
-            <p>{content.highlight3Body}</p>
-          </div>
+        <div className={styles.highlightGrid} ref={highlightGridRef}>
+          {highlightItems.map((item, index) => (
+            <div key={`${item.title}-${index}`} className={styles.highlightCard}>
+              <p className={styles.highlightTitle}>{item.title}</p>
+              <p>{item.description}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -321,9 +401,9 @@ export default function DentraLanding() {
           <p className={styles.sectionEyebrow}>{content.offeringsEyebrow}</p>
           <h2 className={styles.sectionTitle}>{content.offeringsTitle}</h2>
         </div>
-        <div className={styles.offeringsGrid}>
-          {offerings.map((item) => (
-            <div key={item.title} className={styles.offeringCard}>
+        <div className={styles.offeringsGrid} ref={offeringsGridRef}>
+          {offeringItems.map((item, index) => (
+            <div key={`${item.title}-${index}`} className={styles.offeringCard}>
               <h3 className={styles.offeringTitle}>{item.title}</h3>
               <p>{item.description}</p>
             </div>
