@@ -22,8 +22,8 @@ const PROTOTYPE_URL = 'https://vivadent.onrender.com/';
 // TODO: Swap to https://booking.dentra.mk/ for production.
 
 const imageSources = {
-  hero: '/landing/hero.svg',
-  schedule: '/landing/schedule.svg',
+  hero: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769091300/Dental_smiling_girl_no-copyight_lxgnue.jpg',
+  schedule: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769091132/adminpage_kbylar.png',
   brand: '/landing/brand.svg',
 };
 

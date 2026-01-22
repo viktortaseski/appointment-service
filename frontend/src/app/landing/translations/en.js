@@ -84,7 +84,7 @@ export default {
   ctaBody: 'Start with the live prototype and tell us what matters most for your team.',
   ctaButton: 'Explore Dentra now',
   footerSuffix: 'Dentra. Designed for modern dental clinics.',
-  imgAltHero: 'Illustration of a dental clinic waiting area',
+  imgAltHero: 'Smiling woman with healthy teeth',
   imgAltSchedule: 'Illustration of clinic scheduling screens',
   imgAltBrand: 'Illustration of clinic branding touchpoints',
 };

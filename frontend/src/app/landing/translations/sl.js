@@ -84,7 +84,7 @@ export default {
   ctaBody: 'Zacnite z zivim prototipom in nam povejte, kaj je najpomembneje za vaso ekipo.',
   ctaButton: 'Razišči Dentra zdaj',
   footerSuffix: 'Dentra. Oblikovano za sodobne zobozdravstvene klinike.',
-  imgAltHero: 'Ilustracija cakalnice zobozdravstvene klinike',
+  imgAltHero: 'Nasmejana zenska z zdravimi zobmi',
   imgAltSchedule: 'Ilustracija zaslonov klinicnega razporeda',
   imgAltBrand: 'Ilustracija znamcnih sticnih tock klinike',
 };

@@ -85,7 +85,7 @@ export default {
   ctaBody: 'Filloni me prototipin live dhe na tregoni cfare ka me shume rendesi per ekipin tuaj.',
   ctaButton: 'Eksploro Dentra tani',
   footerSuffix: 'Dentra. Projektuar per klinika dentare moderne.',
-  imgAltHero: 'Ilustrim i nje salla pritjeje ne klinike dentare',
+  imgAltHero: 'Vajze e buzëqeshur me dhembe te shendetshem',
   imgAltSchedule: 'Ilustrim i ekraneve te orareve te klinikes',
   imgAltBrand: 'Ilustrim i prekjeve te brandit te klinikes',
 };
