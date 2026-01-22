@@ -38,6 +38,7 @@ function normalizeLanguage(value) {
 
 export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const headerRef = useRef(null);
   const sectionRefs = useRef([]);
 
@@ -85,6 +86,7 @@ export default function DentraLanding() {
     }
 
     event.preventDefault();
+    setIsMenuOpen(false);
     const target = document.getElementById(targetId);
 
     if (target) {
@@ -155,6 +157,17 @@ export default function DentraLanding() {
             {content.navPrototype}
           </a>
         </nav>
+        <button
+          type="button"
+          className={styles.menuButton}
+          aria-label="Open navigation menu"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <div className={styles.headerActions}>
           <label className={styles.languageLabel} htmlFor="landing-language">
             {content.navLanguageLabel}
@@ -174,6 +187,39 @@ export default function DentraLanding() {
           <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
             {content.headerCta}
           </a>
+        </div>
+        <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.mobileMenuOpen : ''}`}>
+          <nav className={styles.mobileNav} aria-label="Mobile navigation">
+            <a href="#about" data-target="about" onClick={handleNavClick}>
+              {content.navAbout}
+            </a>
+            <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
+              {content.navOfferings}
+            </a>
+            <a href="#prototype" data-target="prototype" onClick={handleNavClick}>
+              {content.navPrototype}
+            </a>
+          </nav>
+          <div className={styles.mobileActions}>
+            <label className={styles.languageLabel} htmlFor="landing-language-mobile">
+              {content.navLanguageLabel}
+            </label>
+            <select
+              id="landing-language-mobile"
+              className={styles.languageSelect}
+              value={language}
+              onChange={handleLanguageChange}
+            >
+              {languageOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+              {content.headerCta}
+            </a>
+          </div>
         </div>
       </header>
 
@@ -286,7 +332,7 @@ export default function DentraLanding() {
       </section>
 
       <section
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal} ${styles.hideOnMobile}`}
         id="timeline"
         tabIndex={-1}
         ref={(node) => {
