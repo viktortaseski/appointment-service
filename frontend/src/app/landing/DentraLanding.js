@@ -134,7 +134,11 @@ export default function DentraLanding() {
       <div className={styles.backdrop} aria-hidden="true" />
       <header className={styles.header} ref={headerRef}>
         <div className={styles.brand}>
-          <span className={styles.logoMark} aria-hidden="true" />
+          <img
+            className={styles.logoImage}
+            src="https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png"
+            alt={`${content.brandName} logo`}
+          />
           <div>
             <p className={styles.brandName}>{content.brandName}</p>
             <p className={styles.brandTagline}>{content.brandTagline}</p>

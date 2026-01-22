@@ -76,12 +76,14 @@
   gap: 12px;
 }
 
-.logoMark {
+.logoImage {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #1c6a69, #f5865b);
-  box-shadow: 0 12px 20px rgba(15, 45, 46, 0.2);
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 12px 20px rgba(15, 45, 46, 0.12);
+  background: #ffffff;
+  padding: 6px;
 }
 
 .brandName {
