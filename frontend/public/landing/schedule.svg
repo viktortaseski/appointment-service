@@ -1,0 +1,21 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="720" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDF7F0" />
+      <stop offset="1" stop-color="#E6F2F1" />
+    </linearGradient>
+  </defs>
+  <rect width="720" height="520" rx="36" fill="url(#panel)" />
+  <rect x="80" y="70" width="560" height="80" rx="20" fill="#FFFFFF" />
+  <rect x="120" y="100" width="200" height="16" rx="8" fill="#F2E6D7" />
+  <rect x="120" y="125" width="120" height="12" rx="6" fill="#DCE8E7" />
+  <rect x="80" y="180" width="560" height="240" rx="24" fill="#FFFFFF" />
+  <rect x="120" y="220" width="200" height="18" rx="9" fill="#F2E6D7" />
+  <rect x="120" y="255" width="300" height="14" rx="7" fill="#E7EFF0" />
+  <rect x="120" y="290" width="260" height="14" rx="7" fill="#E7EFF0" />
+  <rect x="120" y="325" width="220" height="14" rx="7" fill="#E7EFF0" />
+  <rect x="120" y="360" width="180" height="14" rx="7" fill="#E7EFF0" />
+  <rect x="400" y="220" width="200" height="170" rx="18" fill="#F5865B" opacity="0.2" />
+  <rect x="430" y="260" width="120" height="10" rx="5" fill="#F5865B" />
+  <rect x="430" y="285" width="150" height="10" rx="5" fill="#1C6A69" />
+</svg>

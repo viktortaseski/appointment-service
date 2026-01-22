@@ -1,0 +1,21 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="720" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8F4F2" />
+      <stop offset="1" stop-color="#FDF4EE" />
+    </linearGradient>
+  </defs>
+  <rect width="720" height="520" rx="36" fill="url(#bg)" />
+  <rect x="90" y="80" width="540" height="140" rx="24" fill="#FFFFFF" />
+  <rect x="130" y="120" width="120" height="16" rx="8" fill="#1C6A69" />
+  <rect x="130" y="148" width="200" height="14" rx="7" fill="#DCE8E7" />
+  <rect x="90" y="250" width="540" height="190" rx="24" fill="#FFFFFF" />
+  <rect x="130" y="290" width="300" height="16" rx="8" fill="#F2E6D7" />
+  <rect x="130" y="322" width="250" height="14" rx="7" fill="#E7EFF0" />
+  <rect x="130" y="354" width="200" height="14" rx="7" fill="#E7EFF0" />
+  <circle cx="560" cy="330" r="60" fill="#F5865B" opacity="0.2" />
+  <path
+    d="M540 320C555 306 578 306 592 320C602 329 600 349 596 368C592 387 574 405 566 405C558 405 540 387 536 368C532 349 530 329 540 320Z"
+    fill="#1C6A69"
+  />
+</svg>

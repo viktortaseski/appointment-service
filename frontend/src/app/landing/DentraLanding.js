@@ -1,8 +1,10 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './DentraLanding.module.css';
+import { defaultLanguage, languageOptions, translations } from './translations';
 
 const displayFont = Fraunces({
   subsets: ['latin'],
@@ -16,49 +18,89 @@ const bodyFont = Manrope({
   variable: '--font-body',
 });
 
-const offerings = [
-  {
-    title: 'Smart booking flow',
-    description: 'Real-time availability, doctor profiles, and instant confirmations that patients trust.',
-  },
-  {
-    title: 'Clinic operations hub',
-    description: 'Centralize schedules, patient notes, and daily capacity so teams stay coordinated.',
-  },
-  {
-    title: 'Patient reminders',
-    description: 'Automated reminders and follow-ups to cut no-shows and keep chairs full.',
-  },
-  {
-    title: 'Multi-clinic ready',
-    description: 'One system that scales across locations with custom branding per clinic.',
-  },
-  {
-    title: 'Actionable insights',
-    description: 'Track demand, peak hours, and conversion trends to plan staffing with confidence.',
-  },
-  {
-    title: 'Localized by default',
-    description: 'Built for the region with language support and flexible clinic settings.',
-  },
-];
+const PROTOTYPE_URL = 'https://vivadent.onrender.com/';
+// TODO: Swap to https://booking.dentra.mk/ for production.
 
-const steps = [
-  {
-    title: 'Discover',
-    description: 'Share your clinic flow and priorities. We map Dentra to your daily routine.',
-  },
-  {
-    title: 'Configure',
-    description: 'Set schedules, services, and team availability in minutes, not weeks.',
-  },
-  {
-    title: 'Launch',
-    description: 'Go live with a branded booking page and keep iterating with real data.',
-  },
-];
+const imageSources = {
+  hero: '/landing/hero.svg',
+  schedule: '/landing/schedule.svg',
+  brand: '/landing/brand.svg',
+};
+
+function normalizeLanguage(value) {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = String(value).toLowerCase();
+  return translations[trimmed] ? trimmed : '';
+}
 
 export default function DentraLanding() {
+  const [language, setLanguage] = useState(defaultLanguage);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const stored = normalizeLanguage(window.localStorage.getItem('dentraLandingLanguage'));
+    const browser = normalizeLanguage((navigator.language || '').slice(0, 2));
+    const nextLanguage = stored || browser || defaultLanguage;
+
+    if (nextLanguage !== language) {
+      setLanguage(nextLanguage);
+    }
+  }, [language]);
+
+  const content = translations[language] || translations[defaultLanguage];
+
+  const offerings = useMemo(
+    () => [
+      { title: content.offering1Title, description: content.offering1Body },
+      { title: content.offering2Title, description: content.offering2Body },
+      { title: content.offering3Title, description: content.offering3Body },
+      { title: content.offering4Title, description: content.offering4Body },
+      { title: content.offering5Title, description: content.offering5Body },
+      { title: content.offering6Title, description: content.offering6Body },
+    ],
+    [content]
+  );
+
+  const steps = useMemo(
+    () => [
+      { title: content.step1Title, description: content.step1Body },
+      { title: content.step2Title, description: content.step2Body },
+      { title: content.step3Title, description: content.step3Body },
+    ],
+    [content]
+  );
+
+  const handleNavClick = useCallback((event) => {
+    const targetId = event.currentTarget.getAttribute('data-target');
+    if (!targetId) {
+      return;
+    }
+
+    event.preventDefault();
+    const target = document.getElementById(targetId);
+
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.focus({ preventScroll: true });
+    } else {
+      window.location.hash = targetId;
+    }
+  }, []);
+
+  const handleLanguageChange = useCallback((event) => {
+    const nextLanguage = normalizeLanguage(event.target.value) || defaultLanguage;
+    setLanguage(nextLanguage);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('dentraLandingLanguage', nextLanguage);
+    }
+  }, []);
+
   return (
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
       <div className={styles.backdrop} aria-hidden="true" />
@@ -66,106 +108,149 @@ export default function DentraLanding() {
         <div className={styles.brand}>
           <span className={styles.logoMark} aria-hidden="true" />
           <div>
-            <p className={styles.brandName}>Dentra</p>
-            <p className={styles.brandTagline}>Dental appointment service</p>
+            <p className={styles.brandName}>{content.brandName}</p>
+            <p className={styles.brandTagline}>{content.brandTagline}</p>
           </div>
         </div>
-        <nav className={styles.nav}>
-          <a href="#about">What is Dentra</a>
-          <a href="#offerings">What we offer</a>
-          <a href="#prototype">Prototype</a>
+        <nav className={styles.nav} aria-label="Landing navigation">
+          <a href="#about" data-target="about" onClick={handleNavClick}>
+            {content.navAbout}
+          </a>
+          <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
+            {content.navOfferings}
+          </a>
+          <a href="#prototype" data-target="prototype" onClick={handleNavClick}>
+            {content.navPrototype}
+          </a>
         </nav>
-        <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
-          Open booking prototype
-        </a>
+        <div className={styles.headerActions}>
+          <label className={styles.languageLabel} htmlFor="landing-language">
+            {content.navLanguageLabel}
+          </label>
+          <select
+            id="landing-language"
+            className={styles.languageSelect}
+            value={language}
+            onChange={handleLanguageChange}
+          >
+            {languageOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+            {content.headerCta}
+          </a>
+        </div>
       </header>
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>Built for modern dental clinics</span>
-          <h1 className={styles.heroTitle}>
-            A calmer, smarter way to book dental care.
-          </h1>
-          <p className={styles.heroBody}>
-            Dentra is a dental appointment platform that unifies booking, clinic operations, and patient
-            engagement. It keeps schedules tidy, reduces no-shows, and gives every clinic a premium
-            booking experience.
-          </p>
+          <span className={styles.heroEyebrow}>{content.heroEyebrow}</span>
+          <h1 className={styles.heroTitle}>{content.heroTitle}</h1>
+          <p className={styles.heroBody}>{content.heroBody}</p>
           <div className={styles.heroActions}>
-            <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
-              Try the booking flow
+            <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+              {content.heroPrimary}
             </a>
-            <a className={styles.secondaryButton} href="#prototype">
-              See what's included
+            <a className={styles.secondaryButton} href="#prototype" data-target="prototype" onClick={handleNavClick}>
+              {content.heroSecondary}
             </a>
           </div>
           <div className={styles.heroStats}>
             <div>
-              <p className={styles.statValue}>Real-time</p>
-              <p className={styles.statLabel}>availability updates</p>
+              <p className={styles.statValue}>{content.stat1Value}</p>
+              <p className={styles.statLabel}>{content.stat1Label}</p>
             </div>
             <div>
-              <p className={styles.statValue}>Automated</p>
-              <p className={styles.statLabel}>patient reminders</p>
+              <p className={styles.statValue}>{content.stat2Value}</p>
+              <p className={styles.statLabel}>{content.stat2Label}</p>
             </div>
             <div>
-              <p className={styles.statValue}>Multi-clinic</p>
-              <p className={styles.statLabel}>ready infrastructure</p>
+              <p className={styles.statValue}>{content.stat3Value}</p>
+              <p className={styles.statLabel}>{content.stat3Label}</p>
             </div>
           </div>
         </div>
-        <div className={styles.heroCard}>
-          <p className={styles.cardTitle}>What Dentra does</p>
-          <ul className={styles.cardList}>
-            <li>Connects patients to the right doctor and time slot instantly.</li>
-            <li>Gives clinics a single view of bookings, capacity, and workflows.</li>
-            <li>Automates confirmation and follow-up so staff can focus on care.</li>
-          </ul>
-          <div className={styles.cardFooter}>
-            <span>Prototype lives at</span>
-            <a href="https://vivadent.onrender.com/">vivadent.onrender.com</a>
+        <div className={styles.heroMedia}>
+          <div className={styles.heroImageWrap}>
+            <img className={styles.heroImage} src={imageSources.hero} alt={content.imgAltHero} />
+          </div>
+          <div className={styles.heroThumbs}>
+            <div className={styles.thumbCard}>
+              <img src={imageSources.schedule} alt={content.imgAltSchedule} />
+              <p>{content.galleryCaption2}</p>
+            </div>
+            <div className={styles.thumbCard}>
+              <img src={imageSources.brand} alt={content.imgAltBrand} />
+              <p>{content.galleryCaption3}</p>
+            </div>
+          </div>
+          <div className={styles.heroCard}>
+            <p className={styles.cardTitle}>{content.heroCardTitle}</p>
+            <ul className={styles.cardList}>
+              <li>{content.heroCardItem1}</li>
+              <li>{content.heroCardItem2}</li>
+              <li>{content.heroCardItem3}</li>
+            </ul>
+            <div className={styles.cardFooter}>
+              <span>{content.heroCardFooter}</span>
+              <a href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+                vivadent.onrender.com
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="about" className={styles.section}>
+      <section className={`${styles.section} ${styles.scrollAnchor}`} id="gallery" tabIndex={-1}>
         <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>What is Dentra?</p>
-          <h2 className={styles.sectionTitle}>A full-service platform for dental bookings.</h2>
-          <p className={styles.sectionBody}>
-            Dentra sits between patients and clinics, giving both sides a seamless experience. Patients
-            find the right clinic, book instantly, and get reminders. Clinics gain a branded booking
-            page, smarter scheduling tools, and better visibility into demand.
-          </p>
+          <p className={styles.sectionEyebrow}>{content.galleryEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.galleryTitle}</h2>
+        </div>
+        <div className={styles.galleryGrid}>
+          <figure className={styles.galleryCard}>
+            <img src={imageSources.hero} alt={content.imgAltHero} />
+            <figcaption>{content.galleryCaption1}</figcaption>
+          </figure>
+          <figure className={styles.galleryCard}>
+            <img src={imageSources.schedule} alt={content.imgAltSchedule} />
+            <figcaption>{content.galleryCaption2}</figcaption>
+          </figure>
+          <figure className={styles.galleryCard}>
+            <img src={imageSources.brand} alt={content.imgAltBrand} />
+            <figcaption>{content.galleryCaption3}</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="about" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>{content.aboutEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.aboutTitle}</h2>
+          <p className={styles.sectionBody}>{content.aboutBody}</p>
         </div>
         <div className={styles.highlightGrid}>
           <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>Patient experience</p>
-            <p>
-              A clean, mobile-first booking flow with clear doctor profiles, services, and immediate
-              confirmation.
-            </p>
+            <p className={styles.highlightTitle}>{content.highlight1Title}</p>
+            <p>{content.highlight1Body}</p>
           </div>
           <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>Clinic control</p>
-            <p>
-              Adjust schedules, handle reschedules, and see availability updates without manual
-              spreadsheets.
-            </p>
+            <p className={styles.highlightTitle}>{content.highlight2Title}</p>
+            <p>{content.highlight2Body}</p>
           </div>
           <div className={styles.highlightCard}>
-            <p className={styles.highlightTitle}>Operational clarity</p>
-            <p>
-              Capacity planning and demand signals built directly into the booking workflow.
-            </p>
+            <p className={styles.highlightTitle}>{content.highlight3Title}</p>
+            <p>{content.highlight3Body}</p>
           </div>
         </div>
       </section>
 
-      <section id="offerings" className={styles.section}>
+      <section id="offerings" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
         <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>What we offer</p>
-          <h2 className={styles.sectionTitle}>Everything clinics need to run smoother.</h2>
+          <p className={styles.sectionEyebrow}>{content.offeringsEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.offeringsTitle}</h2>
         </div>
         <div className={styles.offeringsGrid}>
           {offerings.map((item) => (
@@ -177,10 +262,10 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.scrollAnchor}`} id="timeline" tabIndex={-1}>
         <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>How it works</p>
-          <h2 className={styles.sectionTitle}>Launch in weeks, not months.</h2>
+          <p className={styles.sectionEyebrow}>{content.timelineEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.timelineTitle}</h2>
         </div>
         <div className={styles.timeline}>
           {steps.map((step, index) => (
@@ -195,31 +280,28 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section id="prototype" className={styles.section}>
+      <section id="prototype" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
         <div className={styles.prototypeCard}>
           <div>
-            <p className={styles.sectionEyebrow}>Prototype</p>
-            <h2 className={styles.sectionTitle}>Preview the booking experience.</h2>
-            <p className={styles.sectionBody}>
-              The live prototype is available at vivadent.onrender.com and showcases the full patient
-              journey, doctor selection, and availability flow.
-            </p>
+            <p className={styles.sectionEyebrow}>{content.prototypeEyebrow}</p>
+            <h2 className={styles.sectionTitle}>{content.prototypeTitle}</h2>
+            <p className={styles.sectionBody}>{content.prototypeBody}</p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
-                Open vivadent.onrender.com
+              <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+                {content.prototypePrimary}
               </a>
-              <a className={styles.secondaryButton} href="#offerings">
-                Review features
+              <a className={styles.secondaryButton} href="#offerings" data-target="offerings" onClick={handleNavClick}>
+                {content.prototypeSecondary}
               </a>
             </div>
           </div>
           <div className={styles.prototypeDetails}>
-            <p className={styles.cardTitle}>Included in the prototype</p>
+            <p className={styles.cardTitle}>{content.prototypeDetailsTitle}</p>
             <ul className={styles.cardList}>
-              <li>Doctor availability and schedule windows.</li>
-              <li>Appointment booking and confirmation flow.</li>
-              <li>Clinic-branded theme and details.</li>
-              <li>End-to-end reminders powered by Dentra.</li>
+              <li>{content.prototypeItem1}</li>
+              <li>{content.prototypeItem2}</li>
+              <li>{content.prototypeItem3}</li>
+              <li>{content.prototypeItem4}</li>
             </ul>
           </div>
         </div>
@@ -227,18 +309,16 @@ export default function DentraLanding() {
 
       <section className={styles.ctaBand}>
         <div>
-          <h2 className={styles.sectionTitle}>Ready to bring Dentra to your clinic?</h2>
-          <p className={styles.sectionBody}>
-            Start with the live prototype and tell us what matters most for your team.
-          </p>
+          <h2 className={styles.sectionTitle}>{content.ctaTitle}</h2>
+          <p className={styles.sectionBody}>{content.ctaBody}</p>
         </div>
-        <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
-          Explore Dentra now
+        <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+          {content.ctaButton}
         </a>
       </section>
 
       <footer className={styles.footer}>
-        <p>(c) {new Date().getFullYear()} Dentra. Designed for modern dental clinics.</p>
+        <p>(c) {new Date().getFullYear()} {content.footerSuffix}</p>
       </footer>
     </main>
   );
