@@ -120,7 +120,7 @@ export default function DentraLanding() {
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.12 }
     );
 
     const observed = sectionRefs.current.filter(Boolean);
@@ -344,7 +344,12 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section className={styles.ctaBand}>
+      <section
+        className={`${styles.ctaBand} ${styles.sectionReveal}`}
+        ref={(node) => {
+          sectionRefs.current[4] = node;
+        }}
+      >
         <div>
           <h2 className={styles.sectionTitle}>{content.ctaTitle}</h2>
           <p className={styles.sectionBody}>{content.ctaBody}</p>
