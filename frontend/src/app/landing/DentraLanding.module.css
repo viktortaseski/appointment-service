@@ -201,6 +201,13 @@
   line-height: 1.1;
 }
 
+.heroTitle {
+  background: linear-gradient(120deg, #0f2d2e 10%, #1c6a69 55%, #f5865b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .heroBody,
 .sectionBody {
   font-size: 1.05rem;
