@@ -75,7 +75,7 @@ export default function DentraLanding() {
           <a href="#offerings">What we offer</a>
           <a href="#prototype">Prototype</a>
         </nav>
-        <a className={styles.primaryButton} href="https://booking.dentra.mk">
+        <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
           Open booking prototype
         </a>
       </header>
@@ -92,7 +92,7 @@ export default function DentraLanding() {
             booking experience.
           </p>
           <div className={styles.heroActions}>
-            <a className={styles.primaryButton} href="https://booking.dentra.mk">
+            <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
               Try the booking flow
             </a>
             <a className={styles.secondaryButton} href="#prototype">
@@ -123,7 +123,7 @@ export default function DentraLanding() {
           </ul>
           <div className={styles.cardFooter}>
             <span>Prototype lives at</span>
-            <a href="https://booking.dentra.mk">booking.dentra.mk</a>
+            <a href="https://vivadent.onrender.com/">vivadent.onrender.com</a>
           </div>
         </div>
       </section>
@@ -201,12 +201,12 @@ export default function DentraLanding() {
             <p className={styles.sectionEyebrow}>Prototype</p>
             <h2 className={styles.sectionTitle}>Preview the booking experience.</h2>
             <p className={styles.sectionBody}>
-              The live prototype is available at booking.dentra.mk and showcases the full patient
+              The live prototype is available at vivadent.onrender.com and showcases the full patient
               journey, doctor selection, and availability flow.
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="https://booking.dentra.mk">
-                Open booking.dentra.mk
+              <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
+                Open vivadent.onrender.com
               </a>
               <a className={styles.secondaryButton} href="#offerings">
                 Review features
@@ -232,7 +232,7 @@ export default function DentraLanding() {
             Start with the live prototype and tell us what matters most for your team.
           </p>
         </div>
-        <a className={styles.primaryButton} href="https://booking.dentra.mk">
+        <a className={styles.primaryButton} href="https://vivadent.onrender.com/">
           Explore Dentra now
         </a>
       </section>
