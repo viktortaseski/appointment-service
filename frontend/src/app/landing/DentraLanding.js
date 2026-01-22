@@ -186,10 +186,6 @@ export default function DentraLanding() {
               <img src={imageSources.schedule} alt={content.imgAltSchedule} />
               <p>{content.galleryCaption2}</p>
             </div>
-            <div className={styles.thumbCard}>
-              <img src={imageSources.brand} alt={content.imgAltBrand} />
-              <p>{content.galleryCaption3}</p>
-            </div>
           </div>
           <div className={styles.heroCard}>
             <p className={styles.cardTitle}>{content.heroCardTitle}</p>
@@ -205,27 +201,6 @@ export default function DentraLanding() {
               </a>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.scrollAnchor}`} id="gallery" tabIndex={-1}>
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.galleryEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.galleryTitle}</h2>
-        </div>
-        <div className={styles.galleryGrid}>
-          <figure className={styles.galleryCard}>
-            <img src={imageSources.hero} alt={content.imgAltHero} />
-            <figcaption>{content.galleryCaption1}</figcaption>
-          </figure>
-          <figure className={styles.galleryCard}>
-            <img src={imageSources.schedule} alt={content.imgAltSchedule} />
-            <figcaption>{content.galleryCaption2}</figcaption>
-          </figure>
-          <figure className={styles.galleryCard}>
-            <img src={imageSources.brand} alt={content.imgAltBrand} />
-            <figcaption>{content.galleryCaption3}</figcaption>
-          </figure>
         </div>
       </section>
 

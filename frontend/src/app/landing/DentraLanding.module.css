@@ -253,9 +253,7 @@
 }
 
 .heroThumbs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  display: block;
 }
 
 .thumbCard {
@@ -268,6 +266,7 @@
   gap: 12px;
   color: var(--muted);
   font-size: 0.9rem;
+  width: 100%;
 }
 
 .thumbCard img {
