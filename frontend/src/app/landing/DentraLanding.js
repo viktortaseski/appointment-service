@@ -158,6 +158,9 @@ export default function DentraLanding() {
               {content.heroSecondary}
             </a>
           </div>
+          <div className={styles.heroImageWrap}>
+            <img className={styles.heroImage} src={imageSources.hero} alt={content.imgAltHero} />
+          </div>
           <div className={styles.heroStats}>
             <div>
               <p className={styles.statValue}>{content.stat1Value}</p>
@@ -174,9 +177,6 @@ export default function DentraLanding() {
           </div>
         </div>
         <div className={styles.heroMedia}>
-          <div className={styles.heroImageWrap}>
-            <img className={styles.heroImage} src={imageSources.hero} alt={content.imgAltHero} />
-          </div>
           <div className={styles.heroThumbs}>
             <div className={styles.thumbCard}>
               <img src={imageSources.schedule} alt={content.imgAltSchedule} />
