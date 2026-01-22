@@ -7,9 +7,11 @@ import DoctorsSection from '../components/DoctorsSection';
 import SiteFooter from '../components/SiteFooter';
 import Topbar from '../components/Topbar';
 import { useI18n } from '../components/I18nProvider';
+import DentraLanding from './landing/DentraLanding';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const AVAILABILITY_POLL_MS = 30000;     // 30s Refresh rate for real time updates
+const MARKETING_HOSTS = new Set(['dentra.mk', 'www.dentra.mk']);
 const THEME_DEFAULTS = {
   primary: '#ff7a45',
   secondary: '#f7f3ea',
@@ -20,6 +22,18 @@ const THEME_DEFAULTS = {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function normalizeHostname(value) {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).split(':')[0].trim().toLowerCase();
+}
+
+function isMarketingHost(hostname) {
+  return MARKETING_HOSTS.has(normalizeHostname(hostname));
 }
 
 function normalizeHex(value, fallback) {
@@ -1003,8 +1017,12 @@ function BookingPageContent() {
 export default function Home() {
   const { t } = useI18n();
   const [isReady, setIsReady] = useState(false);
+  const [hostname, setHostname] = useState('');
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname);
+    }
     setIsReady(true);
   }, []);
 
@@ -1019,6 +1037,10 @@ export default function Home() {
         </section>
       </main>
     );
+  }
+
+  if (isMarketingHost(hostname)) {
+    return <DentraLanding />;
   }
 
   return <BookingPageContent />;
