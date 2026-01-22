@@ -339,6 +339,17 @@
   gap: 12px;
 }
 
+.sectionReveal .sectionHeader {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.sectionVisible .sectionHeader {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .sectionEyebrow {
   text-transform: uppercase;
   letter-spacing: 0.16em;

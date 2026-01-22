@@ -39,6 +39,7 @@ function normalizeLanguage(value) {
 export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
   const headerRef = useRef(null);
+  const sectionRefs = useRef([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -103,6 +104,29 @@ export default function DentraLanding() {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('dentraLandingLanguage', nextLanguage);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add(styles.sectionVisible);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+
+    const observed = sectionRefs.current.filter(Boolean);
+    observed.forEach((node) => observer.observe(node));
+
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -206,7 +230,14 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section id="about" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
+      <section
+        id="about"
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[0] = node;
+        }}
+      >
         <div className={styles.sectionHeader}>
           <p className={styles.sectionEyebrow}>{content.aboutEyebrow}</p>
           <h2 className={styles.sectionTitle}>{content.aboutTitle}</h2>
@@ -228,7 +259,14 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section id="offerings" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
+      <section
+        id="offerings"
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[1] = node;
+        }}
+      >
         <div className={styles.sectionHeader}>
           <p className={styles.sectionEyebrow}>{content.offeringsEyebrow}</p>
           <h2 className={styles.sectionTitle}>{content.offeringsTitle}</h2>
@@ -243,7 +281,14 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.scrollAnchor}`} id="timeline" tabIndex={-1}>
+      <section
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        id="timeline"
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[2] = node;
+        }}
+      >
         <div className={styles.sectionHeader}>
           <p className={styles.sectionEyebrow}>{content.timelineEyebrow}</p>
           <h2 className={styles.sectionTitle}>{content.timelineTitle}</h2>
@@ -261,7 +306,14 @@ export default function DentraLanding() {
         </div>
       </section>
 
-      <section id="prototype" className={`${styles.section} ${styles.scrollAnchor}`} tabIndex={-1}>
+      <section
+        id="prototype"
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[3] = node;
+        }}
+      >
         <div className={styles.prototypeCard}>
           <div>
             <p className={styles.sectionEyebrow}>{content.prototypeEyebrow}</p>
