@@ -276,6 +276,10 @@
   display: block;
 }
 
+.thumbCard p {
+  text-align: center;
+}
+
 .heroCard {
   background: rgba(255, 255, 255, 0.86);
   border-radius: 24px;
@@ -402,12 +406,45 @@
   box-shadow: 0 20px 40px rgba(15, 45, 46, 0.08);
   display: grid;
   gap: 10px;
+  position: relative;
+  overflow: hidden;
 }
 
 .offeringTitle {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
+  color: var(--teal);
+}
+
+.offeringCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(245, 134, 91, 0.9), rgba(28, 106, 105, 0.9));
+}
+
+.offeringCard:nth-child(2)::before {
+  background: linear-gradient(90deg, rgba(28, 106, 105, 0.9), rgba(83, 168, 164, 0.9));
+}
+
+.offeringCard:nth-child(3)::before {
+  background: linear-gradient(90deg, rgba(245, 134, 91, 0.9), rgba(240, 196, 168, 0.95));
+}
+
+.offeringCard:nth-child(4)::before {
+  background: linear-gradient(90deg, rgba(108, 84, 62, 0.9), rgba(245, 134, 91, 0.9));
+}
+
+.offeringCard:nth-child(5)::before {
+  background: linear-gradient(90deg, rgba(28, 106, 105, 0.9), rgba(15, 45, 46, 0.9));
+}
+
+.offeringCard:nth-child(6)::before {
+  background: linear-gradient(90deg, rgba(245, 134, 91, 0.9), rgba(28, 106, 105, 0.9));
 }
 
 .timeline {
