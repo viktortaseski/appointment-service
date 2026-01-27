@@ -117,6 +117,30 @@ COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appoi
 COMMENT ON COLUMN doctors.password_hash IS 'Hashed doctor password';
 
 -- =========================================================
+-- LOCAL DEV DEMO CLINIC + DOCTOR (localhost)
+-- =========================================================
+INSERT INTO clinics (name, domain, email, phone, address, default_language)
+VALUES
+  ('Local Demo Clinic', 'localhost', 'demo@clinic.local', '+389 070 000 000', 'Localhost', 'en'),
+  ('Local Demo Clinic', '127.0.0.1', 'demo@clinic.local', '+389 070 000 000', 'Localhost', 'en')
+ON CONFLICT (domain) DO NOTHING;
+
+INSERT INTO doctors (clinic_id, name, username, specialty, password_hash, is_disabled)
+SELECT
+  c.id,
+  'Demo Doctor',
+  'demo',
+  'General Dentistry',
+  '$2a$10$SXMqUO0nehuFJUzIQcltm.doHW6Qj/D8pBEa0kquZQlUA4hiT2z86',
+  FALSE
+FROM clinics c
+WHERE c.domain IN ('localhost', '127.0.0.1')
+  AND NOT EXISTS (
+    SELECT 1 FROM doctors d
+    WHERE d.clinic_id = c.id AND d.username = 'demo'
+  );
+
+-- =========================================================
 -- DOCTOR WORKING HOURS
 -- =========================================================
 CREATE TABLE doctor_working_hours (
