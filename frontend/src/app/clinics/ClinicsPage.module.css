@@ -236,60 +236,42 @@
 
 .resultsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 30px;
 }
 
 .clinicCard {
-  position: relative;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(232, 246, 246, 0.92));
-  border-radius: 24px;
+  background: #fff;
+  border-radius: 22px;
   padding: 0;
-  border: 1px solid rgba(28, 106, 105, 0.18);
-  box-shadow: 0 24px 60px rgba(15, 45, 46, 0.18);
+  border: 1px solid rgba(15, 45, 46, 0.12);
+  box-shadow:
+    0 16px 32px rgba(15, 45, 46, 0.08),
+    0 4px 10px rgba(15, 45, 46, 0.06);
   display: block;
   overflow: hidden;
-}
-
-.clinicCard::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 12% 8%, rgba(245, 134, 91, 0.35), transparent 55%),
-    radial-gradient(circle at 85% 18%, rgba(28, 106, 105, 0.28), transparent 60%);
-  opacity: 0.9;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.clinicCard::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(120deg, rgba(15, 45, 46, 0.08) 1px, transparent 1px);
-  background-size: 18px 18px;
-  opacity: 0.18;
-  pointer-events: none;
-  z-index: 0;
+  height: 360px;
 }
 
 .cardButton {
   text-decoration: none;
   color: inherit;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   text-align: left;
   width: 100%;
   font: inherit;
   border: none;
   background: none;
-  position: relative;
-  z-index: 1;
+  display: block;
+  height: 100%;
 }
 
 .cardButton:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 28px 70px rgba(15, 45, 46, 0.22);
+  transform: translateY(-3px);
+  box-shadow:
+    0 20px 40px rgba(15, 45, 46, 0.12),
+    0 8px 18px rgba(15, 45, 46, 0.08);
 }
 
 .cardButton:focus-visible {
@@ -298,39 +280,30 @@
 }
 
 .cardTop {
-  display: grid;
-  grid-template-columns: minmax(130px, 170px) 1fr;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
   gap: 0;
-  position: relative;
-  z-index: 1;
+  height: 100%;
 }
 
 .clinicMedia {
   width: 100%;
-  height: 100%;
+  height: 180px;
   border-radius: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(28, 106, 105, 0.35), rgba(15, 45, 46, 0.1));
+  background:
+    linear-gradient(135deg, rgba(28, 106, 105, 0.18), rgba(245, 134, 91, 0.12)),
+    rgba(15, 45, 46, 0.06);
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-right: 1px solid rgba(28, 106, 105, 0.2);
-  position: relative;
-}
-
-.clinicMedia::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 55%, rgba(15, 45, 46, 0.18));
-  pointer-events: none;
+  border-bottom: 1px solid rgba(15, 45, 46, 0.08);
 }
 
 .clinicMedia img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(1.05) contrast(1.05);
+  filter: saturate(1.03) contrast(1.02);
 }
 
 .clinicBadge {
@@ -342,45 +315,50 @@
   display: grid;
   place-items: center;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  font-size: 1.15rem;
 }
 
 .cardDetails {
-  padding: 22px 26px;
+  padding: 22px 24px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 1;
 }
 
 .clinicName {
   margin: 0;
-  font-size: 1.12rem;
-  letter-spacing: 0.02em;
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
 }
 
 .clinicMeta {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .clinicRating {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(28, 106, 105, 0.18);
-  padding: 6px 10px;
+  gap: 10px;
+  margin-top: 2px;
+  background: rgba(28, 106, 105, 0.08);
+  border: 1px solid rgba(28, 106, 105, 0.14);
+  padding: 8px 12px;
   border-radius: 999px;
   width: fit-content;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 .clinicRatingValue {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: var(--muted);
   font-weight: 600;
 }
@@ -563,17 +541,11 @@
     width: 100%;
   }
 
-  .cardTop {
-    grid-template-columns: 1fr;
-  }
-
   .clinicMedia {
-    border-right: none;
-    border-bottom: 1px solid rgba(15, 45, 46, 0.08);
-    min-height: 160px;
+    height: 160px;
   }
 
   .cardDetails {
-    padding: 18px 20px;
+    padding: 18px 20px 20px;
   }
 }
