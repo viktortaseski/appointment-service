@@ -7,11 +7,12 @@ import DoctorsSection from '../components/DoctorsSection';
 import SiteFooter from '../components/SiteFooter';
 import Topbar from '../components/Topbar';
 import { useI18n } from '../components/I18nProvider';
+import StarRating from '../components/StarRating';
 import DentraLanding from './landing/DentraLanding';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const AVAILABILITY_POLL_MS = 30000;     // 30s Refresh rate for real time updates
-const MARKETING_HOSTS = new Set(['dentra.mk', 'www.dentra.mk']);
+const MARKETING_HOSTS = new Set(['dentra.mk', 'www.dentra.mk', 'dentra.local', 'www.dentra.local']);
 const THEME_DEFAULTS = {
   primary: '#ff7a45',
   secondary: '#f7f3ea',
@@ -343,6 +344,13 @@ function BookingPageContent() {
   const [confirmNotice, setConfirmNotice] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
   const [promptNotice, setPromptNotice] = useState(null);
+  const [ratingState, setRatingState] = useState({
+    open: false,
+    value: 0,
+    submitting: false,
+    error: null,
+    success: false,
+  });
   const [availability, setAvailability] = useState({
     loading: false,
     error: null,
@@ -390,14 +398,14 @@ function BookingPageContent() {
   );
   const scheduleStart =
     selectedDoctorSchedule?.opens_at
-      || selectedDoctorSchedule?.opensAt
-      || clinic?.opens_at
-      || '09:00';
+    || selectedDoctorSchedule?.opensAt
+    || clinic?.opens_at
+    || '09:00';
   const scheduleEnd =
     selectedDoctorSchedule?.closes_at
-      || selectedDoctorSchedule?.closesAt
-      || clinic?.closes_at
-      || '16:00';
+    || selectedDoctorSchedule?.closesAt
+    || clinic?.closes_at
+    || '16:00';
   const timeSlots = useMemo(() => {
     if (selectedScheduleOff) {
       return [];
@@ -805,6 +813,15 @@ function BookingPageContent() {
         date: formatDisplayDate(appointmentDate, localeTag),
         time: normalizeTime(appointment.time) || selectedTime,
         doctor: appointment.doctor_name || '',
+        appointmentId: appointment.id || null,
+        ratingToken: data.ratingToken || null,
+      });
+      setRatingState({
+        open: false,
+        value: 0,
+        submitting: false,
+        error: null,
+        success: false,
       });
       setConfirmNotice(null);
 
@@ -833,6 +850,52 @@ function BookingPageContent() {
     }
   }
 
+  const canRateClinic =
+    Boolean(successNotice?.appointmentId) && Boolean(successNotice?.ratingToken);
+
+  function openRating() {
+    setRatingState((prev) => ({ ...prev, open: true, error: null }));
+  }
+
+  async function handleSubmitRating() {
+    if (!ratingState.value) {
+      setRatingState((prev) => ({ ...prev, error: t('rating_select') }));
+      return;
+    }
+
+    setRatingState((prev) => ({ ...prev, submitting: true, error: null }));
+
+    try {
+      const response = await fetch(`${API_BASE}/ratings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointmentId: successNotice.appointmentId,
+          rating: ratingState.value,
+          token: successNotice.ratingToken,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t('rating_error'));
+      }
+
+      setRatingState((prev) => ({
+        ...prev,
+        submitting: false,
+        success: true,
+        open: false,
+      }));
+    } catch (error) {
+      setRatingState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: error?.message || t('rating_error'),
+      }));
+    }
+  }
+
   if (clinic?.is_disabled) {
     return (
       <main className="page">
@@ -856,7 +919,7 @@ function BookingPageContent() {
       {successNotice && (
         <div className="notice-overlay">
           <div className="card success-banner notice-card">
-            <div>
+            <div className="success-body">
               <p className="success-title">{t('appointment_confirmed')}</p>
               <p className="success-detail">
                 {t('appointment_detail', {
@@ -873,14 +936,66 @@ function BookingPageContent() {
               <p className="success-detail muted">
                 {t('email_sent_later')}
               </p>
+              {canRateClinic && (
+                <div className="rating-panel">
+                  {ratingState.success ? (
+                    <p className="rating-status">{t('rating_thanks')}</p>
+                  ) : ratingState.open ? (
+                    <>
+                      <p className="rating-label">{t('rating_prompt')}</p>
+                      <div className="rating-row">
+                        <StarRating
+                          value={ratingState.value}
+                          onSelect={(value) =>
+                            setRatingState((prev) => ({
+                              ...prev,
+                              value,
+                              error: null,
+                            }))
+                          }
+                        />
+                        <span className="rating-label">
+                          {ratingState.value ? `${ratingState.value}/5` : ''}
+                        </span>
+                      </div>
+                      {ratingState.error && (
+                        <p className="rating-status error">{ratingState.error}</p>
+                      )}
+                      <button
+                        type="button"
+                        className="cta"
+                        onClick={handleSubmitRating}
+                        disabled={ratingState.submitting}
+                      >
+                        {ratingState.submitting ? t('rating_submitting') : t('rating_submit')}
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="ghost" onClick={openRating}>
+                      {t('rate_clinic')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => setSuccessNotice(null)}
-            >
-              {t('dismiss')}
-            </button>
+            <div className="success-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setSuccessNotice(null);
+                  setRatingState({
+                    open: false,
+                    value: 0,
+                    submitting: false,
+                    error: null,
+                    success: false,
+                  });
+                }}
+              >
+                {t('dismiss')}
+              </button>
+            </div>
           </div>
         </div>
       )}

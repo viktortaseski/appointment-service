@@ -6,6 +6,7 @@ import { sendBrevoEmail } from '@/lib/server/brevo-mail';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 import { debugLog } from '@/lib/server/debug';
 import { createCancelToken } from '@/lib/server/appointment-cancel';
+import { createRatingToken } from '@/lib/server/appointment-rating';
 import { getHeader } from '@/lib/server/headers';
 import { upsertAppointmentReminder } from '@/lib/server/reminders';
 import {
@@ -437,7 +438,15 @@ export async function POST(request) {
     }
 
     debugLog('appointments: POST success', { appointmentId: insertResult.rows[0].id });
-    return NextResponse.json({ appointment: appointmentResult.rows[0] }, { status: 201 });
+    const ratingToken = createRatingToken({
+      appointmentId: insertResult.rows[0].id,
+      clinicId: clinic.id,
+      patientEmail,
+    });
+    return NextResponse.json(
+      { appointment: appointmentResult.rows[0], ratingToken },
+      { status: 201 }
+    );
   } catch (err) {
     if (err?.code === '23505') {
       debugLog('appointments: POST conflict');

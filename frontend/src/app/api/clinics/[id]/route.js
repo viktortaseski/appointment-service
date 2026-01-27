@@ -7,7 +7,31 @@ export const runtime = 'nodejs';
 export async function GET(request, { params }) {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain, logo, phone, email, address, theme_primary, theme_secondary, is_disabled, opens_at, closes_at, slot_minutes, default_language, created_at FROM clinics WHERE id = $1',
+      `SELECT
+         c.id,
+         c.name,
+         c.domain,
+         c.logo,
+         c.phone,
+         c.email,
+         c.address,
+         c.theme_primary,
+         c.theme_secondary,
+         c.is_disabled,
+         c.opens_at,
+         c.closes_at,
+         c.slot_minutes,
+         c.default_language,
+         c.created_at,
+         COALESCE(r.rating_avg, 0) AS rating_avg,
+         COALESCE(r.rating_count, 0) AS rating_count
+       FROM clinics c
+       LEFT JOIN (
+         SELECT clinic_id, AVG(rating)::float AS rating_avg, COUNT(*) AS rating_count
+         FROM clinic_ratings
+         GROUP BY clinic_id
+       ) r ON r.clinic_id = c.id
+       WHERE c.id = $1`,
       [params.id]
     );
 

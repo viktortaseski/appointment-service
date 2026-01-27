@@ -383,6 +383,7 @@
 .sectionReveal .highlightGrid,
 .sectionReveal .offeringsGrid,
 .sectionReveal .timeline,
+.sectionReveal .clinicMarquee,
 .sectionReveal .prototypeCard,
 .sectionReveal.ctaBand {
   opacity: 0;
@@ -393,6 +394,7 @@
 .sectionVisible .highlightGrid,
 .sectionVisible .offeringsGrid,
 .sectionVisible .timeline,
+.sectionVisible .clinicMarquee,
 .sectionVisible .prototypeCard,
 .sectionVisible.ctaBand {
   opacity: 1;
@@ -440,6 +442,165 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.clinicMarquee {
+  position: relative;
+  border-radius: 28px;
+  padding: 18px 0;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(15, 45, 46, 0.08);
+  box-shadow: 0 24px 50px rgba(15, 45, 46, 0.08);
+  overflow: hidden;
+}
+
+.clinicMarquee::before,
+.clinicMarquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.clinicMarquee::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(246, 241, 232, 0.95), rgba(246, 241, 232, 0));
+}
+
+.clinicMarquee::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(246, 241, 232, 0.95), rgba(246, 241, 232, 0));
+}
+
+.clinicTrack {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: max-content;
+  padding: 0 24px;
+  animation: clinicMarqueeScroll var(--marquee-duration, 36s) linear infinite;
+  will-change: transform;
+}
+
+.clinicCard {
+  min-width: 320px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 45, 46, 0.08);
+  box-shadow: 0 14px 30px rgba(15, 45, 46, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clinicCardLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.clinicCardLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(15, 45, 46, 0.16);
+}
+
+.clinicMedia {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(28, 106, 105, 0.08);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(15, 45, 46, 0.08);
+}
+
+.clinicMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.clinicBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(245, 134, 91, 0.95), rgba(28, 106, 105, 0.9));
+  color: #fffaf5;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.clinicInfo {
+  display: grid;
+  gap: 4px;
+}
+
+.clinicRating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.clinicRatingValue {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.clinicName {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.clinicMeta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.clinicDomain {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+}
+
+.clinicStatus {
+  padding: 18px 24px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.clinicActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.clinicActionButton {
+  width: 100%;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(28, 106, 105, 0.9), rgba(83, 168, 164, 0.9));
+  color: #f7f3ea;
+  border: none;
+  box-shadow: 0 18px 36px rgba(28, 106, 105, 0.25);
+}
+
+.clinicActionButton:hover {
+  background: linear-gradient(135deg, rgba(28, 106, 105, 1), rgba(83, 168, 164, 1));
+  color: #ffffff;
+  box-shadow: 0 20px 40px rgba(28, 106, 105, 0.3);
 }
 
 .highlightCard {
@@ -647,6 +808,15 @@
   }
 }
 
+@keyframes clinicMarqueeScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @media (max-width: 1100px) {
   .header {
     flex-wrap: wrap;
@@ -797,5 +967,15 @@
 
   .languageLabel {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clinicMarquee {
+    overflow-x: auto;
+  }
+
+  .clinicTrack {
+    animation: none;
   }
 }

@@ -47,21 +47,9 @@ const migrationSql = `-- =======================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =========================================================
--- DROP TABLES (clean migration)
--- =========================================================
-DROP VIEW IF EXISTS appointments_with_doctors;
-DROP TABLE IF EXISTS appointment_reminders CASCADE;
-DROP TABLE IF EXISTS appointments CASCADE;
-DROP TABLE IF EXISTS patients CASCADE;
-DROP TABLE IF EXISTS doctor_working_hours CASCADE;
-DROP TABLE IF EXISTS doctor_unavailability CASCADE;
-DROP TABLE IF EXISTS doctors CASCADE;
-DROP TABLE IF EXISTS clinics CASCADE;
-
--- =========================================================
 -- CLINICS TABLE
 -- =========================================================
-CREATE TABLE clinics (
+CREATE TABLE IF NOT EXISTS clinics (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   domain VARCHAR(255) UNIQUE NOT NULL,
@@ -96,7 +84,7 @@ COMMENT ON COLUMN clinics.slot_minutes IS 'Appointment slot duration in minutes'
 -- =========================================================
 -- DOCTORS TABLE
 -- =========================================================
-CREATE TABLE doctors (
+CREATE TABLE IF NOT EXISTS doctors (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -115,6 +103,30 @@ COMMENT ON COLUMN doctors.username IS 'Clinic login username';
 COMMENT ON COLUMN doctors.description IS 'Optional doctor bio/summary';
 COMMENT ON COLUMN doctors.is_disabled IS 'Whether this doctor is accepting appointments';
 COMMENT ON COLUMN doctors.password_hash IS 'Hashed doctor password';
+
+-- =========================================================
+-- UNIQUENESS GUARDS (safe to re-run)
+-- =========================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'clinics_domain_key'
+      AND conrelid = 'public.clinics'::regclass
+  ) THEN
+    ALTER TABLE clinics ADD CONSTRAINT clinics_domain_key UNIQUE (domain);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'doctors_clinic_username_key'
+      AND conrelid = 'public.doctors'::regclass
+  ) THEN
+    ALTER TABLE doctors ADD CONSTRAINT doctors_clinic_username_key UNIQUE (clinic_id, username);
+  END IF;
+END $$;
 
 -- =========================================================
 -- LOCAL DEV DEMO CLINIC + DOCTOR (localhost)
@@ -143,7 +155,7 @@ WHERE c.domain IN ('localhost', '127.0.0.1')
 -- =========================================================
 -- DOCTOR WORKING HOURS
 -- =========================================================
-CREATE TABLE doctor_working_hours (
+CREATE TABLE IF NOT EXISTS doctor_working_hours (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
   doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
@@ -165,7 +177,7 @@ COMMENT ON COLUMN doctor_working_hours.is_off IS 'Marks a non-working day';
 -- =========================================================
 -- DOCTOR UNAVAILABILITY
 -- =========================================================
-CREATE TABLE doctor_unavailability (
+CREATE TABLE IF NOT EXISTS doctor_unavailability (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
   doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
@@ -181,7 +193,7 @@ COMMENT ON TABLE doctor_unavailability IS 'Doctor unavailable ranges and time bl
 -- =========================================================
 -- PATIENTS TABLE
 -- =========================================================
-CREATE TABLE patients (
+CREATE TABLE IF NOT EXISTS patients (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
@@ -197,7 +209,7 @@ COMMENT ON COLUMN patients.phone IS 'Unique patient phone when provided';
 -- =========================================================
 -- AUDIT LOGS
 -- =========================================================
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID REFERENCES clinics(id) ON DELETE CASCADE,
   doctor_id UUID REFERENCES doctors(id) ON DELETE SET NULL,
@@ -212,7 +224,7 @@ COMMENT ON COLUMN audit_logs.action IS 'Action name for the audit event';
 -- =========================================================
 -- APPOINTMENTS TABLE
 -- =========================================================
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
   doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
@@ -235,9 +247,25 @@ COMMENT ON TABLE appointments IS 'Patient appointment bookings';
 COMMENT ON COLUMN appointments.completed IS 'Indicates if appointment was attended';
 
 -- =========================================================
+-- CLINIC RATINGS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS clinic_ratings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  patient_email VARCHAR(255),
+  rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (appointment_id)
+);
+
+COMMENT ON TABLE clinic_ratings IS 'Clinic ratings submitted by booked patients';
+COMMENT ON COLUMN clinic_ratings.rating IS 'Star rating (1-5)';
+
+-- =========================================================
 -- APPOINTMENT REMINDERS
 -- =========================================================
-CREATE TABLE appointment_reminders (
+CREATE TABLE IF NOT EXISTS appointment_reminders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
   clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
@@ -258,31 +286,33 @@ COMMENT ON COLUMN appointment_reminders.sent IS 'Whether reminder has been sent'
 -- =========================================================
 -- INDEXES
 -- =========================================================
-CREATE INDEX idx_doctors_clinic_id ON doctors(clinic_id);
-CREATE INDEX idx_doctor_working_hours_clinic_id ON doctor_working_hours(clinic_id);
-CREATE INDEX idx_doctor_working_hours_doctor_id ON doctor_working_hours(doctor_id);
-CREATE INDEX idx_unavailability_clinic_id ON doctor_unavailability(clinic_id);
-CREATE INDEX idx_unavailability_doctor_id ON doctor_unavailability(doctor_id);
-CREATE INDEX idx_unavailability_start_date ON doctor_unavailability(start_date);
+CREATE INDEX IF NOT EXISTS idx_doctors_clinic_id ON doctors(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_doctor_working_hours_clinic_id ON doctor_working_hours(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_doctor_working_hours_doctor_id ON doctor_working_hours(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_unavailability_clinic_id ON doctor_unavailability(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_unavailability_doctor_id ON doctor_unavailability(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_unavailability_start_date ON doctor_unavailability(start_date);
 
-CREATE INDEX idx_appointments_clinic_id ON appointments(clinic_id);
-CREATE INDEX idx_appointments_doctor_id ON appointments(doctor_id);
-CREATE INDEX idx_appointments_date ON appointments(date);
-CREATE INDEX idx_appointments_completed ON appointments(completed);
-CREATE INDEX idx_appointments_patient_email ON appointments(patient_email);
-CREATE INDEX idx_appointment_reminders_sent ON appointment_reminders(sent);
-CREATE INDEX idx_appointment_reminders_scheduled_at ON appointment_reminders(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_appointments_clinic_id ON appointments(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_doctor_id ON appointments(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);
+CREATE INDEX IF NOT EXISTS idx_appointments_completed ON appointments(completed);
+CREATE INDEX IF NOT EXISTS idx_appointments_patient_email ON appointments(patient_email);
+CREATE INDEX IF NOT EXISTS idx_clinic_ratings_clinic_id ON clinic_ratings(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_clinic_ratings_created_at ON clinic_ratings(created_at);
+CREATE INDEX IF NOT EXISTS idx_appointment_reminders_sent ON appointment_reminders(sent);
+CREATE INDEX IF NOT EXISTS idx_appointment_reminders_scheduled_at ON appointment_reminders(scheduled_at);
 
-CREATE UNIQUE INDEX idx_patients_email_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_email_unique
   ON patients(email)
   WHERE email IS NOT NULL;
 
-CREATE UNIQUE INDEX idx_patients_phone_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_phone_unique
   ON patients(phone)
   WHERE phone IS NOT NULL;
 
-CREATE INDEX idx_audit_logs_clinic_id ON audit_logs(clinic_id);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_clinic_id ON audit_logs(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- =========================================================
 -- UPDATED_AT TRIGGER FUNCTION
@@ -298,25 +328,52 @@ $$ LANGUAGE plpgsql;
 -- =========================================================
 -- TRIGGERS
 -- =========================================================
-CREATE TRIGGER update_doctors_updated_at
-BEFORE UPDATE ON doctors
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_doctors_updated_at'
+      AND tgrelid = 'public.doctors'::regclass
+  ) THEN
+    CREATE TRIGGER update_doctors_updated_at
+    BEFORE UPDATE ON doctors
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
 
-CREATE TRIGGER update_doctor_working_hours_updated_at
-BEFORE UPDATE ON doctor_working_hours
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_doctor_working_hours_updated_at'
+      AND tgrelid = 'public.doctor_working_hours'::regclass
+  ) THEN
+    CREATE TRIGGER update_doctor_working_hours_updated_at
+    BEFORE UPDATE ON doctor_working_hours
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
 
-CREATE TRIGGER update_appointments_updated_at
-BEFORE UPDATE ON appointments
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_appointments_updated_at'
+      AND tgrelid = 'public.appointments'::regclass
+  ) THEN
+    CREATE TRIGGER update_appointments_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
 
-CREATE TRIGGER update_patients_updated_at
-BEFORE UPDATE ON patients
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_patients_updated_at'
+      AND tgrelid = 'public.patients'::regclass
+  ) THEN
+    CREATE TRIGGER update_patients_updated_at
+    BEFORE UPDATE ON patients
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- =========================================================
 -- VIEW: APPOINTMENTS WITH DOCTOR INFO

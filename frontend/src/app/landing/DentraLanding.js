@@ -5,6 +5,7 @@ import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './DentraLanding.module.css';
 import { defaultLanguage, languageOptions, translations } from './translations';
+import StarRating from '@/components/StarRating';
 
 const displayFont = Fraunces({
   subsets: ['latin'],
@@ -18,6 +19,7 @@ const bodyFont = Manrope({
   variable: '--font-body',
 });
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const PROTOTYPE_URL = 'https://vivadent.onrender.com/';
 // TODO: Swap to https://booking.dentra.mk/ for production.
 
@@ -36,10 +38,25 @@ function normalizeLanguage(value) {
   return translations[trimmed] ? trimmed : '';
 }
 
+function getClinicInitials(name) {
+  if (!name) {
+    return 'DC';
+  }
+
+  const parts = String(name)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const letters = parts.slice(0, 2).map((part) => part[0].toUpperCase());
+  return letters.join('') || 'DC';
+}
+
 export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [clinics, setClinics] = useState([]);
+  const [clinicStatus, setClinicStatus] = useState({ loading: true, error: false });
   const headerRef = useRef(null);
   const sectionRefs = useRef([]);
   const highlightGridRef = useRef(null);
@@ -100,6 +117,22 @@ export default function DentraLanding() {
     () => (isMobile ? [...offerings, ...offerings, ...offerings] : offerings),
     [offerings, isMobile]
   );
+
+  const marqueeClinics = useMemo(() => {
+    if (!clinics.length) {
+      return [];
+    }
+
+    const minimum = 8;
+    const repeats = Math.max(1, Math.ceil(minimum / clinics.length));
+    const expanded = Array.from({ length: repeats }, () => clinics).flat();
+    return [...expanded, ...expanded];
+  }, [clinics]);
+
+  const marqueeDuration = useMemo(() => {
+    const base = clinics.length || 6;
+    return Math.min(80, Math.max(28, base * 6));
+  }, [clinics.length]);
 
   const handleNavClick = useCallback((event) => {
     const targetId = event.currentTarget.getAttribute('data-target');
@@ -217,6 +250,51 @@ export default function DentraLanding() {
     };
   }, [isMobile, highlightItems, offeringItems]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadClinics() {
+      setClinicStatus({ loading: true, error: false });
+
+      try {
+        const response = await fetch(`${API_BASE}/clinics`);
+        if (!response.ok) {
+          throw new Error('Clinic fetch failed');
+        }
+
+        const data = await response.json();
+        if (!isActive) {
+          return;
+        }
+
+        const normalized = (data.clinics || []).map((clinic) => ({
+          id: clinic.id || clinic.domain || clinic.name,
+          name: clinic.name || clinic.domain || 'Clinic',
+          domain: clinic.domain || '',
+          address: clinic.address || '',
+          phone: clinic.phone || '',
+          logo: clinic.logo || '',
+          rating_avg: Number(clinic.rating_avg ?? clinic.ratingAvg ?? 0),
+          rating_count: Number(clinic.rating_count ?? clinic.ratingCount ?? 0),
+        }));
+        setClinics(normalized);
+        setClinicStatus({ loading: false, error: false });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        setClinics([]);
+        setClinicStatus({ loading: false, error: true });
+      }
+    }
+
+    loadClinics();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   return (
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
       <div className={styles.backdrop} aria-hidden="true" />
@@ -239,8 +317,8 @@ export default function DentraLanding() {
           <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
             {content.navOfferings}
           </a>
-          <a href="#prototype" data-target="prototype" onClick={handleNavClick}>
-            {content.navPrototype}
+          <a href="/clinics">
+            {content.navClinics}
           </a>
         </nav>
         <button
@@ -282,8 +360,8 @@ export default function DentraLanding() {
             <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
               {content.navOfferings}
             </a>
-            <a href="#prototype" data-target="prototype" onClick={handleNavClick}>
-              {content.navPrototype}
+            <a href="/clinics">
+              {content.navClinics}
             </a>
           </nav>
           <div className={styles.mobileActions}>
@@ -367,11 +445,100 @@ export default function DentraLanding() {
       </section>
 
       <section
-        id="about"
+        id="clinics"
         className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
         tabIndex={-1}
         ref={(node) => {
           sectionRefs.current[0] = node;
+        }}
+      >
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>{content.clinicsEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.clinicsTitle}</h2>
+          <p className={styles.sectionBody}>{content.clinicsBody}</p>
+        </div>
+        <div className={styles.clinicMarquee} aria-live="polite">
+          {clinicStatus.loading && (
+            <p className={styles.clinicStatus}>{content.clinicsLoading}</p>
+          )}
+          {!clinicStatus.loading && clinicStatus.error && (
+            <p className={styles.clinicStatus}>{content.clinicsLoadError}</p>
+          )}
+          {!clinicStatus.loading && !clinicStatus.error && clinics.length === 0 && (
+            <p className={styles.clinicStatus}>{content.clinicsEmpty}</p>
+          )}
+          {!clinicStatus.loading && !clinicStatus.error && clinics.length > 0 && (
+            <div
+              className={styles.clinicTrack}
+              style={{ '--marquee-duration': `${marqueeDuration}s` }}
+            >
+              {marqueeClinics.map((clinic, index) => {
+                const cardContent = (
+                  <>
+                    <div className={styles.clinicMedia}>
+                      {clinic.logo ? (
+                        <img
+                          src={clinic.logo}
+                          alt={`${clinic.name} logo`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className={styles.clinicBadge}>
+                          {getClinicInitials(clinic.name)}
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.clinicInfo}>
+                      <p className={styles.clinicName}>{clinic.name}</p>
+                      <p className={styles.clinicMeta}>
+                        {clinic.address || clinic.domain || content.clinicsFallbackMeta}
+                      </p>
+                      <div className={styles.clinicRating}>
+                        <StarRating value={clinic.rating_avg} size={16} />
+                        <span className={styles.clinicRatingValue}>
+                          {clinic.rating_count
+                            ? `${Number(clinic.rating_avg).toFixed(1)} (${clinic.rating_count})`
+                            : content.clinicsRatingNew}
+                        </span>
+                      </div>
+                      <span className={styles.clinicDomain}>
+                        {clinic.domain || content.clinicsFallbackDomain}
+                      </span>
+                    </div>
+                  </>
+                );
+
+                const isExternal = Boolean(clinic.domain);
+                const href = isExternal ? `https://${clinic.domain}` : '/clinics';
+
+                return (
+                  <a
+                    key={`${clinic.id}-${index}`}
+                    className={`${styles.clinicCard} ${styles.clinicCardLink}`}
+                    href={href}
+                    target={isExternal ? '_blank' : undefined}
+                    rel={isExternal ? 'noreferrer' : undefined}
+                  >
+                    {cardContent}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className={styles.clinicActions}>
+          <a className={`${styles.secondaryButton} ${styles.clinicActionButton}`} href="/clinics">
+            {content.clinicsAction}
+          </a>
+        </div>
+      </section>
+
+      <section
+        id="about"
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[1] = node;
         }}
       >
         <div className={styles.sectionHeader}>
@@ -394,7 +561,7 @@ export default function DentraLanding() {
         className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
         tabIndex={-1}
         ref={(node) => {
-          sectionRefs.current[1] = node;
+          sectionRefs.current[2] = node;
         }}
       >
         <div className={styles.sectionHeader}>
@@ -416,7 +583,7 @@ export default function DentraLanding() {
         id="timeline"
         tabIndex={-1}
         ref={(node) => {
-          sectionRefs.current[2] = node;
+          sectionRefs.current[3] = node;
         }}
       >
         <div className={styles.sectionHeader}>
@@ -441,7 +608,7 @@ export default function DentraLanding() {
         className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
         tabIndex={-1}
         ref={(node) => {
-          sectionRefs.current[3] = node;
+          sectionRefs.current[4] = node;
         }}
       >
         <div className={styles.prototypeCard}>
@@ -473,7 +640,7 @@ export default function DentraLanding() {
       <section
         className={`${styles.ctaBand} ${styles.sectionReveal}`}
         ref={(node) => {
-          sectionRefs.current[4] = node;
+          sectionRefs.current[5] = node;
         }}
       >
         <div>

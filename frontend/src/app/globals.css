@@ -858,12 +858,51 @@ select.error {
 
 .success-banner {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   background: rgba(226, 250, 236, 0.9);
   border: 1px solid rgba(90, 200, 120, 0.4);
   box-shadow: 0 20px 40px rgba(90, 200, 120, 0.2);
+}
+
+.success-body {
+  display: grid;
+  gap: 6px;
+}
+
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.rating-panel {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rating-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.rating-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.rating-status.error {
+  color: #b53838;
 }
 
 .confirm-banner {
@@ -943,6 +982,44 @@ select.error {
 
 .success-detail.muted {
   color: var(--muted);
+}
+
+.rating-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rating-star,
+.rating-star-button {
+  color: rgba(15, 45, 46, 0.25);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rating-star svg,
+.rating-star-button svg {
+  display: block;
+}
+
+.rating-star.filled,
+.rating-star-button.filled {
+  color: #f5a623;
+}
+
+.rating-star-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rating-star-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .admin-page {
