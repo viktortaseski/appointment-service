@@ -83,7 +83,8 @@
   margin: 0;
 }
 
-.tokenPanel {
+.tokenPanel,
+.sessionPanel {
   background: rgba(9, 15, 22, 0.72);
   border: 1px solid var(--panel-border);
   border-radius: 18px;
@@ -93,7 +94,8 @@
   box-shadow: 0 24px 50px rgba(10, 15, 23, 0.4);
 }
 
-.tokenPanel label {
+.tokenPanel label,
+.sessionPanel label {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.15em;
@@ -101,13 +103,38 @@
   color: rgba(226, 232, 240, 0.7);
 }
 
-.tokenPanel input {
+.tokenPanel input,
+.sessionPanel input {
   background: rgba(15, 23, 42, 0.65);
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 12px;
   padding: 10px 12px;
   color: #f8fafc;
   font-family: var(--font-mono);
+}
+
+.sessionPanel {
+  align-items: center;
+  gap: 12px;
+  grid-auto-flow: column;
+  justify-content: end;
+}
+
+.sessionStatus {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.sessionPanel button {
+  border: 1px solid rgba(56, 242, 195, 0.45);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
 }
 
 .grid {
@@ -230,6 +257,71 @@
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow: 0 20px 40px rgba(56, 242, 195, 0.25);
   cursor: pointer;
+}
+
+.loginPanel {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  margin: 12vh auto 0;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 24px 60px rgba(4, 8, 15, 0.5);
+  display: grid;
+  gap: 16px;
+}
+
+.loginForm {
+  display: grid;
+  gap: 14px;
+}
+
+.loginForm label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.loginForm input {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #f8fafc;
+}
+
+.loginForm button {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #021012;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 20px 40px rgba(56, 242, 195, 0.25);
+  cursor: pointer;
+}
+
+.authError {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  margin: 0;
+}
+
+.loading {
+  position: relative;
+  z-index: 1;
+  margin: 18vh auto 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  color: rgba(226, 232, 240, 0.7);
 }
 
 .panel button:disabled {

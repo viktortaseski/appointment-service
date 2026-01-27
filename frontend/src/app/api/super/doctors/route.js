@@ -2,21 +2,14 @@ import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 
 import { pool } from '@/lib/server/db';
+import { verifySuperAdminRequest } from '@/lib/server/super-admin-auth';
 
 export const runtime = 'nodejs';
 
-function isAuthorized(request) {
-  const expected = process.env.SUPER_ADMIN_TOKEN;
-  if (!expected) {
-    return false;
-  }
-  const token = request.headers.get('x-super-admin-token') || '';
-  return token === expected;
-}
-
 export async function GET(request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const auth = verifySuperAdminRequest(request);
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const { searchParams } = new URL(request.url);
@@ -60,8 +53,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const auth = verifySuperAdminRequest(request);
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const body = await request.json();

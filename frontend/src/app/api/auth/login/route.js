@@ -6,6 +6,7 @@ import { resolveClinic } from '@/lib/server/clinic-resolver';
 import { pool } from '@/lib/server/db';
 import { logAudit } from '@/lib/server/audit';
 import { checkRateLimit } from '@/lib/server/rate-limit';
+import { getAdminCookieName, getAdminCookieOptions } from '@/lib/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -153,12 +154,17 @@ export async function POST(request) {
     },
   });
 
-  return NextResponse.json({
-    token,
+  const response = NextResponse.json({
     doctor: {
       id: doctor.id,
       name: doctor.name,
       clinic_id: doctor.clinic_id,
     },
   });
+  response.cookies.set(
+    getAdminCookieName(),
+    token,
+    Object.assign(getAdminCookieOptions(), { maxAge: 60 * 60 * 8 })
+  );
+  return response;
 }

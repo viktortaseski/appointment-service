@@ -250,7 +250,7 @@ function AdminPageContent() {
   const { t, localeTag, setLocale } = useI18n();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const [authToken, setAuthToken] = useState('');
+  const [isAuthed, setIsAuthed] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [loginForm, setLoginForm] = useState({
     clinicName: '',
@@ -671,9 +671,38 @@ function AdminPageContent() {
   }, [filteredAppointments, selectedAppointmentId]);
 
   useEffect(() => {
-    const storedToken = window.localStorage.getItem('adminToken') || '';
-    setAuthToken(storedToken);
-    setAuthReady(true);
+    let isActive = true;
+
+    async function checkSession() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/session`, {
+          headers: {
+            'x-clinic-domain': getClinicDomain(),
+          },
+          credentials: 'include',
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setIsAuthed(response.ok);
+      } catch (error) {
+        if (isActive) {
+          setIsAuthed(false);
+        }
+      } finally {
+        if (isActive) {
+          setAuthReady(true);
+        }
+      }
+    }
+
+    checkSession();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -689,14 +718,9 @@ function AdminPageContent() {
         };
 
         const [appointmentsResponse, doctorsResponse, patientsResponse] = await Promise.all([
-          fetch(`${API_BASE}/appointments`, { headers }),
-          fetch(`${API_BASE}/doctors`, { headers }),
-          fetch(`${API_BASE}/patients`, {
-            headers: {
-              ...headers,
-              Authorization: `Bearer ${authToken}`,
-            },
-          }),
+          fetch(`${API_BASE}/appointments`, { headers, credentials: 'include' }),
+          fetch(`${API_BASE}/doctors`, { headers, credentials: 'include' }),
+          fetch(`${API_BASE}/patients`, { headers, credentials: 'include' }),
         ]);
 
         if (!appointmentsResponse.ok) {
@@ -760,10 +784,10 @@ function AdminPageContent() {
       }
     }
 
-    if (authToken) {
+    if (isAuthed) {
       loadData();
     }
-  }, [authToken, t]);
+  }, [isAuthed, t]);
 
   useEffect(() => {
     if (formState.time && bookedTimes.includes(formState.time)) {
@@ -857,10 +881,10 @@ function AdminPageContent() {
   }, [formState.date, formState.doctorId, showForm, t]);
 
   useEffect(() => {
-    if (authToken) {
+    if (isAuthed) {
       loadAvailabilityRecords();
     }
-  }, [authToken, t]);
+  }, [isAuthed, t]);
 
   function resetForm(doctorId) {
     setMonthCursor(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -908,7 +932,6 @@ function AdminPageContent() {
 
       const headers = {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
         'x-clinic-domain': clinicDomain,
       };
 
@@ -918,6 +941,7 @@ function AdminPageContent() {
           method: editingId ? 'PUT' : 'POST',
           headers,
           body: JSON.stringify(payload),
+          credentials: 'include',
         }
       );
 
@@ -952,10 +976,10 @@ function AdminPageContent() {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
         'x-clinic-domain': getClinicDomain(),
       },
       body: JSON.stringify({ completed }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -1060,9 +1084,9 @@ function AdminPageContent() {
     const response = await fetch(`${API_BASE}/appointments/${appointment.id}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${authToken}`,
         'x-clinic-domain': getClinicDomain(),
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -1145,6 +1169,7 @@ function AdminPageContent() {
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
+        credentials: 'include',
         body: JSON.stringify({
           clinicName: loginForm.clinicName,
           username: loginForm.username,
@@ -1158,23 +1183,23 @@ function AdminPageContent() {
         throw new Error(data.error || t('admin_sign_in_error'));
       }
 
-      window.localStorage.setItem('adminToken', data.token);
-      setAuthToken(data.token);
+      setIsAuthed(true);
       setLoginForm({ clinicName: '', username: '', password: '' });
     } catch (error) {
       setLoginError(error?.message || t('admin_sign_in_error'));
     }
   }
 
-  function handleLogout() {
-    window.localStorage.removeItem('adminToken');
-    setAuthToken('');
+  async function handleLogout() {
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+    setIsAuthed(false);
     setAppointments([]);
     setDoctors([]);
     setClinicLogo('');
     setClinicDisabled(false);
     setAvailabilityRecords([]);
   }
+
 
   async function handleAvatarUpload(event) {
     event.preventDefault();
@@ -1196,10 +1221,10 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/uploads/doctor-avatar`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
         body: formData,
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1248,10 +1273,10 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/uploads/clinic-logo`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
         body: formData,
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1279,9 +1304,9 @@ function AdminPageContent() {
     try {
       const response = await fetch(`${API_BASE}/availability/records`, {
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1318,7 +1343,6 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/availability/records`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
@@ -1329,6 +1353,7 @@ function AdminPageContent() {
           start_time: availabilityForm.startTime || null,
           end_time: availabilityForm.endTime || null,
         }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1360,9 +1385,9 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/availability/records/${recordId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1389,11 +1414,11 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/clinic`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify({ is_disabled: nextValue }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1437,7 +1462,6 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/clinic`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
@@ -1446,6 +1470,7 @@ function AdminPageContent() {
           closes_at: clinicSchedule.closesAt,
           slot_minutes: slotMinutes,
         }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1478,11 +1503,11 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/clinic`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify(themePayload),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1517,11 +1542,11 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/clinic`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify({ default_language: clinicLanguage }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1641,11 +1666,11 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/doctors/${doctorForm.doctorId}`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify(payload),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1696,9 +1721,9 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/doctors/${deleteId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'x-clinic-domain': getClinicDomain(),
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1827,11 +1852,11 @@ function AdminPageContent() {
       const response = await fetch(`${API_BASE}/doctors`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'x-clinic-domain': getClinicDomain(),
         },
         body: JSON.stringify(payload),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -1871,7 +1896,7 @@ function AdminPageContent() {
     );
   }
 
-  if (!authToken) {
+  if (!isAuthed) {
     return (
       <main className="page admin-page">
         <div className="admin-language-bar">

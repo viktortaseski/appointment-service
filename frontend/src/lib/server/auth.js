@@ -4,6 +4,32 @@ import { debugLog } from './debug';
 import { pool } from './db';
 import { getHeader } from './headers';
 
+const ADMIN_COOKIE_NAME = 'admin_session';
+
+export function getAdminCookieName() {
+  return ADMIN_COOKIE_NAME;
+}
+
+export function getAdminCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/',
+  };
+}
+
+function getAuthToken(request) {
+  const cookieToken = request.cookies?.get(ADMIN_COOKIE_NAME)?.value;
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  const authHeader = getHeader(request, 'authorization') || '';
+  return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+}
+
 export async function requireAuth(request, clinic) {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -11,17 +37,15 @@ export async function requireAuth(request, clinic) {
     return { error: 'JWT_SECRET not configured.', status: 500 };
   }
 
-  const authHeader = getHeader(request, 'authorization') || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const token = getAuthToken(request);
 
   if (!token) {
-    debugLog('auth: missing bearer token');
+    debugLog('auth: missing auth token');
     return { error: 'Missing auth token.', status: 401 };
   }
 
   try {
     const payload = jwt.verify(token, secret);
-
     if (clinic && payload.clinicId !== clinic.id) {
       debugLog('auth: clinic mismatch', {
         tokenClinicId: payload.clinicId,
