@@ -273,9 +273,11 @@ function AdminPageContent() {
     primary: THEME_DEFAULTS.primary,
     secondary: THEME_DEFAULTS.secondary,
   });
+  const [clinicLanguage, setClinicLanguage] = useState('en');
   const [settingsPanel, setSettingsPanel] = useState('clinic');
   const [scheduleStatus, setScheduleStatus] = useState({ status: '', error: '' });
   const [themeStatus, setThemeStatus] = useState({ status: '', error: '' });
+  const [languageStatus, setLanguageStatus] = useState({ status: '', error: '' });
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -737,6 +739,7 @@ function AdminPageContent() {
             THEME_DEFAULTS.secondary
           ),
         });
+        setClinicLanguage(resolvedClinic?.default_language || 'en');
         const preferredLocale = resolvedClinic?.default_language;
         if (preferredLocale) {
           const stored = window.localStorage.getItem('locale');
@@ -1498,6 +1501,44 @@ function AdminPageContent() {
       setThemeStatus({ status: t('admin_theme_success'), error: '' });
     } catch (error) {
       setThemeStatus({ status: '', error: error?.message || t('admin_theme_error') });
+    }
+  }
+
+  async function handleLanguageSubmit(event) {
+    event.preventDefault();
+    setLanguageStatus({ status: '', error: '' });
+
+    if (!clinicLanguage) {
+      setLanguageStatus({ status: '', error: t('admin_clinic_language_error') });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/clinic`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'x-clinic-domain': getClinicDomain(),
+        },
+        body: JSON.stringify({ default_language: clinicLanguage }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || t('admin_clinic_language_error'));
+      }
+
+      const updatedLanguage = data.clinic?.default_language || clinicLanguage;
+      setClinicLanguage(updatedLanguage);
+      setLocale(updatedLanguage, 'user');
+      setLanguageStatus({ status: t('admin_clinic_language_success'), error: '' });
+    } catch (error) {
+      setLanguageStatus({
+        status: '',
+        error: error?.message || t('admin_clinic_language_error'),
+      });
     }
   }
 
@@ -2758,6 +2799,43 @@ function AdminPageContent() {
                   )}
                   {scheduleStatus.error && (
                     <p className="status error">{scheduleStatus.error}</p>
+                  )}
+                </form>
+              </div>
+
+              <div className="card clinic-language-card">
+                <div className="upload-header">
+                  <div>
+                    <p className="row-title">{t('admin_clinic_language_title')}</p>
+                    <p className="row-subtitle">{t('admin_clinic_language_subtitle')}</p>
+                  </div>
+                </div>
+                <form className="availability-form" onSubmit={handleLanguageSubmit}>
+                  <div className="filter-grid">
+                    <div className="field">
+                      <label htmlFor="clinicLanguage">
+                        {t('admin_clinic_language_label')}
+                      </label>
+                      <select
+                        id="clinicLanguage"
+                        value={clinicLanguage}
+                        onChange={(event) => setClinicLanguage(event.target.value)}
+                      >
+                        <option value="en">English</option>
+                        <option value="mk">Macedonian</option>
+                        <option value="al">Albanian</option>
+                        <option value="sl">Slovenian</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="submit" className="cta">
+                    {t('admin_clinic_language_save')}
+                  </button>
+                  {languageStatus.status && (
+                    <p className="status success">{languageStatus.status}</p>
+                  )}
+                  {languageStatus.error && (
+                    <p className="status error">{languageStatus.error}</p>
                   )}
                 </form>
               </div>

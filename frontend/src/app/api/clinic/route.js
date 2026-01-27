@@ -26,6 +26,7 @@ export async function PATCH(request) {
     slot_minutes: slotMinutes,
     theme_primary: themePrimary,
     theme_secondary: themeSecondary,
+    default_language: defaultLanguage,
   } = body || {};
 
   const updates = [];
@@ -78,6 +79,17 @@ export async function PATCH(request) {
     }
     values.push(themeSecondary);
     updates.push(`theme_secondary = $${values.length}`);
+  }
+
+  if (defaultLanguage !== undefined) {
+    if (defaultLanguage !== null && typeof defaultLanguage !== 'string') {
+      return NextResponse.json(
+        { error: 'default_language must be a string or null.' },
+        { status: 400 }
+      );
+    }
+    values.push(defaultLanguage);
+    updates.push(`default_language = $${values.length}`);
   }
 
   if (updates.length === 0) {

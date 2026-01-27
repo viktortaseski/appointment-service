@@ -14,6 +14,51 @@ function isAuthorized(request) {
   return token === expected;
 }
 
+export async function GET(request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const clinicId = searchParams.get('clinic_id');
+  const clinicDomain = searchParams.get('clinic_domain');
+
+  if (!clinicId && !clinicDomain) {
+    return NextResponse.json(
+      { error: 'clinic_id or clinic_domain is required.' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const resolvedClinicId =
+      clinicId ||
+      (
+        await pool.query('SELECT id FROM clinics WHERE domain = $1 LIMIT 1', [
+          clinicDomain,
+        ])
+      ).rows?.[0]?.id;
+
+    if (!resolvedClinicId) {
+      return NextResponse.json({ error: 'Clinic not found.' }, { status: 404 });
+    }
+
+    const result = await pool.query(
+      `SELECT id, clinic_id, name, username, specialty, description, avatar, is_disabled, created_at, updated_at
+       FROM doctors
+       WHERE clinic_id = $1
+       ORDER BY name`,
+      [resolvedClinicId]
+    );
+
+    return NextResponse.json({ doctors: result.rows });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Super admin doctor list failed:', err);
+    return NextResponse.json({ error: 'Unable to load doctors.' }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });

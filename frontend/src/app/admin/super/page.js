@@ -49,8 +49,11 @@ const doctorDefaults = {
 export default function SuperAdminPage() {
   const [token, setToken] = useState('');
   const [clinics, setClinics] = useState([]);
+  const [selectedClinicId, setSelectedClinicId] = useState('');
   const [clinicForm, setClinicForm] = useState(clinicDefaults);
   const [doctorForm, setDoctorForm] = useState(doctorDefaults);
+  const [doctorOptions, setDoctorOptions] = useState([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [clinicStatus, setClinicStatus] = useState({ type: '', message: '' });
   const [doctorStatus, setDoctorStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState({ clinics: false, doctor: false });
@@ -82,6 +85,17 @@ export default function SuperAdminPage() {
           id: clinic.id,
           name: clinic.name,
           domain: clinic.domain,
+          phone: clinic.phone || '',
+          email: clinic.email || '',
+          address: clinic.address || '',
+          default_language: clinic.default_language || 'en',
+          opens_at: clinic.opens_at || '09:00',
+          closes_at: clinic.closes_at || '16:00',
+          slot_minutes: clinic.slot_minutes || 30,
+          theme_primary: clinic.theme_primary || clinicDefaults.theme_primary,
+          theme_secondary: clinic.theme_secondary || clinicDefaults.theme_secondary,
+          logo: clinic.logo || '',
+          is_disabled: Boolean(clinic.is_disabled),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
       setClinics(normalized);
@@ -100,6 +114,103 @@ export default function SuperAdminPage() {
 
   function updateDoctorField(field, value) {
     setDoctorForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function applyClinicSelection(nextClinicId) {
+    setSelectedClinicId(nextClinicId);
+    setSelectedDoctorId('');
+    setDoctorOptions([]);
+
+    if (!nextClinicId) {
+      setClinicForm(clinicDefaults);
+      return;
+    }
+
+    const selected = clinics.find((clinic) => clinic.id === nextClinicId);
+    if (!selected) {
+      return;
+    }
+
+    setClinicForm({
+      name: selected.name || '',
+      domain: selected.domain || '',
+      phone: selected.phone || '',
+      email: selected.email || '',
+      address: selected.address || '',
+      default_language: selected.default_language || 'en',
+      opens_at: selected.opens_at || '09:00',
+      closes_at: selected.closes_at || '16:00',
+      slot_minutes: selected.slot_minutes ? String(selected.slot_minutes) : '',
+      theme_primary: selected.theme_primary || clinicDefaults.theme_primary,
+      theme_secondary: selected.theme_secondary || clinicDefaults.theme_secondary,
+      logo: selected.logo || '',
+      is_disabled: Boolean(selected.is_disabled),
+    });
+    setDoctorForm((prev) => ({
+      ...prev,
+      clinic_domain: selected.domain || '',
+    }));
+  }
+
+  async function loadDoctors(nextClinicId) {
+    if (!token.trim() || !nextClinicId) {
+      setDoctorOptions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/super/doctors?clinic_id=${encodeURIComponent(nextClinicId)}`,
+        {
+          headers: {
+            'x-super-admin-token': token.trim(),
+          },
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to load doctors.');
+      }
+      setDoctorOptions(data.doctors || []);
+    } catch (error) {
+      setDoctorOptions([]);
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedClinicId) {
+      setDoctorOptions([]);
+      setSelectedDoctorId('');
+      return;
+    }
+    loadDoctors(selectedClinicId);
+  }, [selectedClinicId, token]);
+
+  function applyDoctorSelection(nextDoctorId) {
+    setSelectedDoctorId(nextDoctorId);
+    if (!nextDoctorId) {
+      setDoctorForm((prev) => ({
+        ...doctorDefaults,
+        clinic_domain: prev.clinic_domain,
+      }));
+      return;
+    }
+
+    const selected = doctorOptions.find((doctor) => doctor.id === nextDoctorId);
+    if (!selected) {
+      return;
+    }
+
+    setDoctorForm({
+      clinic_domain: clinicForm.domain || '',
+      name: selected.name || '',
+      username: selected.username || '',
+      specialty: selected.specialty || '',
+      description: selected.description || '',
+      password: '',
+      avatar: selected.avatar || '',
+      is_disabled: Boolean(selected.is_disabled),
+    });
   }
 
   async function handleClinicSubmit(event) {
@@ -132,8 +243,26 @@ export default function SuperAdminPage() {
       if (!response.ok) {
         throw new Error(data?.error || 'Unable to save clinic.');
       }
+      const savedClinic = data.clinic || {};
       setClinicStatus({ type: 'success', message: 'Clinic saved successfully.' });
-      setClinicForm((prev) => ({ ...prev, ...clinicDefaults, domain: prev.domain }));
+      setSelectedClinicId(savedClinic.id || '');
+      setClinicForm({
+        name: savedClinic.name || clinicForm.name,
+        domain: savedClinic.domain || clinicForm.domain,
+        phone: savedClinic.phone || '',
+        email: savedClinic.email || '',
+        address: savedClinic.address || '',
+        default_language: savedClinic.default_language || clinicForm.default_language,
+        opens_at: savedClinic.opens_at || clinicForm.opens_at,
+        closes_at: savedClinic.closes_at || clinicForm.closes_at,
+        slot_minutes: savedClinic.slot_minutes
+          ? String(savedClinic.slot_minutes)
+          : clinicForm.slot_minutes,
+        theme_primary: savedClinic.theme_primary || clinicForm.theme_primary,
+        theme_secondary: savedClinic.theme_secondary || clinicForm.theme_secondary,
+        logo: savedClinic.logo || clinicForm.logo,
+        is_disabled: Boolean(savedClinic.is_disabled),
+      });
       loadClinics();
     } catch (error) {
       setClinicStatus({ type: 'error', message: error.message || 'Unable to save clinic.' });
@@ -176,8 +305,22 @@ export default function SuperAdminPage() {
       if (!response.ok) {
         throw new Error(data?.error || 'Unable to save doctor.');
       }
+      const savedDoctor = data.doctor || {};
       setDoctorStatus({ type: 'success', message: 'Doctor saved successfully.' });
-      setDoctorForm((prev) => ({ ...prev, ...doctorDefaults, clinic_domain: prev.clinic_domain }));
+      setSelectedDoctorId(savedDoctor.id || '');
+      setDoctorForm({
+        clinic_domain: doctorForm.clinic_domain,
+        name: savedDoctor.name || doctorForm.name,
+        username: savedDoctor.username || doctorForm.username,
+        specialty: savedDoctor.specialty || doctorForm.specialty,
+        description: savedDoctor.description || doctorForm.description,
+        password: '',
+        avatar: savedDoctor.avatar || doctorForm.avatar,
+        is_disabled: Boolean(savedDoctor.is_disabled),
+      });
+      if (selectedClinicId) {
+        loadDoctors(selectedClinicId);
+      }
     } catch (error) {
       setDoctorStatus({ type: 'error', message: error.message || 'Unable to save doctor.' });
     } finally {
@@ -219,6 +362,20 @@ export default function SuperAdminPage() {
           </div>
 
           <div className={styles.fieldGrid}>
+            <label className={styles.fullRow}>
+              Load existing clinic
+              <select
+                value={selectedClinicId}
+                onChange={(event) => applyClinicSelection(event.target.value)}
+              >
+                <option value="">Create a new clinic</option>
+                {clinics.map((clinic) => (
+                  <option key={clinic.id} value={clinic.id}>
+                    {clinic.name} ({clinic.domain})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Clinic name *
               <input
@@ -267,7 +424,7 @@ export default function SuperAdminPage() {
               >
                 <option value="en">English</option>
                 <option value="mk">Macedonian</option>
-                <option value="sq">Albanian</option>
+                <option value="al">Albanian</option>
                 <option value="sl">Slovenian</option>
               </select>
             </label>
@@ -351,6 +508,22 @@ export default function SuperAdminPage() {
           </div>
 
           <div className={styles.fieldGrid}>
+            <label className={styles.fullRow}>
+              Load existing doctor
+              <select
+                value={selectedDoctorId}
+                onChange={(event) => applyDoctorSelection(event.target.value)}
+                disabled={!selectedClinicId || doctorOptions.length === 0}
+              >
+                <option value="">Create a new doctor</option>
+                {doctorOptions.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.name}
+                    {doctor.username ? ` (${doctor.username})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className={styles.fullRow}>
               Clinic domain *
               <input
