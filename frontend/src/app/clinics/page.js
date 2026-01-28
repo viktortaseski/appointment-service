@@ -5,6 +5,7 @@ import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './ClinicsPage.module.css';
 import StarRating from '@/components/StarRating';
+import { useI18n } from '@/components/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -33,14 +34,14 @@ function getClinicInitials(name) {
   return letters.join('') || 'DC';
 }
 
-function getShortAddress(address) {
+function getShortAddress(address, fallback) {
   if (!address) {
-    return 'Address coming soon';
+    return fallback;
   }
 
   const trimmed = String(address).trim();
   if (!trimmed) {
-    return 'Address coming soon';
+    return fallback;
   }
 
   const parts = trimmed
@@ -60,6 +61,7 @@ function getShortAddress(address) {
 }
 
 export default function ClinicsPage() {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [clinics, setClinics] = useState([]);
   const [status, setStatus] = useState({ loading: true, error: false });
@@ -154,11 +156,14 @@ export default function ClinicsPage() {
     });
   }, [clinics, query]);
 
+  const resultsCount = filteredClinics.length;
   const statusLabel = status.loading
-    ? 'Loading clinics...'
+    ? t('clinics_status_loading')
     : status.error
-      ? 'Unable to load clinics right now.'
-      : `${filteredClinics.length} clinic${filteredClinics.length === 1 ? '' : 's'} found`;
+      ? t('clinics_status_error')
+      : resultsCount === 1
+        ? t('clinics_status_results_one', { count: resultsCount })
+        : t('clinics_status_results_many', { count: resultsCount });
 
   return (
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
@@ -169,40 +174,40 @@ export default function ClinicsPage() {
         </a>
         <div className={styles.headerActions}>
           <a className={styles.ghostButton} href="/">
-            Back to Dentra
+            {t('clinics_back_to_dentra')}
           </a>
           <a className={styles.primaryButton} href="mailto:info@dentra.mk">
-            Contact
+            {t('clinics_contact')}
           </a>
         </div>
       </header>
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Clinic directory</p>
-          <h1 className={styles.title}>Find a Dentra clinic</h1>
+          <p className={styles.eyebrow}>{t('clinics_eyebrow')}</p>
+          <h1 className={styles.title}>{t('clinics_title')}</h1>
           <p className={styles.subtitle}>
-            Search by clinic name, city, or domain to discover where Dentra is live.
+            {t('clinics_subtitle')}
           </p>
         </div>
         <div className={styles.searchCard}>
           <label className={styles.searchLabel} htmlFor="clinic-search">
-            Search clinics
+            {t('clinics_search_label')}
           </label>
           <div className={styles.searchBar}>
             <input
               id="clinic-search"
               className={styles.searchInput}
               type="search"
-              placeholder="Search clinics, cities, or domains"
+              placeholder={t('clinics_search_placeholder')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <button className={styles.searchButton} type="button">
-              Search
+              {t('clinics_search_button')}
             </button>
           </div>
-          <p className={styles.searchHint}>Try: Skopje, vivadent, dentra.mk</p>
+          <p className={styles.searchHint}>{t('clinics_search_hint')}</p>
         </div>
       </section>
 
@@ -210,42 +215,46 @@ export default function ClinicsPage() {
         <div className={styles.resultsHeader}>
           <p className={styles.resultsLabel}>{statusLabel}</p>
           {!status.loading && !status.error && (
-            <span className={styles.resultsPill}>Updated live</span>
+            <span className={styles.resultsPill}>{t('clinics_updated_live')}</span>
           )}
         </div>
         {status.loading && (
           <div className={styles.stateCard}>
-            <p>Loading the Dentra clinic directory...</p>
+            <p>{t('clinics_state_loading')}</p>
           </div>
         )}
         {!status.loading && status.error && (
           <div className={styles.stateCard}>
-            <p>We could not load clinics. Please try again soon.</p>
+            <p>{t('clinics_state_error')}</p>
           </div>
         )}
         {!status.loading && !status.error && filteredClinics.length === 0 && (
           <div className={styles.stateCard}>
-            <p>No clinics match your search yet.</p>
+            <p>{t('clinics_state_empty')}</p>
           </div>
         )}
         {!status.loading && !status.error && filteredClinics.length > 0 && (
           <div className={styles.resultsGrid}>
             {filteredClinics.map((clinic) => {
-              const shortAddress = getShortAddress(clinic.address);
+              const clinicName = clinic.name || t('clinics_generic_name');
+              const shortAddress = getShortAddress(
+                clinic.address,
+                t('clinics_address_placeholder')
+              );
               const cardContent = (
                 <>
                   <div className={styles.cardTop}>
                     <div className={styles.clinicMedia}>
                       {clinic.logo ? (
-                        <img src={clinic.logo} alt={`${clinic.name} logo`} loading="lazy" />
+                        <img src={clinic.logo} alt={`${clinicName} logo`} loading="lazy" />
                       ) : (
                         <div className={styles.clinicBadge}>
-                          {getClinicInitials(clinic.name)}
+                          {getClinicInitials(clinicName)}
                         </div>
                       )}
                     </div>
                     <div className={styles.cardDetails}>
-                      <h3 className={styles.clinicName}>{clinic.name}</h3>
+                      <h3 className={styles.clinicName}>{clinicName}</h3>
                       <p className={styles.clinicMeta}>
                         {shortAddress}
                       </p>
@@ -281,7 +290,9 @@ export default function ClinicsPage() {
           className={styles.modalOverlay}
           role="dialog"
           aria-modal="true"
-          aria-label={`${activeClinic.name} details`}
+          aria-label={t('clinics_modal_aria_label', {
+            name: activeClinic.name || t('clinics_generic_name'),
+          })}
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setActiveClinic(null);
@@ -293,20 +304,27 @@ export default function ClinicsPage() {
               type="button"
               className={styles.modalClose}
               onClick={() => setActiveClinic(null)}
-              aria-label="Close clinic details"
+              aria-label={t('clinics_modal_close_label')}
             >
-              Close
+              {t('clinics_modal_close')}
             </button>
             <div className={styles.modalHeader}>
               <div className={styles.modalMedia}>
                 {activeClinic.logo ? (
-                  <img src={activeClinic.logo} alt={`${activeClinic.name} logo`} />
+                  <img
+                    src={activeClinic.logo}
+                    alt={`${activeClinic.name || t('clinics_generic_name')} logo`}
+                  />
                 ) : (
-                  <div className={styles.modalBadge}>{getClinicInitials(activeClinic.name)}</div>
+                  <div className={styles.modalBadge}>
+                    {getClinicInitials(activeClinic.name || t('clinics_generic_name'))}
+                  </div>
                 )}
               </div>
               <div>
-                <h2 className={styles.modalName}>{activeClinic.name}</h2>
+                <h2 className={styles.modalName}>
+                  {activeClinic.name || t('clinics_generic_name')}
+                </h2>
                 <div className={styles.modalRating}>
                   <StarRating value={activeClinic.rating_avg} size={18} />
                   {activeClinic.rating_count ? (
@@ -316,21 +334,21 @@ export default function ClinicsPage() {
                   ) : null}
                 </div>
                 <p className={styles.modalAddress}>
-                  {activeClinic.address || 'Address coming soon'}
+                  {activeClinic.address || t('clinics_address_placeholder')}
                 </p>
               </div>
             </div>
             <div className={styles.modalDetails}>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Phone</span>
+                <span className={styles.detailLabel}>{t('clinics_detail_phone')}</span>
                 <span className={styles.detailValue}>{activeClinic.phone || '—'}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Email</span>
+                <span className={styles.detailLabel}>{t('clinics_detail_email')}</span>
                 <span className={styles.detailValue}>{activeClinic.email || '—'}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Domain</span>
+                <span className={styles.detailLabel}>{t('clinics_detail_domain')}</span>
                 <span className={styles.detailValue}>{activeClinic.domain || '—'}</span>
               </div>
             </div>
@@ -342,7 +360,7 @@ export default function ClinicsPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open booking page
+                  {t('clinics_open_booking')}
                 </a>
               ) : null}
               <button
@@ -350,7 +368,7 @@ export default function ClinicsPage() {
                 className={styles.ghostButton}
                 onClick={() => setActiveClinic(null)}
               >
-                Close
+                {t('clinics_modal_close')}
               </button>
             </div>
           </div>

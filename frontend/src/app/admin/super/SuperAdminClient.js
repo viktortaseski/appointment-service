@@ -46,6 +46,17 @@ const doctorDefaults = {
   is_disabled: false,
 };
 
+const auditFilterDefaults = {
+  clinicId: '',
+  doctorId: '',
+  action: '',
+  from: '',
+  to: '',
+  limit: '100',
+};
+
+const auditLimitOptions = [50, 100, 250, 500];
+
 export default function SuperAdminPage() {
   const [authReady, setAuthReady] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
@@ -60,6 +71,13 @@ export default function SuperAdminPage() {
   const [clinicStatus, setClinicStatus] = useState({ type: '', message: '' });
   const [doctorStatus, setDoctorStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState({ clinics: false, doctor: false });
+  const [auditFilters, setAuditFilters] = useState({ ...auditFilterDefaults });
+  const [auditDoctorOptions, setAuditDoctorOptions] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditMeta, setAuditMeta] = useState({ total: 0, limit: 100, offset: 0 });
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditStatus, setAuditStatus] = useState({ type: '', message: '' });
+  const [auditLoadedAt, setAuditLoadedAt] = useState(null);
 
   useEffect(() => {
     async function checkSession() {
@@ -119,12 +137,32 @@ export default function SuperAdminPage() {
     }
   }, [isAuthed]);
 
+  useEffect(() => {
+    if (isAuthed) {
+      loadAuditLogs({ nextOffset: 0 });
+    } else {
+      setAuditLogs([]);
+      setAuditMeta({ total: 0, limit: Number(auditFilterDefaults.limit), offset: 0 });
+      setAuditLoadedAt(null);
+    }
+  }, [isAuthed]);
+
   function updateClinicField(field, value) {
     setClinicForm((prev) => ({ ...prev, [field]: value }));
   }
 
   function updateDoctorField(field, value) {
     setDoctorForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function updateAuditFilter(field, value) {
+    setAuditFilters((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'clinicId') {
+        next.doctorId = '';
+      }
+      return next;
+    });
   }
 
   function applyClinicSelection(nextClinicId) {
@@ -195,6 +233,15 @@ export default function SuperAdminPage() {
     loadDoctors(selectedClinicId);
   }, [selectedClinicId, isAuthed]);
 
+  useEffect(() => {
+    if (!isAuthed || !auditFilters.clinicId) {
+      setAuditDoctorOptions([]);
+      return;
+    }
+
+    loadAuditDoctors(auditFilters.clinicId);
+  }, [auditFilters.clinicId, isAuthed]);
+
   function applyDoctorSelection(nextDoctorId) {
     setSelectedDoctorId(nextDoctorId);
     if (!nextDoctorId) {
@@ -220,6 +267,146 @@ export default function SuperAdminPage() {
       avatar: selected.avatar || '',
       is_disabled: Boolean(selected.is_disabled),
     });
+  }
+
+  async function loadAuditDoctors(clinicId) {
+    try {
+      const response = await fetch(
+        `${API_BASE}/super/doctors?clinic_id=${encodeURIComponent(clinicId)}`,
+        {
+          credentials: 'include',
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to load doctors.');
+      }
+      setAuditDoctorOptions(data.doctors || []);
+    } catch (error) {
+      setAuditDoctorOptions([]);
+    }
+  }
+
+  async function loadAuditLogs({ nextOffset = auditMeta.offset || 0, filters } = {}) {
+    if (!isAuthed) {
+      return;
+    }
+
+    const activeFilters = filters || auditFilters;
+    const params = new URLSearchParams();
+
+    if (activeFilters.clinicId) {
+      params.set('clinic_id', activeFilters.clinicId);
+    }
+    if (activeFilters.doctorId) {
+      params.set('doctor_id', activeFilters.doctorId);
+    }
+    const actionValue = String(activeFilters.action || '').trim();
+    if (actionValue) {
+      params.set('action', actionValue);
+    }
+    if (activeFilters.from) {
+      params.set('from', activeFilters.from);
+    }
+    if (activeFilters.to) {
+      params.set('to', activeFilters.to);
+    }
+
+    const limitValue = activeFilters.limit || auditFilterDefaults.limit;
+    params.set('limit', limitValue);
+    params.set('offset', String(nextOffset || 0));
+
+    setAuditLoading(true);
+    setAuditStatus({ type: '', message: '' });
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/super/audit-logs?${params.toString()}`,
+        {
+          credentials: 'include',
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to load audit logs.');
+      }
+      setAuditLogs(data.logs || []);
+      const meta = data.meta || {};
+      const resolvedLimit = Number(meta.limit) || Number(limitValue) || 100;
+      const resolvedOffset = Number(meta.offset) || 0;
+      setAuditMeta({
+        total: Number(meta.total) || 0,
+        limit: resolvedLimit,
+        offset: resolvedOffset,
+      });
+      setAuditLoadedAt(new Date());
+    } catch (error) {
+      setAuditLogs([]);
+      setAuditMeta({ total: 0, limit: Number(limitValue) || 100, offset: 0 });
+      setAuditStatus({
+        type: 'error',
+        message: error.message || 'Unable to load audit logs.',
+      });
+    } finally {
+      setAuditLoading(false);
+    }
+  }
+
+  function handleAuditSubmit(event) {
+    event.preventDefault();
+    loadAuditLogs({ nextOffset: 0 });
+  }
+
+  function handleAuditReset() {
+    const nextFilters = { ...auditFilterDefaults };
+    setAuditFilters(nextFilters);
+    setAuditDoctorOptions([]);
+    setAuditMeta((prev) => ({ ...prev, offset: 0, limit: Number(nextFilters.limit) }));
+    loadAuditLogs({ nextOffset: 0, filters: nextFilters });
+  }
+
+  function handleAuditPage(direction) {
+    const limit = Number(auditMeta.limit) || Number(auditFilters.limit) || 100;
+    const total = Number(auditMeta.total) || 0;
+    const maxOffset = Math.max(0, total - limit);
+    const nextOffset = Math.min(
+      maxOffset,
+      Math.max(0, (auditMeta.offset || 0) + direction * limit)
+    );
+    loadAuditLogs({ nextOffset });
+  }
+
+  function formatAuditTimestamp(value) {
+    if (!value) {
+      return '';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+    return date.toLocaleString();
+  }
+
+  function formatAuditMetadata(metadata) {
+    if (!metadata) {
+      return '-';
+    }
+    if (typeof metadata === 'string') {
+      return metadata.length > 200 ? `${metadata.slice(0, 200)}...` : metadata;
+    }
+    if (typeof metadata !== 'object') {
+      return String(metadata);
+    }
+    const keys = Object.keys(metadata);
+    if (keys.length === 0) {
+      return '-';
+    }
+    try {
+      const serialized = JSON.stringify(metadata);
+      return serialized.length > 200 ? `${serialized.slice(0, 200)}...` : serialized;
+    } catch (error) {
+      return '-';
+    }
   }
 
   async function handleClinicSubmit(event) {
@@ -371,6 +558,12 @@ export default function SuperAdminPage() {
     setSelectedDoctorId('');
     setClinics([]);
     setDoctorOptions([]);
+    setAuditFilters({ ...auditFilterDefaults });
+    setAuditDoctorOptions([]);
+    setAuditLogs([]);
+    setAuditMeta({ total: 0, limit: Number(auditFilterDefaults.limit), offset: 0 });
+    setAuditStatus({ type: '', message: '' });
+    setAuditLoadedAt(null);
   }
 
   if (!authReady) {
@@ -421,6 +614,12 @@ export default function SuperAdminPage() {
       </main>
     );
   }
+
+  const auditTotal = Number(auditMeta.total) || 0;
+  const auditLimit = Number(auditMeta.limit) || Number(auditFilters.limit) || 100;
+  const auditOffset = Number(auditMeta.offset) || 0;
+  const auditStart = auditTotal ? auditOffset + 1 : 0;
+  const auditEnd = auditTotal ? Math.min(auditOffset + auditLimit, auditTotal) : 0;
 
   return (
     <main className={`${styles.page} ${displayFont.variable} ${monoFont.variable}`}>
@@ -698,6 +897,178 @@ export default function SuperAdminPage() {
             {loading.doctor ? 'Saving doctor…' : 'Save doctor'}
           </button>
         </form>
+
+        <section className={`${styles.panel} ${styles.auditPanel}`}>
+          <div className={styles.panelHeader}>
+            <div>
+              <h2>Audit Log Reporting</h2>
+              <p>Track actions across clinics, doctors, and patient records.</p>
+            </div>
+            <span className={styles.pill}>Audit</span>
+          </div>
+
+          <form className={styles.auditForm} onSubmit={handleAuditSubmit}>
+            <div className={styles.fieldGrid}>
+              <label className={styles.fullRow}>
+                Clinic scope
+                <select
+                  value={auditFilters.clinicId}
+                  onChange={(event) => updateAuditFilter('clinicId', event.target.value)}
+                >
+                  <option value="">All clinics</option>
+                  {clinics.map((clinic) => (
+                    <option key={clinic.id} value={clinic.id}>
+                      {clinic.name} ({clinic.domain})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Doctor
+                <select
+                  value={auditFilters.doctorId}
+                  onChange={(event) => updateAuditFilter('doctorId', event.target.value)}
+                  disabled={!auditFilters.clinicId || auditDoctorOptions.length === 0}
+                >
+                  <option value="">All doctors</option>
+                  {auditDoctorOptions.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.name}
+                      {doctor.username ? ` (${doctor.username})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Action contains
+                <input
+                  value={auditFilters.action}
+                  onChange={(event) => updateAuditFilter('action', event.target.value)}
+                  placeholder="appointments.cancel"
+                />
+              </label>
+              <label>
+                From date
+                <input
+                  type="date"
+                  value={auditFilters.from}
+                  onChange={(event) => updateAuditFilter('from', event.target.value)}
+                />
+              </label>
+              <label>
+                To date
+                <input
+                  type="date"
+                  value={auditFilters.to}
+                  onChange={(event) => updateAuditFilter('to', event.target.value)}
+                />
+              </label>
+              <label>
+                Rows per page
+                <select
+                  value={auditFilters.limit}
+                  onChange={(event) => updateAuditFilter('limit', event.target.value)}
+                >
+                  {auditLimitOptions.map((value) => (
+                    <option key={value} value={String(value)}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className={`${styles.fullRow} ${styles.auditActions}`}>
+                <button type="submit" disabled={auditLoading}>
+                  {auditLoading ? 'Loading logs...' : 'Run report'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.ghostButton}
+                  onClick={handleAuditReset}
+                  disabled={auditLoading}
+                >
+                  Reset filters
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {auditStatus.message ? (
+            <p className={`${styles.status} ${styles[auditStatus.type]}`}>
+              {auditStatus.message}
+            </p>
+          ) : null}
+
+          <div className={styles.auditMeta}>
+            <span>
+              {auditTotal
+                ? `Showing ${auditStart}-${auditEnd} of ${auditTotal} entries`
+                : 'No audit entries yet.'}
+            </span>
+            <span>
+              {auditLoadedAt
+                ? `Updated ${formatAuditTimestamp(auditLoadedAt)}`
+                : 'Run the report to load entries.'}
+            </span>
+          </div>
+
+          {auditLogs.length ? (
+            <div className={styles.auditTableWrap}>
+              <table className={styles.auditTable}>
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Clinic</th>
+                    <th>Doctor</th>
+                    <th>Action</th>
+                    <th>Metadata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td>{formatAuditTimestamp(log.created_at)}</td>
+                      <td>
+                        {log.clinic_name || 'Unknown'}
+                        {log.clinic_domain ? ` (${log.clinic_domain})` : ''}
+                      </td>
+                      <td>
+                        {log.doctor_name || '-'}
+                        {log.doctor_username ? ` (${log.doctor_username})` : ''}
+                      </td>
+                      <td className={styles.auditAction}>{log.action}</td>
+                      <td className={styles.auditMetadata}>
+                        {formatAuditMetadata(log.metadata)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className={styles.auditEmpty}>
+              No audit entries match these filters. Try expanding the date range.
+            </p>
+          )}
+
+          <div className={styles.auditPagination}>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => handleAuditPage(-1)}
+              disabled={auditLoading || auditOffset <= 0}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => handleAuditPage(1)}
+              disabled={auditLoading || auditOffset + auditLimit >= auditTotal}
+            >
+              Next
+            </button>
+          </div>
+        </section>
       </section>
     </main>
   );

@@ -141,8 +141,9 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 28px;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  column-gap: 28px;
+  row-gap: 40px;
 }
 
 .panel {
@@ -259,6 +260,18 @@
   cursor: pointer;
 }
 
+.panel .ghostButton {
+  border: 1px solid rgba(90, 183, 255, 0.5);
+  background: rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+.panel .ghostButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .loginPanel {
   position: relative;
   z-index: 1;
@@ -349,6 +362,92 @@
   border: 1px solid rgba(248, 113, 113, 0.35);
 }
 
+.auditPanel {
+  grid-column: 1 / -1;
+}
+
+.auditForm {
+  display: grid;
+  gap: 16px;
+}
+
+.auditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.auditMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.auditTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.auditTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  font-size: 0.85rem;
+}
+
+.auditTable th,
+.auditTable td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.auditTable th {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.auditTable tbody tr:hover {
+  background: rgba(56, 242, 195, 0.08);
+}
+
+.auditAction {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.auditMetadata {
+  font-family: var(--font-mono);
+  color: rgba(226, 232, 240, 0.75);
+  max-width: 360px;
+  word-break: break-word;
+}
+
+.auditEmpty {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.9rem;
+}
+
+.auditPagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @keyframes float-in {
   from {
     opacity: 0;
@@ -362,6 +461,10 @@
 
 @media (max-width: 900px) {
   .header {
+    grid-template-columns: 1fr;
+  }
+
+  .grid {
     grid-template-columns: 1fr;
   }
 }
