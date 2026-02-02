@@ -30,17 +30,34 @@ function parseNumber(value, fallback) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
-function buildClinicLogoUrl(clinicLogo, clinicId) {
-  if (clinicLogo) {
-    return clinicLogo;
-  }
+const DEFAULT_LOGO_URL =
+  'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png';
 
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  if (!cloudName || !clinicId) {
+function normalizeLogo(value) {
+  if (!value) {
     return '';
   }
 
-  return `https://res.cloudinary.com/${cloudName}/image/upload/clinics/${clinicId}/logo`;
+  const trimmed = String(value).trim();
+  if (!trimmed || trimmed.toLowerCase() === 'null') {
+    return '';
+  }
+
+  return trimmed;
+}
+
+function buildClinicLogoUrl(clinicLogo, clinicId) {
+  const normalizedLogo = normalizeLogo(clinicLogo);
+  if (normalizedLogo) {
+    return normalizedLogo;
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (cloudName && clinicId) {
+    return `https://res.cloudinary.com/${cloudName}/image/upload/clinics/${clinicId}/logo`;
+  }
+
+  return DEFAULT_LOGO_URL;
 }
 
 export function getReminderToken(request) {
