@@ -30,6 +30,19 @@ function parseNumber(value, fallback) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function buildClinicLogoUrl(clinicLogo, clinicId) {
+  if (clinicLogo) {
+    return clinicLogo;
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (!cloudName || !clinicId) {
+    return '';
+  }
+
+  return `https://res.cloudinary.com/${cloudName}/image/upload/clinics/${clinicId}/logo`;
+}
+
 export function getReminderToken(request) {
   const authHeader = getHeader(request, 'authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
@@ -135,6 +148,7 @@ export async function runAppointmentReminders(request) {
       const rescheduleUrl = cancelToken
         ? `${baseUrl}/api/appointments/reschedule?token=${encodeURIComponent(cancelToken)}`
         : '';
+      const clinicLogoUrl = buildClinicLogoUrl(row.clinic_logo, row.clinic_id);
 
       try {
         await sendBrevoEmail({
@@ -147,7 +161,7 @@ export async function runAppointmentReminders(request) {
             FIRSTNAME: getFirstName(row.patient_name || ''),
             clinic_name: row.clinic_name,
             clinic_id: row.clinic_id,
-            clinic_logo: row.clinic_logo || '',
+            clinic_logo: clinicLogoUrl,
             doctor_name: row.doctor_name || '',
             date: appointmentDate,
             time: appointmentTime,
