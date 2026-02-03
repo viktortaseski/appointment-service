@@ -51,10 +51,24 @@ function normalizeTime(value) {
   return value.slice(0, 5);
 }
 
+function normalizeDateKey(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value.slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return String(value).slice(0, 10);
+}
+
 function normalizeAppointment(raw) {
-  const dateKey = typeof raw.date === 'string'
-    ? raw.date.slice(0, 10)
-    : formatDateKey(new Date(raw.date));
+  const dateKey = normalizeDateKey(raw.date);
 
   return {
     id: raw.id,
@@ -605,7 +619,8 @@ function AdminPageContent() {
     calendarCursor.getMonth() === today.getMonth();
 
   const bookedTimes = useMemo(() => {
-    if (!formState.date || !formState.doctorId) {
+    const normalizedDate = normalizeDateKey(formState.date);
+    if (!normalizedDate || !formState.doctorId) {
       return [];
     }
 
@@ -613,10 +628,10 @@ function AdminPageContent() {
       .filter(
         (appointment) =>
           appointment.doctorId === formState.doctorId &&
-          appointment.dateKey === formState.date &&
+          normalizeDateKey(appointment.dateKey) === normalizedDate &&
           appointment.id !== editingId
       )
-      .map((appointment) => appointment.time);
+      .map((appointment) => normalizeTime(appointment.time));
   }, [appointments, formState.date, formState.doctorId, editingId]);
 
   useEffect(() => {
@@ -901,7 +916,8 @@ function AdminPageContent() {
   }
 
   function handleFormChange(field, value) {
-    setFormState((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'date' ? normalizeDateKey(value) : value;
+    setFormState((prev) => ({ ...prev, [field]: nextValue }));
   }
 
   async function handleFormSubmit(event) {
@@ -969,6 +985,12 @@ function AdminPageContent() {
     } catch (error) {
       setFormError(error?.message || t('admin_save_error'));
     }
+  }
+
+  function closeAppointmentForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setFormError('');
   }
 
   async function setAppointmentCompleted(appointment, completed) {
@@ -1130,7 +1152,7 @@ function AdminPageContent() {
     setFormState({
       patient: appointment.patient,
       doctorId: appointment.doctorId,
-      date: appointment.dateKey,
+      date: normalizeDateKey(appointment.dateKey),
       time: appointment.time,
       email: appointment.email || '',
       phone: appointment.phone || '',
@@ -2063,7 +2085,24 @@ function AdminPageContent() {
             </div>
 
             {showForm && (
-              <form className="card admin-form" onSubmit={handleFormSubmit}>
+              <div className="admin-form-overlay" role="dialog" aria-modal="true">
+                <div
+                  className="admin-form-backdrop"
+                  onClick={closeAppointmentForm}
+                  aria-hidden="true"
+                />
+                <form
+                  className="card admin-form admin-form-modal"
+                  onSubmit={handleFormSubmit}
+                >
+                  <button
+                    type="button"
+                    className="admin-form-close"
+                    onClick={closeAppointmentForm}
+                    aria-label={t('admin_cancel')}
+                  >
+                    X
+                  </button>
                 <div className="form-header">
                   <h2>
                     {editingId
@@ -2183,7 +2222,7 @@ function AdminPageContent() {
                   {formError && <p className="inline-hint error">{formError}</p>}
                   <div className="time-grid">
                     {timeSlots.map((slot) => {
-                      const isTaken = bookedTimes.includes(slot.value);
+                      const isTaken = bookedTimes.includes(normalizeTime(slot.value));
                       const isBlocked = blockedTimes.times.includes(slot.value);
                       const isDisabled = !formState.doctorId || isTaken || isBlocked;
 
@@ -2236,11 +2275,7 @@ function AdminPageContent() {
                   <button
                     type="button"
                     className="ghost"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingId(null);
-                      setFormError('');
-                    }}
+                    onClick={closeAppointmentForm}
                   >
                     {t('admin_cancel')}
                   </button>
@@ -2250,7 +2285,8 @@ function AdminPageContent() {
                       : t('admin_create_appointment')}
                   </button>
                 </div>
-              </form>
+                </form>
+              </div>
             )}
 
             <div className="card filter-card">

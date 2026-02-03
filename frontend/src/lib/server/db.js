@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 
 import { debugLog } from './debug';
 
@@ -17,6 +17,9 @@ const sslRequired =
   process.env.DATABASE_SSL === 'true' ||
   process.env.PGSSLMODE === 'require' ||
   (connectionString && connectionString.includes('render.com'));
+
+// Keep DATE columns as YYYY-MM-DD strings to avoid timezone shifts.
+types.setTypeParser(1082, (value) => value);
 
 export const pool = new Pool({
   connectionString,
