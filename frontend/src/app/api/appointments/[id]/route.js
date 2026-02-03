@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 
 import { resolveClinic } from '@/lib/server/clinic-resolver';
 import { pool } from '@/lib/server/db';
+import { sendBrevoEmail } from '@/lib/server/brevo-mail';
+import { createCancelToken } from '@/lib/server/appointment-cancel';
 import { requireAuth } from '@/lib/server/auth';
 import { logAudit } from '@/lib/server/audit';
 import { upsertAppointmentReminder } from '@/lib/server/reminders';
+import { getHeader } from '@/lib/server/headers';
 import {
   buildTimeSlotsForDate,
   computeBlockedTimes,
@@ -34,6 +37,116 @@ async function upsertPatientRecord({ name, email, phone }) {
      ON CONFLICT DO NOTHING`,
     [normalizedName, normalizedEmail, normalizedPhone]
   );
+}
+
+function normalizeDateValue(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value.slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return String(value).slice(0, 10);
+}
+
+function getBaseUrl(headers) {
+  const forwardedProto = getHeader(headers, 'x-forwarded-proto');
+  const forwardedHost = getHeader(headers, 'x-forwarded-host');
+  const host = forwardedHost || getHeader(headers, 'host');
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  }
+
+  const proto = forwardedProto ? forwardedProto.split(',')[0].trim() : 'https';
+  return `${proto}://${host.split(',')[0].trim()}`;
+}
+
+function getFirstName(value) {
+  if (!value) {
+    return '';
+  }
+
+  return value.trim().split(/\s+/)[0] || '';
+}
+
+function buildClinicLogoUrl(clinic) {
+  const fallback =
+    'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png';
+
+  if (clinic?.logo) {
+    return String(clinic.logo).trim();
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (cloudName && clinic?.id) {
+    return `https://res.cloudinary.com/${cloudName}/image/upload/clinics/${clinic.id}/logo`;
+  }
+
+  return fallback;
+}
+
+async function sendRescheduledEmail({
+  to,
+  patientName,
+  clinic,
+  date,
+  time,
+  baseUrl,
+  appointmentId,
+}) {
+  if (!to) {
+    return { sent: false, error: 'missing recipient' };
+  }
+
+  const safeClinicName = clinic?.name || 'the clinic';
+  const subject = `Appointment rescheduled at ${safeClinicName}`;
+  const text = `Your appointment at ${safeClinicName} has been rescheduled to ${date} at ${time}.`;
+  const token = createCancelToken({
+    appointmentId,
+    clinicId: clinic?.id,
+    patientEmail: to,
+  });
+  const resolvedBaseUrl = clinic?.domain ? `https://${clinic.domain}` : baseUrl;
+  const cancelUrl = token && resolvedBaseUrl
+    ? `${resolvedBaseUrl}/api/appointments/cancel?token=${encodeURIComponent(token)}`
+    : null;
+  const rescheduleUrl = token && resolvedBaseUrl
+    ? `${resolvedBaseUrl}/api/appointments/reschedule?token=${encodeURIComponent(token)}`
+    : null;
+  const templateId = Number(process.env.BREVO_APPOINTMENT_RESCHEDULE_TEMPLATE_ID);
+
+  try {
+    const info = await sendBrevoEmail({
+      to,
+      subject,
+      text: cancelUrl ? `${text}\n\nCancel: ${cancelUrl}` : text,
+      senderName: safeClinicName,
+      templateId: Number.isInteger(templateId) ? templateId : null,
+      params: {
+        FIRSTNAME: getFirstName(patientName || ''),
+        clinic_name: safeClinicName,
+        clinic_logo: buildClinicLogoUrl(clinic),
+        clinic_id: clinic?.id || '',
+        date,
+        time,
+        cancel_token: token || '',
+        reschedule_url: rescheduleUrl || '',
+      },
+    });
+
+    return { sent: true, info };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Reschedule email failed:', error);
+    return { sent: false, error: error?.message || 'Unable to send reschedule email.' };
+  }
 }
 
 export async function GET(request, { params }) {
@@ -200,6 +313,19 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const existingResult = await pool.query(
+      'SELECT id, date, time FROM appointments WHERE id = $1 AND clinic_id = $2',
+      [params.id, clinic.id]
+    );
+
+    if (existingResult.rowCount === 0) {
+      return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 });
+    }
+
+    const previous = existingResult.rows[0];
+    const previousDate = normalizeDateValue(previous.date);
+    const previousTime = normalizeTime(previous.time);
+
     const updateResult = await pool.query(
       'UPDATE appointments SET doctor_id = $1, patient_name = $2, patient_email = $3, patient_phone = $4, date = $5, time = $6, notes = $7 WHERE id = $8 AND clinic_id = $9 RETURNING id',
       [
@@ -218,6 +344,8 @@ export async function PUT(request, { params }) {
     if (updateResult.rowCount === 0) {
       return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 });
     }
+
+    const rescheduled = previousDate !== date || previousTime !== normalizedTime;
 
     await upsertAppointmentReminder({
       appointmentId: params.id,
@@ -240,11 +368,35 @@ export async function PUT(request, { params }) {
     await logAudit({
       clinicId: clinic.id,
       doctorId: authResult.auth?.doctorId,
-      action: 'appointment_updated',
+      action: rescheduled ? 'appointment_rescheduled_by_admin' : 'appointment_updated',
       metadata: {
         appointmentId: params.id,
+        rescheduled,
+        previous: {
+          date: previousDate,
+          time: previousTime,
+        },
+        next: {
+          date,
+          time: normalizedTime,
+        },
       },
     });
+
+    if (rescheduled && patientEmail) {
+      const trimmedEmail = patientEmail.trim();
+      if (trimmedEmail) {
+        void sendRescheduledEmail({
+          to: trimmedEmail,
+          patientName,
+          clinic,
+          date,
+          time: normalizedTime,
+          baseUrl: getBaseUrl(request.headers),
+          appointmentId: params.id,
+        });
+      }
+    }
 
     return NextResponse.json({ appointment: appointmentResult.rows[0] });
   } catch (err) {
