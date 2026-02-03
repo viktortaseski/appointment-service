@@ -123,8 +123,8 @@ export async function runAppointmentReminders(request) {
       "DELETE FROM appointments WHERE date < (CURRENT_DATE - INTERVAL '1 day')"
     );
 
-    const result = await client.query(
-      `SELECT r.id AS reminder_id,
+      const result = await client.query(
+        `SELECT r.id AS reminder_id,
               r.appointment_id,
               a.date,
               a.time,
@@ -134,6 +134,9 @@ export async function runAppointmentReminders(request) {
               c.name AS clinic_name,
               c.logo AS clinic_logo,
               c.domain AS clinic_domain,
+              c.phone AS clinic_phone,
+              c.email AS clinic_email,
+              c.address AS clinic_address,
               d.name AS doctor_name
        FROM appointment_reminders r
        JOIN appointments a ON a.id = r.appointment_id
@@ -179,6 +182,10 @@ export async function runAppointmentReminders(request) {
             clinic_name: row.clinic_name,
             clinic_id: row.clinic_id,
             clinic_logo: clinicLogoUrl,
+            clinic_phone: row.clinic_phone || '',
+            clinic_email: row.clinic_email || '',
+            clinic_address: row.clinic_address || '',
+            clinic_domain: row.clinic_domain || '',
             doctor_name: row.doctor_name || '',
             date: appointmentDate,
             time: appointmentTime,
