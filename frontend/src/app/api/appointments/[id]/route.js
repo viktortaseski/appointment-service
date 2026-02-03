@@ -149,6 +149,51 @@ async function sendRescheduledEmail({
   }
 }
 
+async function sendCancellationEmail({
+  to,
+  patientName,
+  clinic,
+  date,
+  time,
+  baseUrl,
+}) {
+  if (!to) {
+    return { sent: false, error: 'missing recipient' };
+  }
+
+  const safeClinicName = clinic?.name || 'the clinic';
+  const subject = `Appointment canceled at ${safeClinicName}`;
+  const text = `Your appointment at ${safeClinicName} on ${date} at ${time} has been canceled.`;
+  const resolvedBaseUrl = clinic?.domain ? `https://${clinic.domain}` : baseUrl;
+  const templateId = Number(process.env.BREVO_APPOINTMENT_CANCEL_TEMPLATE_ID);
+
+  try {
+    const info = await sendBrevoEmail({
+      to,
+      subject,
+      text,
+      senderName: safeClinicName,
+      templateId: Number.isInteger(templateId) ? templateId : null,
+      params: {
+        FIRSTNAME: getFirstName(patientName || ''),
+        clinic_name: safeClinicName,
+        clinic_logo: buildClinicLogoUrl(clinic),
+        clinic_id: clinic?.id || '',
+        clinic_domain: clinic?.domain || '',
+        date,
+        time,
+        base_url: resolvedBaseUrl || '',
+      },
+    });
+
+    return { sent: true, info };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Cancellation email failed:', error);
+    return { sent: false, error: error?.message || 'Unable to send cancellation email.' };
+  }
+}
+
 export async function GET(request, { params }) {
   const { clinic, error } = await resolveClinic(request.headers);
   if (error) {
@@ -425,6 +470,19 @@ export async function DELETE(request, { params }) {
   }
 
   try {
+    const appointmentResult = await pool.query(
+      'SELECT * FROM appointments_with_doctors WHERE id = $1 AND clinic_id = $2',
+      [params.id, clinic.id]
+    );
+
+    if (appointmentResult.rowCount === 0) {
+      return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 });
+    }
+
+    const appointment = appointmentResult.rows[0];
+    const appointmentDate = normalizeDateValue(appointment.date);
+    const appointmentTime = normalizeTime(appointment.time);
+
     const deleteResult = await pool.query(
       'DELETE FROM appointments WHERE id = $1 AND clinic_id = $2',
       [params.id, clinic.id]
@@ -440,8 +498,22 @@ export async function DELETE(request, { params }) {
       action: 'appointment_deleted',
       metadata: {
         appointmentId: params.id,
+        date: appointmentDate,
+        time: appointmentTime,
       },
     });
+
+    const patientEmail = (appointment.patient_email || '').trim();
+    if (patientEmail) {
+      void sendCancellationEmail({
+        to: patientEmail,
+        patientName: appointment.patient_name,
+        clinic,
+        date: appointmentDate,
+        time: appointmentTime,
+        baseUrl: getBaseUrl(request.headers),
+      });
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (err) {
