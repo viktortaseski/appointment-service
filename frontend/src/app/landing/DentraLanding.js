@@ -5,7 +5,7 @@ import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './DentraLanding.module.css';
 import { defaultLanguage, languageOptions, translations } from './translations';
-import StarRating from '@/components/StarRating';
+import StarRating from '@/shared/components/StarRating';
 
 const displayFont = Fraunces({
   subsets: ['latin'],

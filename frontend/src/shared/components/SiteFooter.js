@@ -1,6 +1,6 @@
 'use client';
 
-import { useI18n } from './I18nProvider';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 
 export default function SiteFooter({ clinic }) {
   const { t } = useI18n();

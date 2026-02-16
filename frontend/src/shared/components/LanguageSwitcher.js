@@ -1,6 +1,6 @@
 'use client';
 
-import { useI18n } from './I18nProvider';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 
 const languages = [
   { code: 'en', label: 'EN' },

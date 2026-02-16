@@ -1,7 +1,7 @@
 'use client';
 
 import LanguageSwitcher from './LanguageSwitcher';
-import { useI18n } from './I18nProvider';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 
 export default function Topbar({ clinic }) {
   const { t } = useI18n();

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import BookingForm from '../components/BookingForm';
-import DoctorsSection from '../components/DoctorsSection';
-import SiteFooter from '../components/SiteFooter';
-import Topbar from '../components/Topbar';
-import { useI18n } from '../components/I18nProvider';
-import StarRating from '../components/StarRating';
+import BookingForm from '@/features/booking/BookingForm';
+import DoctorsSection from '@/features/booking/DoctorsSection';
+import SiteFooter from '@/shared/components/SiteFooter';
+import StarRating from '@/shared/components/StarRating';
+import Topbar from '@/shared/components/Topbar';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 import DentraLanding from './landing/DentraLanding';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';

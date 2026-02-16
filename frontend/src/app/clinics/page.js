@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Fraunces, Manrope } from 'next/font/google';
 
 import styles from './ClinicsPage.module.css';
-import StarRating from '@/components/StarRating';
-import { useI18n } from '@/components/I18nProvider';
+import StarRating from '@/shared/components/StarRating';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 

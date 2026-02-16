@@ -1,5 +1,5 @@
 import './globals.css';
-import { I18nProvider } from '../components/I18nProvider';
+import { I18nProvider } from '@/shared/i18n/I18nProvider';
 
 export const metadata = {
   title: 'Dental Clinic Appointment Service',

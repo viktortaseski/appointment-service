@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import LanguageSwitcher from './LanguageSwitcher';
-import { useI18n } from './I18nProvider';
+import LanguageSwitcher from '@/shared/components/LanguageSwitcher';
+import { useI18n } from '@/shared/i18n/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 function formatDateKey(date) {
