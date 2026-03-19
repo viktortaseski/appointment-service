@@ -27,6 +27,11 @@ const imageSources = {
   hero: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769091300/Dental_smiling_girl_no-copyight_lxgnue.jpg',
   schedule: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769091132/adminpage_kbylar.png',
   brand: '/landing/brand.svg',
+  cartographyLanding: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1773951788/landing_igik12.png',
+  cartographyTreatments: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1773951787/treatments_vwskb0.png',
+  cartographyRevenue: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1773951787/revenue_oqus4w.png',
+  cartographySettings: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1773951787/settings_si100m.png',
+  cartographyCalendar: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1773951787/calendar_ozlyd4.png',
 };
 
 function normalizeLanguage(value) {
@@ -55,6 +60,7 @@ export default function DentraLanding() {
   const [language, setLanguage] = useState(defaultLanguage);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const [clinics, setClinics] = useState([]);
   const [clinicStatus, setClinicStatus] = useState({ loading: true, error: false });
   const headerRef = useRef(null);
@@ -267,7 +273,12 @@ export default function DentraLanding() {
           return;
         }
 
-        const normalized = (data.clinics || []).map((clinic) => ({
+        const normalized = (data.clinics || [])
+          .filter((clinic) => {
+            const d = (clinic.domain || '').toLowerCase();
+            return d && !/localhost|\.local$|127\.0\.0\.1|::1/.test(d);
+          })
+          .map((clinic) => ({
           id: clinic.id || clinic.domain || clinic.name,
           name: clinic.name || clinic.domain || 'Clinic',
           domain: clinic.domain || '',
@@ -296,9 +307,35 @@ export default function DentraLanding() {
   }, []);
 
   return (
+    <>
+      {lightbox && (
+        <div
+          className={styles.lightboxOverlay}
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+        >
+          <button
+            type="button"
+            className={styles.lightboxClose}
+            onClick={() => setLightbox(null)}
+            aria-label="Close preview"
+          >
+            ×
+          </button>
+          <img
+            className={styles.lightboxImg}
+            src={lightbox}
+            alt="Preview"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
       <div className={styles.backdrop} aria-hidden="true" />
       <header className={styles.header} ref={headerRef}>
+        <div className={styles.headerInner}>
         <div className={styles.brand}>
           <img
             className={styles.logoImage}
@@ -317,6 +354,9 @@ export default function DentraLanding() {
           <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
             {content.navOfferings}
           </a>
+          <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
+            {content.navCartography}
+          </a>
           <a href="/clinics">
             {content.navClinics}
           </a>
@@ -333,9 +373,6 @@ export default function DentraLanding() {
           <span />
         </button>
         <div className={styles.headerActions}>
-          <label className={styles.languageLabel} htmlFor="landing-language">
-            {content.navLanguageLabel}
-          </label>
           <select
             id="landing-language"
             className={styles.languageSelect}
@@ -348,8 +385,8 @@ export default function DentraLanding() {
               </option>
             ))}
           </select>
-          <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
-            {content.headerCta}
+          <a className={styles.contactLink} href="mailto:info@dentra.mk">
+            {content.navContact}
           </a>
         </div>
         <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.mobileMenuOpen : ''}`}>
@@ -360,14 +397,14 @@ export default function DentraLanding() {
             <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
               {content.navOfferings}
             </a>
+            <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
+              {content.navCartography}
+            </a>
             <a href="/clinics">
               {content.navClinics}
             </a>
           </nav>
           <div className={styles.mobileActions}>
-            <label className={styles.languageLabel} htmlFor="landing-language-mobile">
-              {content.navLanguageLabel}
-            </label>
             <select
               id="landing-language-mobile"
               className={styles.languageSelect}
@@ -380,10 +417,11 @@ export default function DentraLanding() {
                 </option>
               ))}
             </select>
-            <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
-              {content.headerCta}
+            <a className={styles.contactLink} href="mailto:info@dentra.mk">
+              {content.navContact}
             </a>
           </div>
+        </div>
         </div>
       </header>
 
@@ -393,10 +431,10 @@ export default function DentraLanding() {
           <h1 className={styles.heroTitle}>{content.heroTitle}</h1>
           <p className={styles.heroBody}>{content.heroBody}</p>
           <div className={styles.heroActions}>
-            <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+            <a className={styles.primaryButton} href="#cartography" data-target="cartography" onClick={handleNavClick}>
               {content.heroPrimary}
             </a>
-            <a className={styles.secondaryButton} href="#prototype" data-target="prototype" onClick={handleNavClick}>
+            <a className={styles.secondaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
               {content.heroSecondary}
             </a>
           </div>
@@ -421,7 +459,12 @@ export default function DentraLanding() {
         <div className={styles.heroMedia}>
           <div className={styles.heroThumbs}>
             <div className={styles.thumbCard}>
-              <img src={imageSources.schedule} alt={content.imgAltSchedule} />
+              <img
+                src={imageSources.cartographyLanding}
+                alt="Dental Cartography desktop app"
+                className={styles.clickableImage}
+                onClick={() => setLightbox(imageSources.cartographyLanding)}
+              />
               <p>{content.galleryCaption2}</p>
             </div>
           </div>
@@ -440,6 +483,87 @@ export default function DentraLanding() {
                 vivadent.onrender.com
               </a>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="cartography"
+        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+        tabIndex={-1}
+        ref={(node) => {
+          sectionRefs.current[6] = node;
+        }}
+      >
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>{content.cartographyEyebrow}</p>
+          <h2 className={styles.sectionTitle}>{content.cartographyTitle}</h2>
+          <p className={styles.sectionBody}>{content.cartographyBody}</p>
+        </div>
+        <div className={styles.cartographyCard}>
+          <div className={styles.cartographyFeatures}>
+            <ul className={styles.cartographyFeatureList}>
+              <li>{content.cartographyFeature1}</li>
+              <li>{content.cartographyFeature2}</li>
+              <li>{content.cartographyFeature3}</li>
+              <li>{content.cartographyFeature4}</li>
+              <li>{content.cartographyFeature5}</li>
+              <li>{content.cartographyFeature6}</li>
+            </ul>
+            <a className={styles.cartographyCta} href="mailto:info@dentra.mk">
+              {content.cartographyCta}
+            </a>
+          </div>
+          <div className={styles.cartographyMainShot}>
+            <img
+              src={imageSources.cartographyLanding}
+              alt="Dental Cartography desktop app overview"
+              loading="lazy"
+              className={styles.clickableImage}
+              onClick={() => setLightbox(imageSources.cartographyLanding)}
+            />
+          </div>
+        </div>
+        <div className={styles.cartographyStrip}>
+          <div className={styles.cartographyThumb}>
+            <img
+              src={imageSources.cartographyTreatments}
+              alt={content.cartographyThumb1}
+              loading="lazy"
+              className={styles.clickableImage}
+              onClick={() => setLightbox(imageSources.cartographyTreatments)}
+            />
+            <p>{content.cartographyThumb1}</p>
+          </div>
+          <div className={styles.cartographyThumb}>
+            <img
+              src={imageSources.cartographyRevenue}
+              alt={content.cartographyThumb2}
+              loading="lazy"
+              className={styles.clickableImage}
+              onClick={() => setLightbox(imageSources.cartographyRevenue)}
+            />
+            <p>{content.cartographyThumb2}</p>
+          </div>
+          <div className={styles.cartographyThumb}>
+            <img
+              src={imageSources.cartographySettings}
+              alt={content.cartographyThumb3}
+              loading="lazy"
+              className={styles.clickableImage}
+              onClick={() => setLightbox(imageSources.cartographySettings)}
+            />
+            <p>{content.cartographyThumb3}</p>
+          </div>
+          <div className={styles.cartographyThumb}>
+            <img
+              src={imageSources.cartographyCalendar}
+              alt={content.cartographyThumb4}
+              loading="lazy"
+              className={styles.clickableImage}
+              onClick={() => setLightbox(imageSources.cartographyCalendar)}
+            />
+            <p>{content.cartographyThumb4}</p>
           </div>
         </div>
       </section>
@@ -661,5 +785,6 @@ export default function DentraLanding() {
         </p>
       </footer>
     </main>
+    </>
   );
 }
