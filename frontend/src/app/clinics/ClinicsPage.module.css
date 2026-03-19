@@ -290,9 +290,7 @@
   width: 100%;
   height: 180px;
   border-radius: 0;
-  background:
-    linear-gradient(135deg, rgba(28, 106, 105, 0.18), rgba(245, 134, 91, 0.12)),
-    rgba(15, 45, 46, 0.06);
+  background: #fff;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -300,10 +298,11 @@
 }
 
 .clinicMedia img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(1.03) contrast(1.02);
+  max-width: 120px;
+  max-height: 100px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .clinicBadge {
@@ -439,9 +438,11 @@
 }
 
 .modalMedia img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 66px;
+  max-height: 66px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .modalBadge {

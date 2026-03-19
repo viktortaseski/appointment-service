@@ -84,17 +84,22 @@ export default function ClinicsPage() {
           return;
         }
 
-        const normalized = (data.clinics || []).map((clinic) => ({
-          id: clinic.id || clinic.domain || clinic.name,
-          name: clinic.name || clinic.domain || 'Clinic',
-          domain: clinic.domain || '',
-          address: clinic.address || '',
-          phone: clinic.phone || '',
-          email: clinic.email || '',
-          logo: clinic.logo || '',
-          rating_avg: Number(clinic.rating_avg ?? clinic.ratingAvg ?? 0),
-          rating_count: Number(clinic.rating_count ?? clinic.ratingCount ?? 0),
-        }));
+        const normalized = (data.clinics || [])
+          .filter((clinic) => {
+            const d = (clinic.domain || '').toLowerCase();
+            return d && !/localhost|\.local$|127\.0\.0\.1|::1/.test(d);
+          })
+          .map((clinic) => ({
+            id: clinic.id || clinic.domain || clinic.name,
+            name: clinic.name || clinic.domain || 'Clinic',
+            domain: clinic.domain || '',
+            address: clinic.address || '',
+            phone: clinic.phone || '',
+            email: clinic.email || '',
+            logo: clinic.logo || '',
+            rating_avg: Number(clinic.rating_avg ?? clinic.ratingAvg ?? 0),
+            rating_count: Number(clinic.rating_count ?? clinic.ratingCount ?? 0),
+          }));
 
         normalized.sort((a, b) => a.name.localeCompare(b.name));
         setClinics(normalized);

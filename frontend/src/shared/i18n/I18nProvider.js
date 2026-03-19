@@ -1362,7 +1362,7 @@ export function I18nProvider({ children }) {
   useEffect(() => {
     const htmlLang = locale === 'al' ? 'sq' : locale;
     document.documentElement.lang = htmlLang;
-    if (localeSource === 'init') {
+    if (localeSource === 'init' || localeSource === 'auto') {
       return;
     }
     window.localStorage.setItem('locale', locale);
