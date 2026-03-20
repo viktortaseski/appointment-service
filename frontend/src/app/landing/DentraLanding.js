@@ -52,6 +52,7 @@ export default function DentraLanding() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [clinics, setClinics] = useState([]);
   const [clinicStatus, setClinicStatus] = useState({ loading: true, error: false });
   const headerRef = useRef(null);
@@ -260,6 +261,33 @@ export default function DentraLanding() {
 
   return (
     <>
+      {videoOpen && (
+        <div
+          className={styles.videoOverlay}
+          onClick={() => setVideoOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Video preview"
+        >
+          <button
+            type="button"
+            className={styles.lightboxClose}
+            onClick={() => setVideoOpen(false)}
+            aria-label="Close video"
+          >
+            ×
+          </button>
+          <div className={styles.videoFrame} onClick={(e) => e.stopPropagation()}>
+            <iframe
+              src="https://www.youtube.com/embed/L6r-t0KL_No?autoplay=1&rel=0&modestbranding=1"
+              title="Dental Cartography — promo video"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+
       {lightbox && (
         <div
           className={styles.lightboxOverlay}
@@ -447,6 +475,23 @@ export default function DentraLanding() {
             <p className={styles.eyebrow}>{content.cartographyEyebrow}</p>
             <h2 className={styles.cartographyTitle}>{content.cartographyTitle}</h2>
             <p className={styles.cartographyTagline}>{content.cartographyBody}</p>
+
+            <button
+              type="button"
+              className={styles.videoThumb}
+              onClick={() => setVideoOpen(true)}
+              aria-label="Play promo video"
+            >
+              <img
+                src="https://img.youtube.com/vi/L6r-t0KL_No/maxresdefault.jpg"
+                alt="Dental Cartography promo video"
+              />
+              <span className={styles.playButton}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+            </button>
 
             <div className={styles.cartographyHeroShot}>
               <img
