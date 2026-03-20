@@ -35,23 +35,14 @@ const imageSources = {
 };
 
 function normalizeLanguage(value) {
-  if (!value) {
-    return '';
-  }
-
+  if (!value) return '';
   const trimmed = String(value).toLowerCase();
   return translations[trimmed] ? trimmed : '';
 }
 
 function getClinicInitials(name) {
-  if (!name) {
-    return 'DC';
-  }
-
-  const parts = String(name)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  if (!name) return 'DC';
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
   const letters = parts.slice(0, 2).map((part) => part[0].toUpperCase());
   return letters.join('') || 'DC';
 }
@@ -69,20 +60,23 @@ export default function DentraLanding() {
   const offeringsGridRef = useRef(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
+    if (typeof window === 'undefined') return;
     const stored = normalizeLanguage(window.localStorage.getItem('dentraLandingLanguage'));
     const browser = normalizeLanguage((navigator.language || '').slice(0, 2));
     const nextLanguage = stored || browser || defaultLanguage;
-
-    if (nextLanguage !== language) {
-      setLanguage(nextLanguage);
-    }
+    if (nextLanguage !== language) setLanguage(nextLanguage);
   }, [language]);
 
   const content = translations[language] || translations[defaultLanguage];
+
+  const highlights = useMemo(
+    () => [
+      { title: content.highlight1Title, description: content.highlight1Body },
+      { title: content.highlight2Title, description: content.highlight2Body },
+      { title: content.highlight3Title, description: content.highlight3Body },
+    ],
+    [content]
+  );
 
   const offerings = useMemo(
     () => [
@@ -92,15 +86,6 @@ export default function DentraLanding() {
       { title: content.offering4Title, description: content.offering4Body },
       { title: content.offering5Title, description: content.offering5Body },
       { title: content.offering6Title, description: content.offering6Body },
-    ],
-    [content]
-  );
-
-  const highlights = useMemo(
-    () => [
-      { title: content.highlight1Title, description: content.highlight1Body },
-      { title: content.highlight2Title, description: content.highlight2Body },
-      { title: content.highlight3Title, description: content.highlight3Body },
     ],
     [content]
   );
@@ -125,10 +110,7 @@ export default function DentraLanding() {
   );
 
   const marqueeClinics = useMemo(() => {
-    if (!clinics.length) {
-      return [];
-    }
-
+    if (!clinics.length) return [];
     const minimum = 8;
     const repeats = Math.max(1, Math.ceil(minimum / clinics.length));
     const expanded = Array.from({ length: repeats }, () => clinics).flat();
@@ -142,14 +124,10 @@ export default function DentraLanding() {
 
   const handleNavClick = useCallback((event) => {
     const targetId = event.currentTarget.getAttribute('data-target');
-    if (!targetId) {
-      return;
-    }
-
+    if (!targetId) return;
     event.preventDefault();
     setIsMenuOpen(false);
     const target = document.getElementById(targetId);
-
     if (target) {
       const headerOffset = headerRef.current?.offsetHeight ?? 0;
       const elementTop = target.getBoundingClientRect().top + window.scrollY;
@@ -170,10 +148,7 @@ export default function DentraLanding() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-
+    if (typeof window === 'undefined') return undefined;
     const mediaQuery = window.matchMedia('(max-width: 768px)');
     const updateMatch = () => setIsMobile(mediaQuery.matches);
     updateMatch();
@@ -182,10 +157,7 @@ export default function DentraLanding() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-
+    if (typeof window === 'undefined') return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -195,116 +167,96 @@ export default function DentraLanding() {
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.1 }
     );
-
     const observed = sectionRefs.current.filter(Boolean);
     observed.forEach((node) => observer.observe(node));
-
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!isMobile) {
-      return undefined;
-    }
-
+    if (!isMobile) return undefined;
     const setupInfiniteScroll = (container) => {
-      if (!container || container.scrollWidth <= container.clientWidth) {
-        return () => {};
-      }
-
+      if (!container || container.scrollWidth <= container.clientWidth) return () => {};
       const segment = container.scrollWidth / 3;
       container.scrollLeft = segment;
       let isAdjusting = false;
-
       const handleScroll = () => {
-        if (isAdjusting) {
-          return;
-        }
-
+        if (isAdjusting) return;
         const leftEdge = segment * 0.5;
         const rightEdge = segment * 1.5;
         const current = container.scrollLeft;
-
         if (current <= leftEdge) {
           isAdjusting = true;
           container.scrollLeft = current + segment;
-          requestAnimationFrame(() => {
-            isAdjusting = false;
-          });
+          requestAnimationFrame(() => { isAdjusting = false; });
         } else if (current >= rightEdge) {
           isAdjusting = true;
           container.scrollLeft = current - segment;
-          requestAnimationFrame(() => {
-            isAdjusting = false;
-          });
+          requestAnimationFrame(() => { isAdjusting = false; });
         }
       };
-
       container.addEventListener('scroll', handleScroll);
       return () => container.removeEventListener('scroll', handleScroll);
     };
-
     const cleanups = [
       setupInfiniteScroll(highlightGridRef.current),
       setupInfiniteScroll(offeringsGridRef.current),
     ];
-
-    return () => {
-      cleanups.forEach((cleanup) => cleanup());
-    };
+    return () => { cleanups.forEach((cleanup) => cleanup()); };
   }, [isMobile, highlightItems, offeringItems]);
 
   useEffect(() => {
     let isActive = true;
-
     async function loadClinics() {
       setClinicStatus({ loading: true, error: false });
-
       try {
         const response = await fetch(`${API_BASE}/clinics`);
-        if (!response.ok) {
-          throw new Error('Clinic fetch failed');
-        }
-
+        if (!response.ok) throw new Error('Clinic fetch failed');
         const data = await response.json();
-        if (!isActive) {
-          return;
-        }
-
+        if (!isActive) return;
         const normalized = (data.clinics || [])
           .filter((clinic) => {
             const d = (clinic.domain || '').toLowerCase();
             return d && !/localhost|\.local$|127\.0\.0\.1|::1/.test(d);
           })
           .map((clinic) => ({
-          id: clinic.id || clinic.domain || clinic.name,
-          name: clinic.name || clinic.domain || 'Clinic',
-          domain: clinic.domain || '',
-          address: clinic.address || '',
-          phone: clinic.phone || '',
-          logo: clinic.logo || '',
-          rating_avg: Number(clinic.rating_avg ?? clinic.ratingAvg ?? 0),
-          rating_count: Number(clinic.rating_count ?? clinic.ratingCount ?? 0),
-        }));
+            id: clinic.id || clinic.domain || clinic.name,
+            name: clinic.name || clinic.domain || 'Clinic',
+            domain: clinic.domain || '',
+            address: clinic.address || '',
+            phone: clinic.phone || '',
+            logo: clinic.logo || '',
+            rating_avg: Number(clinic.rating_avg ?? clinic.ratingAvg ?? 0),
+            rating_count: Number(clinic.rating_count ?? clinic.ratingCount ?? 0),
+          }));
         setClinics(normalized);
         setClinicStatus({ loading: false, error: false });
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
+      } catch {
+        if (!isActive) return;
         setClinics([]);
         setClinicStatus({ loading: false, error: true });
       }
     }
-
     loadClinics();
-
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, []);
+
+  const cartographyThumbs = [
+    { src: imageSources.cartographyTreatments, label: content.cartographyThumb1 },
+    { src: imageSources.cartographyRevenue, label: content.cartographyThumb2 },
+    { src: imageSources.cartographySettings, label: content.cartographyThumb3 },
+    { src: imageSources.cartographyCalendar, label: content.cartographyThumb4 },
+  ];
+
+  const cartographyFeatures = [
+    content.cartographyFeature1,
+    content.cartographyFeature2,
+    content.cartographyFeature3,
+    content.cartographyFeature4,
+    content.cartographyFeature5,
+    content.cartographyFeature6,
+  ];
 
   return (
     <>
@@ -332,459 +284,324 @@ export default function DentraLanding() {
           />
         </div>
       )}
-    <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
-      <div className={styles.backdrop} aria-hidden="true" />
-      <header className={styles.header} ref={headerRef}>
-        <div className={styles.headerInner}>
-        <div className={styles.brand}>
-          <img
-            className={styles.logoImage}
-            src="https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png"
-            alt={`${content.brandName} logo`}
-          />
-          <div>
-            <p className={styles.brandName}>{content.brandName}</p>
-            <p className={styles.brandTagline}>{content.brandTagline}</p>
-          </div>
-        </div>
-        <nav className={styles.nav} aria-label="Landing navigation">
-          <a href="#about" data-target="about" onClick={handleNavClick}>
-            {content.navAbout}
-          </a>
-          <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
-            {content.navOfferings}
-          </a>
-          <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
-            {content.navCartography}
-          </a>
-          <a href="/clinics">
-            {content.navClinics}
-          </a>
-        </nav>
-        <button
-          type="button"
-          className={styles.menuButton}
-          aria-label="Open navigation menu"
-          aria-expanded={isMenuOpen}
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-        <div className={styles.headerActions}>
-          <select
-            id="landing-language"
-            className={styles.languageSelect}
-            value={language}
-            onChange={handleLanguageChange}
-          >
-            {languageOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <a className={styles.contactLink} href="mailto:info@dentra.mk">
-            {content.navContact}
-          </a>
-        </div>
-        <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.mobileMenuOpen : ''}`}>
-          <nav className={styles.mobileNav} aria-label="Mobile navigation">
-            <a href="#about" data-target="about" onClick={handleNavClick}>
-              {content.navAbout}
-            </a>
-            <a href="#offerings" data-target="offerings" onClick={handleNavClick}>
-              {content.navOfferings}
-            </a>
-            <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
-              {content.navCartography}
-            </a>
-            <a href="/clinics">
-              {content.navClinics}
-            </a>
-          </nav>
-          <div className={styles.mobileActions}>
-            <select
-              id="landing-language-mobile"
-              className={styles.languageSelect}
-              value={language}
-              onChange={handleLanguageChange}
-            >
-              {languageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <a className={styles.contactLink} href="mailto:info@dentra.mk">
-              {content.navContact}
-            </a>
-          </div>
-        </div>
-        </div>
-      </header>
 
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>{content.heroEyebrow}</span>
-          <h1 className={styles.heroTitle}>{content.heroTitle}</h1>
-          <p className={styles.heroBody}>{content.heroBody}</p>
-          <div className={styles.heroActions}>
-            <a className={styles.primaryButton} href="#cartography" data-target="cartography" onClick={handleNavClick}>
-              {content.heroPrimary}
+      <main className={`${styles.page} ${displayFont.variable} ${bodyFont.variable}`}>
+
+        {/* ── Header ── */}
+        <header className={styles.header} ref={headerRef}>
+          <div className={styles.headerInner}>
+            <a className={styles.brand} href="/">
+              <img
+                className={styles.logoImage}
+                src="https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png"
+                alt={content.brandName}
+              />
+              <span className={styles.brandName}>{content.brandName}</span>
             </a>
-            <a className={styles.secondaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
-              {content.heroSecondary}
-            </a>
-          </div>
-          <div className={styles.heroImageWrap}>
-            <img className={styles.heroImage} src={imageSources.hero} alt={content.imgAltHero} />
-          </div>
-          <div className={styles.heroStats}>
-            <div>
-              <p className={styles.statValue}>{content.stat1Value}</p>
-              <p className={styles.statLabel}>{content.stat1Label}</p>
+
+            <nav className={styles.nav} aria-label="Main navigation">
+              <a href="#about" data-target="about" onClick={handleNavClick}>
+                {content.navAbout}
+              </a>
+              <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
+                {content.navCartography}
+              </a>
+              <a href="/clinics">{content.navClinics}</a>
+            </nav>
+
+            <div className={styles.headerRight}>
+              <select
+                className={styles.languageSelect}
+                value={language}
+                onChange={handleLanguageChange}
+                aria-label={content.navLanguageLabel}
+              >
+                {languageOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <a className={styles.contactBtn} href="mailto:info@dentra.mk">
+                {content.navContact}
+              </a>
             </div>
-            <div>
-              <p className={styles.statValue}>{content.stat2Value}</p>
-              <p className={styles.statLabel}>{content.stat2Label}</p>
+
+            <button
+              type="button"
+              className={styles.menuButton}
+              aria-label="Toggle menu"
+              aria-expanded={isMenuOpen}
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          </div>
+
+          {isMenuOpen && (
+            <div className={styles.mobileMenu}>
+              <nav className={styles.mobileNav}>
+                <a href="#about" data-target="about" onClick={handleNavClick}>
+                  {content.navAbout}
+                </a>
+                <a href="#cartography" data-target="cartography" onClick={handleNavClick}>
+                  {content.navCartography}
+                </a>
+                <a href="/clinics">{content.navClinics}</a>
+              </nav>
+              <div className={styles.mobileActions}>
+                <select
+                  className={styles.languageSelect}
+                  value={language}
+                  onChange={handleLanguageChange}
+                >
+                  {languageOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <a className={styles.contactBtn} href="mailto:info@dentra.mk">
+                  {content.navContact}
+                </a>
+              </div>
             </div>
-            <div>
-              <p className={styles.statValue}>{content.stat3Value}</p>
-              <p className={styles.statLabel}>{content.stat3Label}</p>
+          )}
+        </header>
+
+        {/* ── Hero ── */}
+        <section className={styles.hero}>
+          <div className={styles.heroContent}>
+            <p className={styles.heroEyebrow}>{content.heroEyebrow}</p>
+            <h1 className={styles.heroTitle}>{content.heroTitle}</h1>
+            <p className={styles.heroBody}>{content.heroBody}</p>
+            <div className={styles.heroActions}>
+              <a
+                className={styles.btnPrimary}
+                href="#cartography"
+                data-target="cartography"
+                onClick={handleNavClick}
+              >
+                {content.heroPrimary}
+              </a>
+              <a
+                className={styles.btnSecondary}
+                href={PROTOTYPE_URL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {content.heroSecondary}
+              </a>
             </div>
           </div>
-        </div>
-        <div className={styles.heroMedia}>
-          <div className={styles.heroThumbs}>
-            <div className={styles.thumbCard}>
+          <div className={styles.heroVisual}>
+            <img src={imageSources.hero} alt={content.imgAltHero} />
+          </div>
+        </section>
+
+        {/* ── Booking Platform — dark section ── */}
+        <section
+          id="about"
+          className={`${styles.bookingSection} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+          tabIndex={-1}
+          ref={(node) => { sectionRefs.current[1] = node; }}
+        >
+          <div className={styles.bookingInner}>
+            <div className={styles.bookingText}>
+              <p className={styles.eyebrowLight}>{content.aboutEyebrow}</p>
+              <h2 className={styles.productTitle}>{content.aboutTitle}</h2>
+              <p className={styles.productBody}>{content.aboutBody}</p>
+              <ul className={styles.highlightList}>
+                {highlights.map((h) => (
+                  <li key={h.title} className={styles.highlightItem}>
+                    <span className={styles.highlightDot} />
+                    <div>
+                      <strong>{h.title}</strong>
+                      <p>{h.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <a className={styles.btnPrimaryLight} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
+                {content.prototypePrimary}
+              </a>
+            </div>
+            <div className={styles.bookingVisual}>
+              <img
+                src={imageSources.schedule}
+                alt={content.imgAltSchedule}
+                loading="lazy"
+                className={styles.clickableImage}
+                onClick={() => setLightbox(imageSources.schedule)}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Dental Cartography — light section ── */}
+        <section
+          id="cartography"
+          className={`${styles.cartographySection} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+          tabIndex={-1}
+          ref={(node) => { sectionRefs.current[6] = node; }}
+        >
+          <div className={styles.cartographyInner}>
+            <p className={styles.eyebrow}>{content.cartographyEyebrow}</p>
+            <h2 className={styles.cartographyTitle}>{content.cartographyTitle}</h2>
+            <p className={styles.cartographyTagline}>{content.cartographyBody}</p>
+
+            <div className={styles.cartographyHeroShot}>
               <img
                 src={imageSources.cartographyLanding}
-                alt="Dental Cartography desktop app"
+                alt="Dental Cartography"
+                loading="lazy"
                 className={styles.clickableImage}
                 onClick={() => setLightbox(imageSources.cartographyLanding)}
               />
-              <p>{content.galleryCaption2}</p>
             </div>
-          </div>
-          <div className={styles.heroCard} style={{ height: 'fit-content' }}>
-            <p className={styles.cardTitle}>{content.heroCardTitle}</p>
-            <ul className={styles.cardList}>
-              <li>{content.heroCardItem1}</li>
-              <li>{content.heroCardItem2}</li>
-              <li>{content.heroCardItem3}</li>
-              <li>{content.heroCardItem4}</li>
-              <li>{content.heroCardItem5}</li>
-            </ul>
-            <div className={styles.cardFooter}>
-              <span>{content.heroCardFooter}</span>
-              <a href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
-                vivadent.onrender.com
+
+            <div className={styles.cartographyStrip}>
+              {cartographyThumbs.map(({ src, label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={styles.cartographyThumb}
+                  onClick={() => setLightbox(src)}
+                >
+                  <img src={src} alt={label} loading="lazy" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className={styles.cartographyMeta}>
+              <ul className={styles.cartographyFeatureList}>
+                {cartographyFeatures.map((feat) => (
+                  <li key={feat}>{feat}</li>
+                ))}
+              </ul>
+              <a className={styles.btnPrimary} href="mailto:info@dentra.mk">
+                {content.cartographyCta}
               </a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section
-        id="cartography"
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[6] = node;
-        }}
-      >
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.cartographyEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.cartographyTitle}</h2>
-          <p className={styles.sectionBody}>{content.cartographyBody}</p>
-        </div>
-        <div className={styles.cartographyCard}>
-          <div className={styles.cartographyFeatures}>
-            <ul className={styles.cartographyFeatureList}>
-              <li>{content.cartographyFeature1}</li>
-              <li>{content.cartographyFeature2}</li>
-              <li>{content.cartographyFeature3}</li>
-              <li>{content.cartographyFeature4}</li>
-              <li>{content.cartographyFeature5}</li>
-              <li>{content.cartographyFeature6}</li>
-            </ul>
-            <a className={styles.cartographyCta} href="mailto:info@dentra.mk">
-              {content.cartographyCta}
+        {/* ── Clinics Marquee ── */}
+        <section
+          id="clinics"
+          className={`${styles.clinicsSection} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+          tabIndex={-1}
+          ref={(node) => { sectionRefs.current[0] = node; }}
+        >
+          <div className={styles.clinicsHeader}>
+            <p className={styles.eyebrow}>{content.clinicsEyebrow}</p>
+            <h2 className={styles.clinicsTitle}>{content.clinicsTitle}</h2>
+          </div>
+          <div className={styles.clinicMarquee} aria-live="polite">
+            {clinicStatus.loading && (
+              <p className={styles.clinicStatus}>{content.clinicsLoading}</p>
+            )}
+            {!clinicStatus.loading && clinicStatus.error && (
+              <p className={styles.clinicStatus}>{content.clinicsLoadError}</p>
+            )}
+            {!clinicStatus.loading && !clinicStatus.error && clinics.length === 0 && (
+              <p className={styles.clinicStatus}>{content.clinicsEmpty}</p>
+            )}
+            {!clinicStatus.loading && !clinicStatus.error && clinics.length > 0 && (
+              <div
+                className={styles.clinicTrack}
+                style={{ '--marquee-duration': `${marqueeDuration}s` }}
+              >
+                {marqueeClinics.map((clinic, index) => {
+                  const isExternal = Boolean(clinic.domain);
+                  const href = isExternal ? `https://${clinic.domain}` : '/clinics';
+                  return (
+                    <a
+                      key={`${clinic.id}-${index}`}
+                      className={styles.clinicCard}
+                      href={href}
+                      target={isExternal ? '_blank' : undefined}
+                      rel={isExternal ? 'noreferrer' : undefined}
+                    >
+                      <div className={styles.clinicMedia}>
+                        {clinic.logo ? (
+                          <img src={clinic.logo} alt={`${clinic.name} logo`} loading="lazy" />
+                        ) : (
+                          <div className={styles.clinicBadge}>{getClinicInitials(clinic.name)}</div>
+                        )}
+                      </div>
+                      <div className={styles.clinicInfo}>
+                        <p className={styles.clinicName}>{clinic.name}</p>
+                        <p className={styles.clinicMeta}>
+                          {clinic.address || clinic.domain || content.clinicsFallbackMeta}
+                        </p>
+                        <div className={styles.clinicRating}>
+                          <StarRating value={clinic.rating_avg} size={14} />
+                          <span>
+                            {clinic.rating_count
+                              ? `${Number(clinic.rating_avg).toFixed(1)} (${clinic.rating_count})`
+                              : content.clinicsRatingNew}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className={styles.clinicsFooter}>
+            <a className={styles.btnSecondary} href="/clinics">{content.clinicsAction}</a>
+          </div>
+        </section>
+
+        {/* ── How it works ── */}
+        <section
+          id="timeline"
+          className={`${styles.timelineSection} ${styles.scrollAnchor} ${styles.sectionReveal}`}
+          tabIndex={-1}
+          ref={(node) => { sectionRefs.current[3] = node; }}
+        >
+          <div className={styles.timelineInner}>
+            <p className={styles.eyebrow}>{content.timelineEyebrow}</p>
+            <h2 className={styles.timelineHeading}>{content.timelineTitle}</h2>
+            <div className={styles.timelineSteps}>
+              {steps.map((step, i) => (
+                <div key={step.title} className={styles.timelineStep}>
+                  <span className={styles.stepNum}>{String(i + 1).padStart(2, '0')}</span>
+                  <h3 className={styles.stepTitle}>{step.title}</h3>
+                  <p className={styles.stepBody}>{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA Band ── */}
+        <section
+          className={`${styles.ctaBand} ${styles.sectionReveal}`}
+          ref={(node) => { sectionRefs.current[5] = node; }}
+        >
+          <div className={styles.ctaInner}>
+            <h2 className={styles.ctaTitle}>{content.ctaTitle}</h2>
+            <p className={styles.ctaBody}>{content.ctaBody}</p>
+            <a className={styles.btnPrimaryLight} href="mailto:info@dentra.mk">
+              {content.ctaButton}
             </a>
           </div>
-          <div className={styles.cartographyMainShot}>
-            <img
-              src={imageSources.cartographyLanding}
-              alt="Dental Cartography desktop app overview"
-              loading="lazy"
-              className={styles.clickableImage}
-              onClick={() => setLightbox(imageSources.cartographyLanding)}
-            />
-          </div>
-        </div>
-        <div className={styles.cartographyStrip}>
-          <div className={styles.cartographyThumb}>
-            <img
-              src={imageSources.cartographyTreatments}
-              alt={content.cartographyThumb1}
-              loading="lazy"
-              className={styles.clickableImage}
-              onClick={() => setLightbox(imageSources.cartographyTreatments)}
-            />
-            <p>{content.cartographyThumb1}</p>
-          </div>
-          <div className={styles.cartographyThumb}>
-            <img
-              src={imageSources.cartographyRevenue}
-              alt={content.cartographyThumb2}
-              loading="lazy"
-              className={styles.clickableImage}
-              onClick={() => setLightbox(imageSources.cartographyRevenue)}
-            />
-            <p>{content.cartographyThumb2}</p>
-          </div>
-          <div className={styles.cartographyThumb}>
-            <img
-              src={imageSources.cartographySettings}
-              alt={content.cartographyThumb3}
-              loading="lazy"
-              className={styles.clickableImage}
-              onClick={() => setLightbox(imageSources.cartographySettings)}
-            />
-            <p>{content.cartographyThumb3}</p>
-          </div>
-          <div className={styles.cartographyThumb}>
-            <img
-              src={imageSources.cartographyCalendar}
-              alt={content.cartographyThumb4}
-              loading="lazy"
-              className={styles.clickableImage}
-              onClick={() => setLightbox(imageSources.cartographyCalendar)}
-            />
-            <p>{content.cartographyThumb4}</p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section
-        id="clinics"
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[0] = node;
-        }}
-      >
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.clinicsEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.clinicsTitle}</h2>
-          <p className={styles.sectionBody}>{content.clinicsBody}</p>
-        </div>
-        <div className={styles.clinicMarquee} aria-live="polite">
-          {clinicStatus.loading && (
-            <p className={styles.clinicStatus}>{content.clinicsLoading}</p>
-          )}
-          {!clinicStatus.loading && clinicStatus.error && (
-            <p className={styles.clinicStatus}>{content.clinicsLoadError}</p>
-          )}
-          {!clinicStatus.loading && !clinicStatus.error && clinics.length === 0 && (
-            <p className={styles.clinicStatus}>{content.clinicsEmpty}</p>
-          )}
-          {!clinicStatus.loading && !clinicStatus.error && clinics.length > 0 && (
-            <div
-              className={styles.clinicTrack}
-              style={{ '--marquee-duration': `${marqueeDuration}s` }}
-            >
-              {marqueeClinics.map((clinic, index) => {
-                const cardContent = (
-                  <>
-                    <div className={styles.clinicMedia}>
-                      {clinic.logo ? (
-                        <img
-                          src={clinic.logo}
-                          alt={`${clinic.name} logo`}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className={styles.clinicBadge}>
-                          {getClinicInitials(clinic.name)}
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.clinicInfo}>
-                      <p className={styles.clinicName}>{clinic.name}</p>
-                      <p className={styles.clinicMeta}>
-                        {clinic.address || clinic.domain || content.clinicsFallbackMeta}
-                      </p>
-                      <div className={styles.clinicRating}>
-                        <StarRating value={clinic.rating_avg} size={16} />
-                        <span className={styles.clinicRatingValue}>
-                          {clinic.rating_count
-                            ? `${Number(clinic.rating_avg).toFixed(1)} (${clinic.rating_count})`
-                            : content.clinicsRatingNew}
-                        </span>
-                      </div>
-                      <span className={styles.clinicDomain}>
-                        {clinic.domain || content.clinicsFallbackDomain}
-                      </span>
-                    </div>
-                  </>
-                );
+        {/* ── Footer ── */}
+        <footer className={styles.footer}>
+          <p>© {new Date().getFullYear()} {content.footerSuffix}</p>
+          <p>
+            {content.footerContactLabel}{' '}
+            <a href="mailto:info@dentra.mk">info@dentra.mk</a>
+            {' · '}
+            <a href="mailto:support@dentra.mk">support@dentra.mk</a>
+          </p>
+        </footer>
 
-                const isExternal = Boolean(clinic.domain);
-                const href = isExternal ? `https://${clinic.domain}` : '/clinics';
-
-                return (
-                  <a
-                    key={`${clinic.id}-${index}`}
-                    className={`${styles.clinicCard} ${styles.clinicCardLink}`}
-                    href={href}
-                    target={isExternal ? '_blank' : undefined}
-                    rel={isExternal ? 'noreferrer' : undefined}
-                  >
-                    {cardContent}
-                  </a>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <div className={styles.clinicActions}>
-          <a className={`${styles.secondaryButton} ${styles.clinicActionButton}`} href="/clinics">
-            {content.clinicsAction}
-          </a>
-        </div>
-      </section>
-
-      <section
-        id="about"
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[1] = node;
-        }}
-      >
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.aboutEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.aboutTitle}</h2>
-          <p className={styles.sectionBody}>{content.aboutBody}</p>
-        </div>
-        <div className={styles.highlightGrid} ref={highlightGridRef}>
-          {highlightItems.map((item, index) => (
-            <div key={`${item.title}-${index}`} className={styles.highlightCard}>
-              <p className={styles.highlightTitle}>{item.title}</p>
-              <p>{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="offerings"
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[2] = node;
-        }}
-      >
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.offeringsEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.offeringsTitle}</h2>
-        </div>
-        <div className={styles.offeringsGrid} ref={offeringsGridRef}>
-          {offeringItems.map((item, index) => (
-            <div key={`${item.title}-${index}`} className={styles.offeringCard}>
-              <h3 className={styles.offeringTitle}>{item.title}</h3>
-              <p>{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal} ${styles.hideOnMobile}`}
-        id="timeline"
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[3] = node;
-        }}
-      >
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>{content.timelineEyebrow}</p>
-          <h2 className={styles.sectionTitle}>{content.timelineTitle}</h2>
-        </div>
-        <div className={styles.timeline}>
-          {steps.map((step, index) => (
-            <div key={step.title} className={styles.timelineStep}>
-              <span className={styles.stepIndex}>{String(index + 1).padStart(2, '0')}</span>
-              <div>
-                <h3 className={styles.offeringTitle}>{step.title}</h3>
-                <p>{step.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="prototype"
-        className={`${styles.section} ${styles.scrollAnchor} ${styles.sectionReveal}`}
-        tabIndex={-1}
-        ref={(node) => {
-          sectionRefs.current[4] = node;
-        }}
-      >
-        <div className={styles.prototypeCard}>
-          <div>
-            <p className={styles.sectionEyebrow}>{content.prototypeEyebrow}</p>
-            <h2 className={styles.sectionTitle}>{content.prototypeTitle}</h2>
-            <p className={styles.sectionBody}>{content.prototypeBody}</p>
-            <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href={PROTOTYPE_URL} target="_blank" rel="noreferrer">
-                {content.prototypePrimary}
-              </a>
-              <a className={styles.secondaryButton} href="#offerings" data-target="offerings" onClick={handleNavClick}>
-                {content.prototypeSecondary}
-              </a>
-            </div>
-          </div>
-          <div className={styles.prototypeDetails}>
-            <p className={styles.cardTitle}>{content.prototypeDetailsTitle}</p>
-            <ul className={styles.cardList}>
-              <li>{content.prototypeItem1}</li>
-              <li>{content.prototypeItem2}</li>
-              <li>{content.prototypeItem3}</li>
-              <li>{content.prototypeItem4}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className={`${styles.ctaBand} ${styles.sectionReveal}`}
-        ref={(node) => {
-          sectionRefs.current[5] = node;
-        }}
-      >
-        <div>
-          <h2 className={styles.sectionTitle}>{content.ctaTitle}</h2>
-          <p className={styles.sectionBody}>{content.ctaBody}</p>
-        </div>
-        <a className={styles.primaryButton} href="mailto:info@dentra.mk">
-          {content.ctaButton}
-        </a>
-      </section>
-
-      <footer className={styles.footer}>
-        <p>(c) {new Date().getFullYear()} {content.footerSuffix}</p>
-        <p className={styles.footerContacts}>
-          {content.footerContactLabel}{' '}
-          <a href="mailto:info@dentra.mk">info@dentra.mk</a> ·{' '}
-          <a href="mailto:support@dentra.mk">support@dentra.mk</a>
-        </p>
-      </footer>
-    </main>
+      </main>
     </>
   );
 }
