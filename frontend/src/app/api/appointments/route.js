@@ -24,6 +24,9 @@ async function pruneOldAppointments() {
   await pool.query(
     "DELETE FROM appointments WHERE date < (CURRENT_DATE - INTERVAL '2 days')"
   );
+  await pool.query(
+    "DELETE FROM appointments WHERE confirmed = false AND created_at < NOW() - INTERVAL '30 minutes'"
+  );
 }
 
 async function upsertPatientRecord({ name, email, phone }) {
