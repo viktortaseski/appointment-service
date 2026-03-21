@@ -285,6 +285,21 @@ COMMENT ON COLUMN appointment_reminders.scheduled_at IS 'When the reminder shoul
 COMMENT ON COLUMN appointment_reminders.sent IS 'Whether reminder has been sent';
 
 -- =========================================================
+-- ADD confirmed COLUMN TO appointments (idempotent)
+-- =========================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'appointments'
+      AND column_name = 'confirmed'
+  ) THEN
+    ALTER TABLE appointments ADD COLUMN confirmed BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
+-- =========================================================
 -- INDEXES
 -- =========================================================
 CREATE INDEX IF NOT EXISTS idx_doctors_clinic_id ON doctors(clinic_id);
@@ -379,7 +394,8 @@ END $$;
 -- =========================================================
 -- VIEW: APPOINTMENTS WITH DOCTOR INFO
 -- =========================================================
-CREATE OR REPLACE VIEW appointments_with_doctors AS
+DROP VIEW IF EXISTS appointments_with_doctors;
+CREATE VIEW appointments_with_doctors AS
 SELECT
   a.id,
   a.clinic_id,
@@ -391,6 +407,7 @@ SELECT
   a.time,
   a.notes,
   a.completed,
+  a.confirmed,
   a.created_at,
   a.updated_at,
   d.name AS doctor_name,
