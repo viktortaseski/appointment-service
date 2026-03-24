@@ -7,6 +7,9 @@ export const metadata = {
   icons: {
     icon: 'https://res.cloudinary.com/dfuieb3iz/image/upload/v1769096434/logo_y76eph.png',
   },
+  alternates: {
+    canonical: 'https://dentra.mk/',
+  },
 };
 
 export default function RootLayout({ children }) {
